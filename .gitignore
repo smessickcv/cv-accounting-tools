@@ -10,7 +10,8 @@
 desktop.ini
 Thumbs.db
 
-# Sensitive local data (employee maps, backups — never publish)
+# Sensitive local data (employee maps, account pairs — never publish)
+_maps/
 payroll_je_emp_map.json
 
 # Older / superseded tool versions (kept locally, not published)

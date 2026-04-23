@@ -129,6 +129,10 @@
     <div class="excl-box-hdr">
       <span class="excl-box-title">Excluded entries</span>
       <span class="excl-count" id="exclCount">0 rules</span>
+      <div style="display:flex;gap:6px;margin-left:auto">
+        <button class="btn-sm" onclick="exportExclusions()" style="font-size:10px;padding:3px 8px">&#128190; Export</button>
+        <label class="btn-sm" style="font-size:10px;padding:3px 8px;cursor:pointer">&#128228; Import<input type="file" accept=".json" style="display:none" onchange="importExclusions(this.files[0]);this.value=''"></label>
+      </div>
     </div>
     <div class="excl-scroll" id="exclList"></div>
     <div class="excl-add">
@@ -190,20 +194,7 @@ const IC_PAYABLE    = "22206 Accrued Payables : Partnership Revenue Share";
 const IC_RECEIVABLE = "12002 Partnership Revenue Share Receivable";
 const STORAGE_KEY   = "je_exclusions_v1";
 
-// ── Default exclusions (from finance exclusions CSV, corrected NS IDs) ──────
-const DEFAULT_EXCLUSIONS = [
-  {coa:"40440 - Private Coaching",          coa_prefix:"40440", ns_id:12819,  customer:"TEXAS ROCK SOLID ROOFING LLC"},
-  {coa:"40440 - Private Coaching",          coa_prefix:"40440", ns_id:24987,  customer:"MAD ROOFING"},
-  {coa:"40440 - Private Coaching",          coa_prefix:"40440", ns_id:42158,  customer:"Superior Roof Systems"},
-  {coa:"40440 - Private Coaching",          coa_prefix:"40440", ns_id:43342,  customer:"ROOF & SOLAR BROKERS GROUP"},
-  {coa:"40440 - Private Coaching",          coa_prefix:"40440", ns_id:148176, customer:"Honey Do Homes"},
-  {coa:"40710 - Cardone University Revenue",coa_prefix:"40710", ns_id:12819,  customer:"TEXAS ROCK SOLID ROOFING LLC"},
-  {coa:"40710 - Cardone University Revenue",coa_prefix:"40710", ns_id:15886,  customer:"SERENITY WINDOWS AND SIDING LLC"},
-  {coa:"40710 - Cardone University Revenue",coa_prefix:"40710", ns_id:24987,  customer:"MAD ROOFING"},
-  {coa:"40710 - Cardone University Revenue",coa_prefix:"40710", ns_id:42158,  customer:"Superior Roof Systems"},
-  {coa:"40710 - Cardone University Revenue",coa_prefix:"40710", ns_id:43342,  customer:"ROOF & SOLAR BROKERS GROUP"},
-  {coa:"40710 - Cardone University Revenue",coa_prefix:"40710", ns_id:148176, customer:"Honey Do Homes"},
-];
+const DEFAULT_EXCLUSIONS = [];
 
 let parsedRows = [];
 let exclRules  = [];
@@ -212,12 +203,31 @@ let exclRules  = [];
 function loadExclusions() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    exclRules = stored ? JSON.parse(stored) : DEFAULT_EXCLUSIONS.map(r=>({...r}));
-    if (!stored) saveExclusions();
-  } catch(e) {
-    exclRules = DEFAULT_EXCLUSIONS.map(r=>({...r}));
-  }
+    exclRules = stored ? JSON.parse(stored) : [];
+  } catch(e) { exclRules = []; }
   renderExclusions();
+}
+
+function exportExclusions() {
+  const blob = new Blob([JSON.stringify({exclusions: exclRules}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'rev-share-je_exclusions.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function importExclusions(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (Array.isArray(data.exclusions)) {
+        exclRules = data.exclusions;
+        saveExclusions();
+        renderExclusions();
+      } else { alert('Invalid format. Expected {"exclusions": [...]}'); }
+    } catch(err) { alert('Invalid JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
 }
 function saveExclusions() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(exclRules)); } catch(e) {}

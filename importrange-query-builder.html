@@ -78,6 +78,12 @@
     Due To/From master sheet. All formulas reference <strong>cell B3</strong> as the month string (e.g. "Mar 2026").
   </p>
 
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surf);border:1px solid var(--border);border-radius:6px;margin-bottom:24px">
+    <span id="ir-pairs-status" style="flex:1;font-size:12px">Loading…</span>
+    <button class="btn-sm" onclick="exportPairsIR()">&#128190; Export</button>
+    <label class="btn-sm" style="cursor:pointer">&#128228; Import JSON<input type="file" accept=".json" style="display:none" onchange="importPairsIR(this.files[0]);this.value=''"></label>
+  </div>
+
   <div class="index-card">
     <div class="index-hdr">Subsidiaries — 13 entities covered</div>
     <table>
@@ -104,48 +110,65 @@
 <script>
 const MASTER_URL = "https://docs.google.com/spreadsheets/d/1KSKAav0X-dEs1HIh9sxBNC7-JDma0lH_QyZPT_CyePg";
 
-const PAIRS = [
-  {label:"10X HVAC",                  cv:["15108"],         sub:["25001","15152"], entity:"10X HVAC, LLC",                                    kind:"shared"},
-  {label:"10X Buy/Sell",              cv:["15109","22209"], sub:["25001","15152"], entity:"10X Buy/Sell, LLC",                                kind:"shared"},
-  {label:"10X BA Franchising",        cv:["15113"],         sub:["25001","15152"], entity:"10X Business Advisor Franchising, LLC",            kind:"shared"},
-  {label:"Gundlachs",                 cv:["15114"],         sub:["25001","15152"], entity:"Gundlach Heating, Cooling, Plumbing & Electrical", kind:"shared"},
-  {label:"5225 N Scottsdale",         cv:["15116"],         sub:["25001","15152"], entity:"5225 N Scottsdale, LLC",                           kind:"shared"},
-  {label:"10X Global Staffing",       cv:["15121"],         sub:["25001","15152"], entity:"10X Global Staffing, LLC",                         kind:"shared"},
-  {label:"10X Roofing (Due To)",      cv:["15129"],         sub:["25001","15152"], entity:"10X Roofing Management, LLC",                      kind:"shared"},
-  {label:"10X HomeServe",             cv:["15138"],         sub:["25001","15152"], entity:"10X HomeServe, LLC",                               kind:"shared"},
-  {label:"10X Coverage",              cv:["15143"],         sub:["25001","15152"], entity:"10X Group Plan, LLC",                              kind:"shared"},
-  {label:"CardoMax",                  cv:["15145"],         sub:["25001","15152"], entity:"CardoMax, LLC",                                    kind:"shared"},
-  {label:"10X Farms & Ranch",         cv:["15146"],         sub:["25001","15152"], entity:"10X Farms & Ranch, LLC",                           kind:"shared"},
-  {label:"15111 N Pima",              cv:["15147"],         sub:["25001","15152"], entity:"15111 N Pima Road, LLC",                           kind:"shared"},
-  {label:"HRE",                       cv:["15150"],         sub:["25001","15152"], entity:"Heather Rae Essentials LLC",                       kind:"shared"},
-  {label:"10X Roofing (N/R<>N/P)",   cv:["15164"],         sub:["23203"],         entity:"10X Roofing Management, LLC",                      kind:"dedicated"},
-  {label:"HRE (Prom N/R<>N/P)",      cv:["15204"],         sub:["23206"],         entity:"Heather Rae Essentials LLC",                       kind:"dedicated"},
-  {label:"CardoMax (Prom N/R<>N/P)", cv:["15205"],         sub:["23207"],         entity:"CardoMax, LLC",                                    kind:"dedicated"},
-];
+let PAIRS = [];
+let SHEET_NAMES = {};
+let entityOrder = [];
+let entityPairs = {};
 
-const SHEET_NAMES = {
-  "10X HVAC, LLC":                                    "10X HVAC",
-  "10X Buy/Sell, LLC":                                "10X Buy-Sell",
-  "10X Business Advisor Franchising, LLC":            "10X BA Franchising",
-  "Gundlach Heating, Cooling, Plumbing & Electrical": "Gundlachs",
-  "5225 N Scottsdale, LLC":                           "5225 N Scottsdale",
-  "10X Global Staffing, LLC":                         "10X Global Staffing",
-  "10X Roofing Management, LLC":                      "10X Roofing",
-  "10X HomeServe, LLC":                               "10X HomeServe",
-  "10X Group Plan, LLC":                              "10X Coverage",
-  "CardoMax, LLC":                                    "CardoMax",
-  "10X Farms & Ranch, LLC":                           "10X Farms & Ranch",
-  "15111 N Pima Road, LLC":                           "15111 N Pima",
-  "Heather Rae Essentials LLC":                       "HRE",
-};
+function rebuildDerived() {
+  entityOrder = [];
+  entityPairs = {};
+  for (const p of PAIRS) {
+    if (!entityOrder.includes(p.entity)) entityOrder.push(p.entity);
+    if (!entityPairs[p.entity]) entityPairs[p.entity] = [];
+    entityPairs[p.entity].push(p);
+  }
+}
 
-// Group pairs by entity, preserving order
-const entityOrder = [];
-const entityPairs = {};
-for (const p of PAIRS) {
-  if (!entityOrder.includes(p.entity)) entityOrder.push(p.entity);
-  if (!entityPairs[p.entity]) entityPairs[p.entity] = [];
-  entityPairs[p.entity].push(p);
+function loadPairsFromStorage() {
+  try {
+    const stored = localStorage.getItem('cv_importrange_pairs');
+    if (stored) {
+      const data = JSON.parse(stored);
+      PAIRS = data.pairs || [];
+      SHEET_NAMES = data.sheetNames || {};
+    }
+  } catch(e) {}
+  rebuildDerived();
+  updatePairsStatusIR();
+}
+
+function updatePairsStatusIR() {
+  const el = document.getElementById('ir-pairs-status');
+  if (!el) return;
+  el.textContent = PAIRS.length ? `${PAIRS.length} pairs · ${entityOrder.length} entities loaded` : 'No pairs loaded — import required';
+  el.style.color = PAIRS.length ? 'var(--muted)' : 'var(--cv-red)';
+}
+
+function exportPairsIR() {
+  const blob = new Blob([JSON.stringify({pairs: PAIRS, sheetNames: SHEET_NAMES}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'importrange-builder_pairs.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function importPairsIR(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (Array.isArray(data.pairs)) {
+        PAIRS = data.pairs;
+        SHEET_NAMES = data.sheetNames || {};
+        localStorage.setItem('cv_importrange_pairs', JSON.stringify({pairs: PAIRS, sheetNames: SHEET_NAMES}));
+        rebuildDerived();
+        updatePairsStatusIR();
+        renderIndex();
+        renderTabs();
+      } else { alert('Invalid format. Expected {"pairs": [...]}'); }
+    } catch(err) { alert('Invalid JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
 }
 
 const COLS = "Col1,Col2,Col3,Col4,Col5,Col6,Col7,Col8,Col9,Col10,Col11,Col12,Col13";
@@ -217,6 +240,11 @@ function copyFormula(btn, formula) {
 
 function renderIndex() {
   const tbody = document.getElementById('index-body');
+  tbody.innerHTML = '';
+  if (!entityOrder.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted);font-style:italic">No pairs loaded — use Import JSON above</td></tr>';
+    return;
+  }
   for (const entity of entityOrder) {
     const pairs = entityPairs[entity];
     const allCv  = [...new Set(pairs.flatMap(p => p.cv))];
@@ -234,6 +262,8 @@ function renderIndex() {
 function renderTabs() {
   const tabBar  = document.getElementById('tab-bar');
   const content = document.getElementById('tab-content');
+  tabBar.innerHTML = '';
+  content.innerHTML = '';
 
   entityOrder.forEach((entity, idx) => {
     const sheetName = SHEET_NAMES[entity] || entity;
@@ -312,6 +342,7 @@ function toggleTheme() {
     document.getElementById('theme-btn').textContent = saved === 'light' ? '🌙 Dark' : '☀ Light';
   }
   document.getElementById('master-url-display').textContent = MASTER_URL;
+  loadPairsFromStorage();
   renderIndex();
   renderTabs();
 })();

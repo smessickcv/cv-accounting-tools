@@ -125,14 +125,20 @@
     </div>
   </div>
 
-  <!-- Step 3: Optional employees override -->
+  <!-- Step 3: Employee map -->
   <div class="card">
     <div class="card-hdr">
-      <div class="step-badge opt">3</div>
-      <div><div class="card-hdr-text">Employee Cost Center Overrides</div></div>
-      <span class="card-hdr-sub">Optional · employees.csv</span>
+      <div class="step-badge">3</div>
+      <div><div class="card-hdr-text">Employee Map</div></div>
+      <span class="card-hdr-sub">Required · stored in browser</span>
     </div>
     <div class="card-body">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:var(--surf2,#f5f5f5);border:1px solid var(--border,#ddd);border-radius:5px">
+        <span id="hvac-map-status" style="flex:1;font-size:12px">Loading…</span>
+        <button class="btn-sm" onclick="exportHvacMaps()" style="white-space:nowrap">&#128190; Export</button>
+        <label class="btn-sm" style="cursor:pointer;white-space:nowrap">&#128228; Import JSON<input type="file" accept=".json" style="display:none" onchange="importHvacMaps(this.files[0]);this.value=''"></label>
+      </div>
+      <div style="font-size:11px;color:var(--muted,#777);margin-bottom:12px">Optionally upload a per-run CSV to override individual employee assignments:</div>
       <div class="drop-zone" id="dz-emp" onclick="document.getElementById('inp-emp').click()"
            ondragover="event.preventDefault();this.classList.add('dragover')"
            ondragleave="this.classList.remove('dragover')"
@@ -165,65 +171,12 @@
 </main>
 
 <script type="text/x-python" id="py-code">
-import io, csv, re, base64
+import io, csv, re, base64, json
 from collections import defaultdict
 import pandas as pd
 
-EMPLOYEE_COST_CENTER = {
-    "ABOYTES ERNESTO":          "HVAC Direct-R",
-    "ALVAREZ JARED D":          "HVAC Direct-R",
-    "ARAMBULA JOAB P":          "HVAC Direct-R",
-    "BURNS BRENT S":            "HVAC Sales",
-    "CASTANEDA MATTHEU E":      "HVAC Direct-R",
-    "CRISANTOS JESUS J":        "HVAC Direct-R",
-    "CRUZ HECTOR":              "HVAC Direct-R",
-    "CRUZ THOMAS L":            "HVAC Direct-R",
-    "ELKINS ALEXANDER THOMAS":  "HVAC Direct-R",
-    "GONZALEZ II ANTHONY S":    "Plumbing Direct",
-    "GONZALEZ JAVIER A":        "HVAC Direct-R",
-    "HAMON GERALD W":           "HVAC Direct-R",
-    "HERNANDEZ TRINITY R":      "Admin/Managers",
-    "JENKINS STEPHEN M":        "HVAC Sales",
-    "JUAREZ PHILLIP JOAQUIN":   "HVAC Direct-R",
-    "KIRKLAND MICHAEL J":       "Plumbing Direct",
-    "LOHAN MALIA J":            "Admin/Managers",
-    "LOPEZ JOSHUA D":           "HVAC Direct-R",
-    "LUNA ADRIAN A":            "HVAC Direct-R",
-    "MARINEZ CHRISTOPHER A":    "HVAC Direct-R",
-    "MAXWELL ANNE M":           "Admin/Managers",
-    "MAYER MICHAEL":            "HVAC Direct-R",
-    "MCCLANAHAN KALEB":         "Plumbing Direct",
-    "MILNER DANIEL L":          "Admin/Managers",
-    "O'TOOLE DANIEL T":         "HVAC Direct-R",
-    "PADILLA FABIAN":           "HVAC Direct-C",
-    "PARMELEE TERESA R":        "Admin/Managers",
-    "PEREZ STEVE R":            "HVAC Direct-R",
-    "PHILLIPS-HORNE JOSHUA J":  "HVAC Direct-R",
-    "PORTERFIELD TREVOR L":     "HVAC Direct-R",
-    "RASAVONG JR PHAT":         "HVAC Direct-R",
-    "RODRIGUEZ JACOB":          "HVAC Direct-R",
-    "RODRIGUEZ MARGARITA S":    "Admin/Managers",
-    "RODRIGUEZ OSCAR":          "HVAC Direct-R",
-    "ROGERS JONAH ORLAND":      "HVAC Direct-R",
-    "ROYAL BAILEY DANIEL":      "HVAC Direct-R",
-    "SANCHEZ JERRY A":          "HVAC Direct-R",
-    "SEARLS LUIS":              "HVAC Direct-R",
-    "SMITH BRANDON M":          "Admin/Managers",
-    "TORRES JOSE ENRIQUE":      "HVAC Direct-C",
-    "VASQUEZ ISMAEL R":         "HVAC Direct-R",
-    "WOOD MARTY L":             "HVAC Direct-R",
-    "ALVEAR EDDIE":             "HVAC Direct-R",
-    "LISH MEGAN J":             "Admin/Managers",
-    "FRANCOIS HENRY L":         "HVAC Direct-R",
-}
-
-COST_CENTER_ACCOUNT = {
-    "HVAC Direct-C":   "51200 HVAC-C Direct Labor",
-    "HVAC Direct-R":   "52200 HVAC-R Direct Labor",
-    "Plumbing Direct": "52200 Plumbing Direct Labor",
-    "Admin/Managers":  "61020 Administrative Staff & Managers",
-    "HVAC Sales":      "52400 HVAC Commissions Residential",
-}
+EMPLOYEE_COST_CENTER = json.loads(employee_cost_center_json) if employee_cost_center_json else {}
+COST_CENTER_ACCOUNT  = json.loads(cost_center_account_json)  if cost_center_account_json  else {}
 
 WAGE_ACCOUNT_ORDER = [
     "61020 Administrative Staff & Managers",
@@ -576,6 +529,12 @@ async function runProcess() {
     pyodide.globals.set('cigna_str',    document.getElementById('inp-cigna').value.trim());
     pyodide.globals.set('guardian_str', document.getElementById('inp-guardian').value.trim());
 
+    // Pass employee maps from localStorage to Python
+    const _empCC  = JSON.parse(localStorage.getItem('cv_hvac_emp_cost_center')    || '{}');
+    const _ccAcct = JSON.parse(localStorage.getItem('cv_hvac_cost_center_account') || '{}');
+    pyodide.globals.set('employee_cost_center_json', Object.keys(_empCC).length  ? JSON.stringify(_empCC)  : null);
+    pyodide.globals.set('cost_center_account_json',  Object.keys(_ccAcct).length ? JSON.stringify(_ccAcct) : null);
+
     log('Running Python…');
     setProgress(80);
     await pyodide.runPythonAsync(document.getElementById('py-code').textContent);
@@ -604,6 +563,38 @@ async function runProcess() {
     setProgress(-1);
   }
 }
+
+function updateMapStatus() {
+  const n = Object.keys(JSON.parse(localStorage.getItem('cv_hvac_emp_cost_center') || '{}')).length;
+  const el = document.getElementById('hvac-map-status');
+  if (!el) return;
+  el.textContent = n ? `${n} employees loaded` : 'No employee map — import required before generating';
+  el.style.color = n ? 'var(--green, #2e7d32)' : 'var(--cv-red, #cc0000)';
+}
+
+function exportHvacMaps() {
+  const empCC  = JSON.parse(localStorage.getItem('cv_hvac_emp_cost_center')    || '{}');
+  const ccAcct = JSON.parse(localStorage.getItem('cv_hvac_cost_center_account') || '{}');
+  const blob = new Blob([JSON.stringify({employeeCostCenter: empCC, costCenterAccount: ccAcct}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'payroll-je-hvac_employee-maps.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function importHvacMaps(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.employeeCostCenter) localStorage.setItem('cv_hvac_emp_cost_center',    JSON.stringify(data.employeeCostCenter));
+      if (data.costCenterAccount)  localStorage.setItem('cv_hvac_cost_center_account', JSON.stringify(data.costCenterAccount));
+      updateMapStatus();
+    } catch(err) { alert('Invalid JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+document.addEventListener('DOMContentLoaded', updateMapStatus);
 
 function downloadCSV() {
   if (!resultCSV) return;

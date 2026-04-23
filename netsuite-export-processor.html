@@ -70,6 +70,22 @@
     Runs entirely in your browser via Python (Pyodide).
   </p>
 
+  <!-- Step 0: Account pairs config -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="step-badge">0</div>
+      <div><div class="card-hdr-text">Account Pairs Configuration</div></div>
+      <span class="card-hdr-sub">Required · stored in browser</span>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:5px">
+        <span id="pairs-status" style="flex:1;font-size:12px;color:var(--muted)">Loading…</span>
+        <button class="btn-sm" onclick="exportPairsNS()">&#128190; Export</button>
+        <label class="btn-sm" style="cursor:pointer">&#128228; Import JSON<input type="file" accept=".json" style="display:none" onchange="importPairsNS(this.files[0]);this.value=''"></label>
+      </div>
+    </div>
+  </div>
+
   <!-- Step 1: Required file -->
   <div class="card">
     <div class="card-hdr">
@@ -139,31 +155,14 @@
 
 <!-- Embedded Python (not executed by browser — read by Pyodide) -->
 <script type="text/x-python" id="py-code">
-import io, re, base64
+import io, re, base64, json
 import xml.etree.ElementTree as ET
 import pandas as pd
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side as XLSide
 from openpyxl.utils import get_column_letter
 
-MIRROR_PAIRS = [
-    {"label": "10X HVAC",              "cv": ["15108"],        "sub": ["25001","15152"], "entity": "10X HVAC, LLC",                                "kind": "shared"},
-    {"label": "10X Buy/Sell",          "cv": ["15109","22209"],"sub": ["25001","15152"], "entity": "10X Buy/Sell, LLC",                            "kind": "shared"},
-    {"label": "10X BA Franchising",    "cv": ["15113"],        "sub": ["25001","15152"], "entity": "10X Business Advisor Franchising, LLC",        "kind": "shared"},
-    {"label": "Gundlachs",             "cv": ["15114"],        "sub": ["25001","15152"], "entity": "Gundlach Heating, Cooling, Plumbing & Electrical","kind": "shared"},
-    {"label": "5225 N Scottsdale",     "cv": ["15116"],        "sub": ["25001","15152"], "entity": "5225 N Scottsdale, LLC",                       "kind": "shared"},
-    {"label": "10X Global Staffing",   "cv": ["15121"],        "sub": ["25001","15152"], "entity": "10X Global Staffing, LLC",                     "kind": "shared"},
-    {"label": "10X Roofing (Due To)",  "cv": ["15129"],        "sub": ["25001","15152"], "entity": "10X Roofing Management, LLC",                  "kind": "shared"},
-    {"label": "10X HomeServe",         "cv": ["15138"],        "sub": ["25001","15152"], "entity": "10X HomeServe, LLC",                           "kind": "shared"},
-    {"label": "10X Coverage",          "cv": ["15143"],        "sub": ["25001","15152"], "entity": "10X Group Plan, LLC",                          "kind": "shared"},
-    {"label": "CardoMax",              "cv": ["15145"],        "sub": ["25001","15152"], "entity": "CardoMax, LLC",                                "kind": "shared"},
-    {"label": "10X Farms & Ranch",     "cv": ["15146"],        "sub": ["25001","15152"], "entity": "10X Farms & Ranch, LLC",                       "kind": "shared"},
-    {"label": "15111 N Pima",          "cv": ["15147"],        "sub": ["25001","15152"], "entity": "15111 N Pima Road, LLC",                       "kind": "shared"},
-    {"label": "HRE",                   "cv": ["15150"],        "sub": ["25001","15152"], "entity": "Heather Rae Essentials LLC",                   "kind": "shared"},
-    {"label": "10X Roofing (N/R<>N/P)","cv": ["15164"],       "sub": ["23203"],         "entity": "10X Roofing Management, LLC",                  "kind": "dedicated"},
-    {"label": "HRE (Prom N/R<>N/P)",   "cv": ["15204"],       "sub": ["23206"],         "entity": "Heather Rae Essentials LLC",                   "kind": "dedicated"},
-    {"label": "CardoMax (Prom N/R<>N/P)","cv": ["15205"],     "sub": ["23207"],         "entity": "CardoMax, LLC",                                "kind": "dedicated"},
-]
+MIRROR_PAIRS = json.loads(mirror_pairs_json) if mirror_pairs_json else []
 CV_ACCT_ENTITY = {acct: p["entity"] for p in MIRROR_PAIRS for acct in p["cv"]}
 
 def _clean_ns(content):
@@ -468,6 +467,39 @@ function setProgress(v) {
   p.value = v;
 }
 
+function updatePairsStatus() {
+  const n = JSON.parse(localStorage.getItem('cv_intercompany_pairs') || '[]').length;
+  const el = document.getElementById('pairs-status');
+  if (!el) return;
+  el.textContent = n ? `${n} account pairs loaded` : 'No account pairs — import required before processing';
+  el.style.color = n ? 'var(--green)' : 'var(--cv-red)';
+}
+
+function exportPairsNS() {
+  const pairs = JSON.parse(localStorage.getItem('cv_intercompany_pairs') || '[]');
+  const blob = new Blob([JSON.stringify({mirrorPairs: pairs}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'netsuite-processor_mirror-pairs.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function importPairsNS(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const pairs = data.mirrorPairs || data.pairs || null;
+      if (Array.isArray(pairs)) {
+        localStorage.setItem('cv_intercompany_pairs', JSON.stringify(pairs));
+        updatePairsStatus();
+      } else { alert('Invalid format. Expected {"mirrorPairs": [...]}'); }
+    } catch(err) { alert('Invalid JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+document.addEventListener('DOMContentLoaded', updatePairsStatus);
+
 function handleFile(input, which) {
   const file = input.files[0];
   if (!file) return;
@@ -527,6 +559,10 @@ async function runProcess() {
     } else {
       pyodide.globals.set('existing_b64', null);
     }
+
+    // Pass mirror pairs from localStorage to Python
+    const _pairs = JSON.parse(localStorage.getItem('cv_intercompany_pairs') || '[]');
+    pyodide.globals.set('mirror_pairs_json', _pairs.length ? JSON.stringify(_pairs) : null);
 
     log('Running Python parser…');
     setProgress(80);
