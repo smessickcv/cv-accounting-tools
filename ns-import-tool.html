@@ -311,6 +311,15 @@ tr:hover td{background:#f8fafc}
         </div>
       </div>
 
+      <div class="modal-sec">
+        <h3>&#128190; Backup &amp; Restore</h3>
+        <div class="form-hint" style="margin-bottom:10px">Export everything — customers, items, and all rules — to one file. Use <strong>Import All</strong> to restore on a new device or after clearing browser data.</div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="exportAllSettings()">&#11015; Export All Settings</button>
+          <label class="btn btn-outline" style="cursor:pointer;margin:0">&#11014; Import All Settings<input type="file" accept=".json" style="display:none" onchange="importAllSettings(this)"></label>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1312,6 +1321,61 @@ function importSquareRules(input){
 }
 
 function exportRules(){ dl(JSON.stringify(getRules(),null,2),'stripe_rules.json','application/json'); toast('Rules exported','ok'); }
+
+function exportAllSettings(){
+  const bundle={
+    _meta:{version:VERSION,exported:new Date().toLocaleDateString('en-US'),tool:'NS Import Tool'},
+    customers:    getCustomers()||[],
+    items:        getItems()||[],
+    stripe_rules: getRules(),
+    shopify_rules:getShopifyRules(),
+    square_rules: getSquareRules(),
+    square_items: getSquareItemMap(),
+    initials:     getInitials(),
+  };
+  const summary=[
+    `${bundle.customers.length} customers`,
+    `${bundle.items.length} items`,
+    `${bundle.stripe_rules.length} Stripe rules`,
+    `${bundle.shopify_rules.length} Shopify rules`,
+    `${bundle.square_rules.length} Square rules`,
+    `${Object.keys(bundle.square_items).length} Square item mappings`,
+  ].join(', ');
+  dl(JSON.stringify(bundle,null,2),`ns_tool_settings_${new Date().toISOString().slice(0,10)}.json`,'application/json');
+  toast(`Exported: ${summary}`,'ok');
+}
+
+function importAllSettings(input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const b=JSON.parse(e.target.result);
+      const lines=[
+        b.customers?.length                        ? `${b.customers.length} customers` : null,
+        b.items?.length                            ? `${b.items.length} items` : null,
+        b.stripe_rules?.length                     ? `${b.stripe_rules.length} Stripe rules` : null,
+        b.shopify_rules?.length                    ? `${b.shopify_rules.length} Shopify rules` : null,
+        b.square_rules?.length                     ? `${b.square_rules.length} Square rules` : null,
+        Object.keys(b.square_items||{}).length     ? `${Object.keys(b.square_items).length} Square item mappings` : null,
+        b.initials                                 ? `initials "${b.initials}"` : null,
+      ].filter(Boolean);
+      if(!lines.length){toast('Nothing found in this file','warn');return;}
+      if(!confirm(`Import the following?\n\n  • ${lines.join('\n  • ')}\n\nExisting matching data will be overwritten.`))return;
+      if(Array.isArray(b.customers))                         saveCustomers(b.customers);
+      if(Array.isArray(b.items))                             saveItems(b.items);
+      if(Array.isArray(b.stripe_rules))                      saveRules(b.stripe_rules);
+      if(Array.isArray(b.shopify_rules))                     saveShopifyRules(b.shopify_rules);
+      if(Array.isArray(b.square_rules))                      saveSquareRules(b.square_rules);
+      if(b.square_items&&typeof b.square_items==='object')   localStorage.setItem(LS_SQUARE_ITEMS,JSON.stringify(b.square_items));
+      if(b.initials&&typeof b.initials==='string')           saveInitials(b.initials);
+      updateDBStatus(); renderShopifyRulesTable(); renderSquareRulesTable(); renderRulesTable();
+      toast(`Imported: ${lines.join(', ')}`,'ok');
+    }catch(err){toast('Invalid or unreadable settings file','warn');}
+  };
+  reader.readAsText(file);
+  input.value='';
+}
 function importRules(input){
   const file=input.files[0]; if(!file)return;
   const reader=new FileReader();
