@@ -10,6 +10,9 @@
 desktop.ini
 Thumbs.db
 
+# Sensitive local data (employee maps, backups — never publish)
+payroll_je_emp_map.json
+
 # Older / superseded tool versions (kept locally, not published)
 CC_Reconciliation_Tool_6.html
 loan-interest-calculator_15.html

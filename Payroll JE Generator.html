@@ -165,7 +165,7 @@ header span { font-size: 13px; opacity: 0.7; }
 <header>
   <div class="drop-icon" style="font-size:28px;margin:0">&#128194;</div>
   <div>
-    <h1>Subsidiary Payroll JE Generator</h1>
+    <h1>Subsidiary Payroll JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.7</span></h1>
     <span>Cardone Ventures &mdash; Intercompany Journal Entry Automation &mdash; v1.7</span>
   </div>
 </header>
@@ -245,7 +245,15 @@ header span { font-size: 13px; opacity: 0.7; }
         <thead><tr><th>Employee Name (Last, First MI)</th><th>CV Department</th><th></th></tr></thead>
         <tbody id="empMapBody"></tbody>
       </table>
-      <button class="add-row-btn" onclick="addEmpRow()">+ Add Employee</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <button class="add-row-btn" onclick="addEmpRow()">+ Add Employee</button>
+        <button class="add-row-btn" onclick="exportEmpMap()" style="background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7">&#128190; Export Backup</button>
+        <label class="add-row-btn" style="cursor:pointer;background:#fff3e0;color:#e65100;border-color:#ffcc80">
+          &#128228; Import JSON
+          <input type="file" accept=".json" style="display:none" onchange="importEmpMap(this.files[0]);this.value=''">
+        </label>
+        <span id="empMapStatus" style="font-size:12px;color:#666"></span>
+      </div>
 
       <h4 style="font-size:13px;font-weight:700;color:#1a3a5c;margin:20px 0 8px;text-transform:uppercase;letter-spacing:.5px">Department ID &rarr; Name Mapping</h4>
       <p style="font-size:12px;color:#777;margin-bottom:8px">Maps GL Account department codes to NetSuite department names.</p>
@@ -409,16 +417,7 @@ const DEFAULT_DEPT_MAP = {
   '223': 'Data & Research',
 };
 
-const DEFAULT_EMP_MAP = {
-  'Benavidez, David A.':  '10X Buy/Sell',
-  'Bucher, Jan T.':       '10X Buy/Sell',
-  'Im, Sung Jin':         '10X Buy/Sell',
-  'Karney, Quinn T.':     '10X Buy/Sell',
-  'Porter, Izach S.':     '10X Buy/Sell',
-  'Wentzel, Brody':       '10X Buy/Sell',
-  'Wills, Oliver F.':     '10X Buy/Sell',
-  'Wetzler, Darin E.':    'General Corporate',
-};
+const DEFAULT_EMP_MAP = {};
 
 // Dept ID order for sorting CV-side lines (lower ID first)
 const DEPT_ID_ORDER = Object.fromEntries(
@@ -442,7 +441,7 @@ const BUCKET_CFG = {
 // ============================================================
 let payCodes = JSON.parse(JSON.stringify(DEFAULT_PAY_CODES));
 let deptMap   = JSON.parse(JSON.stringify(DEFAULT_DEPT_MAP));
-let empMap    = JSON.parse(JSON.stringify(DEFAULT_EMP_MAP));
+let empMap    = {};
 let lastWorkbook = null;
 let consolidatedRows = [];
 let detailRows = [];
@@ -454,15 +453,48 @@ let lastDebugStats = {}; // tabName → _dbg object, populated each run
 // ============================================================
 // INIT: RENDER LOOKUP TABLES
 // ============================================================
+function saveEmpMap() {
+  localStorage.setItem('cv_payroll_emp_map', JSON.stringify(empMap));
+  const st = document.getElementById('empMapStatus');
+  if (st) { st.textContent = 'Saved'; st.style.color = '#2e7d32'; setTimeout(() => { st.textContent = ''; }, 1500); }
+}
+
+function exportEmpMap() {
+  const blob = new Blob([JSON.stringify({ empMap }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'payroll_je_emp_map.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function importEmpMap(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.empMap && typeof data.empMap === 'object') {
+        empMap = data.empMap;
+        saveEmpMap();
+        renderEmpMap();
+        const st = document.getElementById('empMapStatus');
+        if (st) { st.textContent = `Imported ${Object.keys(empMap).length} employees`; st.style.color = '#2e7d32'; }
+      } else { alert('Invalid file format. Expected {"empMap": {...}}'); }
+    } catch(e) { alert('Could not parse JSON: ' + e.message); }
+  };
+  reader.readAsText(file);
+}
+
 function renderEmpMap() {
   const tbody = document.getElementById('empMapBody');
   tbody.innerHTML = '';
+  if (!Object.keys(empMap).length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="padding:12px;color:#999;font-style:italic;text-align:center">No employees loaded — import a backup or add entries manually.</td></tr>';
+  }
   Object.entries(empMap).forEach(([name, dept]) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input value="${esc(name)}" onchange="empMap[this.dataset.old]=undefined;empMap[this.value]=this.nextInput;this.dataset.old=this.value" data-old="${esc(name)}"></td>
-      <td><input value="${esc(dept)}" onchange="empMap['${esc(name)}']=this.value"></td>
-      <td><button class="del-row-btn" onclick="delete empMap['${esc(name)}'];renderEmpMap()">&#215;</button></td>`;
+      <td><input value="${esc(name)}" data-old="${esc(name)}" onchange="var d=empMap[this.dataset.old];delete empMap[this.dataset.old];empMap[this.value]=d;this.dataset.old=this.value;saveEmpMap()"></td>
+      <td><input value="${esc(dept)}" onchange="empMap['${esc(name)}']=this.value;saveEmpMap()"></td>
+      <td><button class="del-row-btn" onclick="delete empMap['${esc(name)}'];renderEmpMap();saveEmpMap()">&#215;</button></td>`;
     tbody.appendChild(tr);
   });
 }
@@ -470,6 +502,7 @@ function renderEmpMap() {
 function addEmpRow() {
   empMap['New Employee, Name'] = '10X Buy/Sell';
   renderEmpMap();
+  saveEmpMap();
 }
 
 function renderDeptMap() {
@@ -1227,6 +1260,8 @@ function switchTab(tab) {
 // INIT
 // ============================================================
 (function init() {
+  const saved = localStorage.getItem('cv_payroll_emp_map');
+  if (saved) { try { empMap = JSON.parse(saved); } catch(e) {} }
   renderEmpMap();
   renderDeptMap();
   renderPayCodeTable();
