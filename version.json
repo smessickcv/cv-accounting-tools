@@ -1,0 +1,19 @@
+{
+  "updated": "2026-04-23",
+  "tools": {
+    "ns-import":             "1.0",
+    "bofa-netsuite":         "1.0",
+    "cc-recon":              "1.0",
+    "cc-statement-recon":    "1.0",
+    "due-to-from":           "1.0",
+    "intercompany-recon":    "1.0",
+    "payroll-je-subsidiary": "1.7",
+    "payroll-je-hvac":       "1.0",
+    "loan-calculator":       "1.7",
+    "rev-share-je":          "1.0",
+    "shopify-netsuite":      "1.5",
+    "importrange-builder":   "1.0",
+    "netsuite-processor":    "1.0",
+    "payroll-je-generator":  "1.0"
+  }
+}

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BofA → NetSuite Bank Import</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+      padding: 40px;
+      width: 100%;
+      max-width: 620px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      background: #c8102e;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    h1 span {
+      color: #888;
+      font-weight: 400;
+    }
+
+    .drop-zone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: #c8102e;
+      background: #fff5f5;
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    .drop-label {
+      font-size: 15px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 4px;
+    }
+
+    .drop-sub {
+      font-size: 13px;
+      color: #9ca3af;
+    }
+
+    .file-name {
+      display: none;
+      margin-top: 16px;
+      padding: 10px 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #374151;
+      text-align: left;
+      word-break: break-all;
+    }
+
+    .file-name.visible { display: block; }
+
+    .stats {
+      display: none;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .stats.visible { display: flex; }
+
+    .stat-box {
+      flex: 1;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-num {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .stat-num.credits { color: #16a34a; }
+    .stat-num.debits  { color: #c8102e; }
+
+    .stat-label {
+      font-size: 11px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+
+    .error-box {
+      display: none;
+      margin-top: 16px;
+      padding: 12px 14px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #b91c1c;
+    }
+
+    .error-box.visible { display: block; }
+
+    .btn {
+      display: none;
+      width: 100%;
+      margin-top: 24px;
+      padding: 14px;
+      background: #c8102e;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #a50d25; }
+    .btn.visible { display: block; }
+
+    .btn-secondary {
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      padding: 11px;
+      background: #fff;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-secondary:hover { background: #f9fafb; }
+    .btn-secondary.visible { display: block; }
+
+    .footer {
+      margin-top: 28px;
+      font-size: 12px;
+      color: #9ca3af;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <div class="logo">BofA</div>
+    <h1>Bank Import Converter <span>→ NetSuite</span></h1>
+  </div>
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".csv">
+    <div class="drop-icon">📂</div>
+    <div class="drop-label">Drop BofA CSV here, or click to browse</div>
+    <div class="drop-sub">Accepts the BAI2-style export from Bank of America</div>
+  </div>
+
+  <div class="file-name" id="fileName"></div>
+
+  <div class="stats" id="stats">
+    <div class="stat-box">
+      <div class="stat-num" id="statTotal">—</div>
+      <div class="stat-label">Total Rows</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num credits" id="statCredits">—</div>
+      <div class="stat-label">Credits</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num debits" id="statDebits">—</div>
+      <div class="stat-label">Debits</div>
+    </div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <button class="btn" id="downloadBtn">⬇ Download NetSuite CSV</button>
+  <button class="btn-secondary" id="resetBtn">Clear / Load New File</button>
+
+  <div class="footer">Output format: Date · Payer/Payee · Transaction Id · Type · Amount · Memo</div>
+</div>
+
+<script>
+  const dropZone   = document.getElementById('dropZone');
+  const fileInput  = document.getElementById('fileInput');
+  const fileName   = document.getElementById('fileName');
+  const stats      = document.getElementById('stats');
+  const statTotal  = document.getElementById('statTotal');
+  const statCredits= document.getElementById('statCredits');
+  const statDebits = document.getElementById('statDebits');
+  const errorBox   = document.getElementById('errorBox');
+  const downloadBtn= document.getElementById('downloadBtn');
+  const resetBtn   = document.getElementById('resetBtn');
+
+  let outputCsv = '';
+  let outputFileName = 'bofa_netsuite_import.csv';
+
+  // ── Drag & drop visual ──────────────────────────────────────────────────────
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', ()=> { dropZone.classList.remove('drag-over'); });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const blob = new Blob([outputCsv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = outputFileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    fileInput.value   = '';
+    outputCsv         = '';
+    fileName.textContent = '';
+    fileName.classList.remove('visible');
+    stats.classList.remove('visible');
+    errorBox.classList.remove('visible');
+    downloadBtn.classList.remove('visible');
+    resetBtn.classList.remove('visible');
+  });
+
+  // ── CSV parser (handles quoted fields with embedded commas / newlines) ──────
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i], next = text[i + 1];
+      if (inQuotes) {
+        if (ch === '"' && next === '"') { field += '"'; i++; }
+        else if (ch === '"') { inQuotes = false; }
+        else { field += ch; }
+      } else {
+        if (ch === '"') { inQuotes = true; }
+        else if (ch === ',') { row.push(field.trim()); field = ''; }
+        else if (ch === '\n' || (ch === '\r' && next === '\n')) {
+          if (ch === '\r') i++;
+          row.push(field.trim());
+          if (row.some(c => c !== '')) rows.push(row);
+          row = []; field = '';
+        } else { field += ch; }
+      }
+    }
+    // Last field / row
+    row.push(field.trim());
+    if (row.some(c => c !== '')) rows.push(row);
+    return rows;
+  }
+
+  // ── Quote a CSV field (wrap in quotes if it contains comma, quote, or newline) ─
+  function csvField(val) {
+    val = (val == null) ? '' : String(val);
+    if (val.includes('"') || val.includes(',') || val.includes('\n')) {
+      return '"' + val.replace(/"/g, '""') + '"';
+    }
+    return val;
+  }
+
+  // ── Date reformat YYYY-MM-DD → MM/DD/YYYY ───────────────────────────────────
+  function reformatDate(d) {
+    // d may be YYYY-MM-DD or already MM/DD/YYYY
+    if (!d) return '';
+    const isoMatch = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) return `${isoMatch[2]}/${isoMatch[3]}/${isoMatch[1]}`;
+    return d; // return as-is if already formatted
+  }
+
+  // ── Derive suggested output filename ────────────────────────────────────────
+  function suggestOutputName(inputName) {
+    // Replace extension
+    return inputName.replace(/\.csv$/i, '_netsuite.csv');
+  }
+
+  // ── Main processing ─────────────────────────────────────────────────────────
+  function handleFile(file) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      showError('Please select a .csv file.');
+      return;
+    }
+
+    outputFileName = suggestOutputName(file.name);
+    fileName.textContent = '📄 ' + file.name;
+    fileName.classList.add('visible');
+    errorBox.classList.remove('visible');
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const text = e.target.result;
+        const rows = parseCsv(text);
+
+        if (rows.length < 2) { showError('CSV appears empty or has no data rows.'); return; }
+
+        // Detect and skip the header row
+        // Header is identified by the first cell being "As Of" (case-insensitive)
+        let dataStart = 0;
+        if (rows[0][0].replace(/"/g, '').trim().toLowerCase() === 'as of') {
+          dataStart = 1;
+        }
+
+        // Column indices (0-based) based on BofA BAI2 export format:
+        // 0  As Of
+        // 1  Currency
+        // 2  BankID Type
+        // 3  BankID
+        // 4  Account
+        // 5  Data Type  (Credits | Debits)
+        // 6  BAI Code
+        // 7  Description
+        // 8  Amount
+        // 9  Balance/Value Date
+        // 10 Customer Reference
+        // 11 Immediate Availability
+        // 12 1 Day Float
+        // 13 2+ DayFloat
+        // 14 Bank Reference
+        // 15 Text
+
+        const COL_DATE      = 0;
+        const COL_DATATYPE  = 5;
+        const COL_DESC      = 7;
+        const COL_AMOUNT    = 8;
+        const COL_BANKREF   = 14;
+        const COL_TEXT      = 15;
+
+        // Validate we have enough columns
+        const sampleRow = rows[dataStart];
+        if (!sampleRow || sampleRow.length < 16) {
+          showError(`Unexpected format: expected at least 16 columns, found ${sampleRow ? sampleRow.length : 0}. Make sure this is the BofA BAI2 export.`);
+          return;
+        }
+
+        const outputRows = [];
+
+        // Header
+        outputRows.push([
+          'Date (MM/DD/YYYY)',
+          'Payer/Payee Name',
+          'Transaction Id',
+          'Transaction Type',
+          'Amount',
+          'Memo',
+          'NS Internal Customer Id',
+          'NS Customer Name',
+          'Invoice Number(s)'
+        ]);
+
+        let creditCount = 0, debitCount = 0;
+
+        for (let i = dataStart; i < rows.length; i++) {
+          const r = rows[i];
+          if (r.length < 9) continue; // skip malformed/short rows
+
+          const rawDate   = r[COL_DATE]     || '';
+          const dataType  = r[COL_DATATYPE] || '';
+          const desc      = r[COL_DESC]     || '';
+          const amountRaw = r[COL_AMOUNT]   || '0';
+          const bankRef   = r[COL_BANKREF]  || '';
+          const text      = r[COL_TEXT]     || '';
+
+          const isCredit = dataType.trim().toLowerCase() === 'credits';
+          const txType   = isCredit ? 'Credit' : 'Debit';
+
+          const amountNum = parseFloat(amountRaw.replace(/[^0-9.-]/g, '')) || 0;
+          const amount    = isCredit ? amountNum : -amountNum;
+
+          const memo = `${desc} | Bank Reference: ${bankRef} | Memo: ${text}`;
+          const date = reformatDate(rawDate);
+
+          outputRows.push([
+            date,
+            '',         // Payer/Payee Name
+            bankRef,    // Transaction Id
+            txType,
+            amount,
+            memo,
+            '',         // NS Internal Customer Id
+            '',         // NS Customer Name
+            ''          // Invoice Number(s)
+          ]);
+
+          if (isCredit) creditCount++; else debitCount++;
+        }
+
+        // Build CSV string
+        outputCsv = outputRows
+          .map(row => row.map(csvField).join(','))
+          .join('\r\n');
+
+        // Update UI
+        const total = creditCount + debitCount;
+        statTotal.textContent   = total;
+        statCredits.textContent = creditCount;
+        statDebits.textContent  = debitCount;
+        stats.classList.add('visible');
+        downloadBtn.classList.add('visible');
+        resetBtn.classList.add('visible');
+
+      } catch (err) {
+        showError('Error processing file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function showError(msg) {
+    errorBox.textContent = '⚠ ' + msg;
+    errorBox.classList.add('visible');
+    stats.classList.remove('visible');
+    downloadBtn.classList.remove('visible');
+    resetBtn.classList.remove('visible');
+  }
+</script>
+
+<script>const TOOL_KEY='bofa-netsuite'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

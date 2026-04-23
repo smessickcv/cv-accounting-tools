@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cardone Ventures — Internal Tools Hub</title>
+  <style>
+    :root {
+      --cv-red: #cc0000;
+      --cv-red-dim: rgba(204,0,0,0.15);
+      --cv-red-border: rgba(204,0,0,0.25);
+      --purple: #7c3aed;
+      --purple-dim: rgba(124,58,237,0.12);
+      --purple-border: rgba(124,58,237,0.25);
+    }
+    [data-theme="dark"] {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --border: #252525;
+      --text: #f0f0f0;
+      --text-muted: #777;
+      --card-hover-bg: #161616;
+      --shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    [data-theme="light"] {
+      --bg: #f2f2f2;
+      --surface: #ffffff;
+      --surface2: #ebebeb;
+      --border: #d8d8d8;
+      --text: #111111;
+      --text-muted: #666666;
+      --card-hover-bg: #f9f9f9;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      border-bottom: 2px solid var(--cv-red);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+    .logo { display: flex; align-items: center; gap: 14px; }
+    .logo-mark {
+      width: 38px; height: 38px;
+      background: var(--cv-red);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 18px; color: #fff;
+      letter-spacing: -1px; flex-shrink: 0;
+    }
+    .logo-text { font-size: 17px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+    .logo-sub { font-size: 10px; color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px; }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .btn-theme {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: border-color 0.15s;
+    }
+    .btn-theme:hover { border-color: var(--cv-red); }
+
+    /* ── MAIN ── */
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 44px 32px 64px;
+    }
+
+    .hero {
+      margin-bottom: 48px;
+    }
+    .hero h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+    .hero h1 span { color: var(--cv-red); }
+    .hero p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ── SECTION ── */
+    .section { margin-bottom: 52px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .section-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .section-line { flex: 1; height: 1px; background: var(--border); }
+    .section-count {
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    /* ── TOOL GRID ── */
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 14px;
+    }
+
+    /* ── TOOL CARD ── */
+    .tool-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+      cursor: pointer;
+      position: relative;
+    }
+    .tool-card:hover {
+      background: var(--card-hover-bg);
+      box-shadow: var(--shadow);
+    }
+    .tool-card.local:hover { border-color: var(--cv-red); }
+    .tool-card.claude { border-left: 3px solid var(--purple); }
+    .tool-card.claude:hover { border-color: var(--purple); border-left-color: var(--purple); }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .card-version {
+      font-size: 10px;
+      font-family: 'Courier New', monospace;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 3px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .card-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.55;
+      flex: 1;
+    }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 2px;
+    }
+    .card-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+    .badge-local {
+      background: var(--cv-red-dim);
+      color: var(--cv-red);
+      border: 1px solid var(--cv-red-border);
+    }
+    .badge-claude {
+      background: var(--purple-dim);
+      color: var(--purple);
+      border: 1px solid var(--purple-border);
+    }
+    .card-arrow {
+      font-size: 14px;
+      color: var(--text-muted);
+      transition: transform 0.15s, color 0.15s;
+    }
+    .tool-card:hover .card-arrow { transform: translateX(3px); color: var(--text); }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 20px 32px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    footer strong { color: var(--text); }
+
+    /* ── UPDATE BANNER (injected by version-check.js) ── */
+    #cv-global-update-banner {
+      background: var(--cv-red);
+      color: #fff;
+      padding: 10px 24px;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      header { padding: 0 16px; }
+      main { padding: 28px 16px 48px; }
+      .logo-text { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">CV</div>
+    <div>
+      <div class="logo-text">Cardone Ventures</div>
+      <div class="logo-sub">Internal Tools Hub</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn-theme" id="theme-btn" onclick="toggleTheme()">☀ Light</button>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Internal <span>Tools</span></h1>
+    <p>Finance &amp; accounting tools for the Cardone Ventures team. All local tools run entirely in your browser — no data is sent to any server.</p>
+  </div>
+
+  <section class="section">
+    <div class="section-header">
+      <span class="section-label">Local Tools</span>
+      <div class="section-line"></div>
+      <span class="section-count" id="local-count">—</span>
+    </div>
+    <div class="tool-grid" id="local-grid"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-header">
+      <span class="section-label">Claude-Powered Tools</span>
+      <div class="section-line"></div>
+      <span class="section-count" id="claude-count">—</span>
+    </div>
+    <div class="tool-grid" id="claude-grid"></div>
+  </section>
+</main>
+
+<footer>
+  <strong>Cardone Ventures</strong> · Internal use only · Questions or issues? Post in <strong>#internal-tools</strong> on Slack
+</footer>
+
+<script>
+  /* ── TOOL DEFINITIONS ── */
+  const LOCAL_TOOLS = [
+    {
+      key: 'ns-import',
+      title: 'NetSuite Cash Sale Import',
+      desc: 'Generate NetSuite-ready cash sale import files from CSV data. Supports batch processing and GL account mapping.',
+      version: '1.0',
+      file: 'ns-import-tool.html'
+    },
+    {
+      key: 'bofa-netsuite',
+      title: 'BofA → NetSuite Bank Import',
+      desc: 'Convert Bank of America transaction exports to NetSuite bank import format in one click.',
+      version: '1.0',
+      file: 'BofA_to_NetSuite.html'
+    },
+    {
+      key: 'cc-recon',
+      title: 'Credit Card Reconciliation',
+      desc: 'Match credit card statement lines against NetSuite GL transactions. Highlights matches, unmatched items, and running totals.',
+      version: '1.0',
+      file: 'CC_Reconciliation_Tool-1.html'
+    },
+    {
+      key: 'cc-statement-recon',
+      title: 'CC Statement Reconciliation',
+      desc: 'Reconcile credit card statements against GL entries. Import statement CSV and GL export to find discrepancies.',
+      version: '1.0',
+      file: 'CC_Statement_Recon.html'
+    },
+    {
+      key: 'due-to-from',
+      title: 'Due To/From Master Generator',
+      desc: 'Generate intercompany due-to/from journal entries across all subsidiaries with IMPORTRANGE query builder.',
+      version: '1.0',
+      file: 'DueToFrom_Master_Generator.html'
+    },
+    {
+      key: 'intercompany-recon',
+      title: 'Subsidiary Intercompany Recon',
+      desc: 'Reconcile subsidiary due-to/from balances. Upload CV and subsidiary GL exports to identify out-of-balance entries.',
+      version: '1.0',
+      file: 'IntercompanyRecon_SharePoint_21.html'
+    },
+    {
+      key: 'payroll-je-subsidiary',
+      title: 'Payroll JE Generator (Subsidiaries)',
+      desc: 'Generate payroll journal entries for all subsidiaries. Imports payroll register CSV and maps to NetSuite GL accounts.',
+      version: '1.7',
+      file: 'Payroll JE Generator.html'
+    },
+    {
+      key: 'payroll-je-hvac',
+      title: 'Payroll JE Generator (10X HVAC)',
+      desc: 'Generate payroll journal entries specifically for 10X HVAC of CA with entity-specific account mappings.',
+      version: '1.0',
+      file: 'payroll_je_tool.html'
+    },
+    {
+      key: 'loan-calculator',
+      title: 'Loan Interest Calculator',
+      desc: 'Calculate and track interest accruals across multiple loans. Supports variable rates, custom periods, and NetSuite JE export.',
+      version: '1.7',
+      file: 'loan-interest-calculator_17_review.html'
+    },
+    {
+      key: 'rev-share-je',
+      title: 'Rev Share JE Generator',
+      desc: 'Generate revenue share journal entries for 10X Roofing. Calculates splits and produces NetSuite-ready import files.',
+      version: '1.0',
+      file: 'rev share je generator.html'
+    },
+    {
+      key: 'shopify-netsuite',
+      title: 'Shopify → NetSuite',
+      desc: 'Convert Shopify sales exports to NetSuite cash sale import format with SKU mapping and discount handling.',
+      version: '1.5',
+      file: 'shopify-to-netsuite_5.html'
+    },
+    {
+      key: 'importrange-builder',
+      title: 'IMPORTRANGE Query Builder',
+      desc: 'Browse and copy all IMPORTRANGE formulas for every subsidiary — transactions, balances, and recon rows. No Python needed.',
+      version: '1.0',
+      file: 'importrange-query-builder.html'
+    },
+    {
+      key: 'netsuite-processor',
+      title: 'NetSuite Export Processor',
+      desc: 'Upload the NetSuite "MEC – Subsidiary Due To/Froms" XLS export and download a fully-built Due_ToFrom_Master.xlsx. Runs Python in-browser via Pyodide.',
+      version: '1.0',
+      file: 'netsuite-export-processor.html'
+    },
+    {
+      key: 'payroll-je-generator',
+      title: 'Payroll JE Generator (10X HVAC — Python)',
+      desc: 'Upload the Vensure Payroll Check Journal Report, enter invoice totals, and download a QBO-ready journal entry CSV. Pyodide-powered browser version of the Python script.',
+      version: '1.0',
+      file: 'payroll-je-generator-hvac.html'
+    }
+  ];
+
+  const CLAUDE_TOOLS = [
+    {
+      title: '10XGS Sales Order Generator',
+      desc: 'AI-powered sales order generator for 10X Growth Suite. Requires Claude — opens in claude.ai.',
+      url: 'https://claude.ai/artifacts/latest/cce5beec-2b81-4c89-9789-8d94a802521e'
+    },
+    {
+      title: 'Credit Card Reconciliation (Claude)',
+      desc: 'AI-assisted credit card reconciliation. Requires Claude — opens in claude.ai.',
+      url: 'https://claude.ai/artifacts/860c8dc3-4ac8-4ab2-b9d9-37c84aaf85b1'
+    },
+    {
+      title: 'General Balance Sheet Reconciliation',
+      desc: 'AI-assisted balance sheet reconciliation tool. Requires Claude — opens in claude.ai.',
+      url: 'https://claude.ai/artifacts/3279175b-00ff-4865-b288-3f1e1188f26e'
+    }
+  ];
+
+  /* ── RENDER CARDS ── */
+  function renderLocal() {
+    const grid = document.getElementById('local-grid');
+    document.getElementById('local-count').textContent = LOCAL_TOOLS.length + ' tools';
+    LOCAL_TOOLS.forEach(t => {
+      const a = document.createElement('a');
+      a.className = 'tool-card local';
+      a.href = t.file;
+      a.innerHTML = `
+        <div class="card-top">
+          <div class="card-title">${t.title}</div>
+          <div class="card-version" id="ver-${t.key}">v${t.version}</div>
+        </div>
+        <div class="card-desc">${t.desc}</div>
+        <div class="card-footer">
+          <span class="card-badge badge-local">&#9679; Local</span>
+          <span class="card-arrow">→</span>
+        </div>`;
+      grid.appendChild(a);
+    });
+  }
+
+  function renderClaude() {
+    const grid = document.getElementById('claude-grid');
+    document.getElementById('claude-count').textContent = CLAUDE_TOOLS.length + ' tools';
+    CLAUDE_TOOLS.forEach(t => {
+      const a = document.createElement('a');
+      a.className = 'tool-card claude';
+      a.href = t.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.innerHTML = `
+        <div class="card-top">
+          <div class="card-title">${t.title}</div>
+          <div class="card-version" style="color:var(--purple);border-color:var(--purple-border)">AI</div>
+        </div>
+        <div class="card-desc">${t.desc}</div>
+        <div class="card-footer">
+          <span class="card-badge badge-claude">&#10024; Claude AI</span>
+          <span class="card-arrow">↗</span>
+        </div>`;
+      grid.appendChild(a);
+    });
+  }
+
+  /* ── VERSION CHECK ── */
+  async function checkVersions() {
+    try {
+      const resp = await fetch('version.json?t=' + Date.now());
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (!data.tools) return;
+
+      let anyUpdates = false;
+      LOCAL_TOOLS.forEach(t => {
+        const latest = data.tools[t.key];
+        if (!latest) return;
+        const badge = document.getElementById('ver-' + t.key);
+        if (badge && isNewer(latest, t.version)) {
+          badge.textContent = 'v' + latest + ' ↑';
+          badge.style.color = 'var(--cv-red)';
+          badge.style.borderColor = 'var(--cv-red-border)';
+          badge.title = 'Update available — get v' + latest + ' from #internal-tools';
+          anyUpdates = true;
+        }
+      });
+    } catch (e) { /* offline or local file — silently ignore */ }
+  }
+
+  function isNewer(a, b) {
+    const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const d = (pa[i] || 0) - (pb[i] || 0);
+      if (d > 0) return true;
+      if (d < 0) return false;
+    }
+    return false;
+  }
+
+  /* ── THEME ── */
+  function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('theme-btn').textContent = isDark ? '🌙 Dark' : '☀ Light';
+    localStorage.setItem('cv-theme', isDark ? 'light' : 'dark');
+  }
+
+  /* ── INIT ── */
+  (function init() {
+    const saved = localStorage.getItem('cv-theme');
+    if (saved) {
+      document.documentElement.setAttribute('data-theme', saved);
+      document.getElementById('theme-btn').textContent = saved === 'light' ? '🌙 Dark' : '☀ Light';
+    }
+    renderLocal();
+    renderClaude();
+    checkVersions();
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payroll JE Generator — 10X HVAC of CA</title>
+
+  <!-- SheetJS -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- pdf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --primary: #1e3a5f;
+      --accent: #2563eb;
+      --success: #15803d;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ---- Header ---- */
+    .site-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 20px 32px;
+      border-bottom: 3px solid var(--accent);
+    }
+    .site-header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+    .site-header p  { font-size: 0.85rem; color: #94b8d9; margin-top: 3px; }
+
+    /* ---- Layout ---- */
+    .container { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ---- Drop Zones ---- */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: #eff6ff;
+    }
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-zone .dz-icon { font-size: 1.8rem; margin-bottom: 8px; }
+    .drop-zone .dz-label { font-size: 0.9rem; color: var(--muted); }
+    .drop-zone .dz-label strong { color: var(--accent); }
+    .drop-zone .dz-status { margin-top: 10px; font-size: 0.85rem; }
+    .dz-ok    { color: var(--success); font-weight: 600; }
+    .dz-files { color: var(--text); font-size: 0.82rem; margin-top: 6px; }
+    .dz-files li { list-style: none; padding: 2px 0; }
+    .dz-files li::before { content: "📄 "; }
+
+    /* ---- Inputs row ---- */
+    .inputs-row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .inputs-row .field { flex: 1 1 160px; }
+    .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .field input[type="number"], .field input[type="text"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #dbeafe; }
+    .field .helper { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    /* ---- Generate button ---- */
+    .btn-generate {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 7px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, opacity .15s;
+      margin-top: 8px;
+    }
+    .btn-generate:hover:not(:disabled) { background: #1d4ed8; }
+    .btn-generate:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ---- Balance badge ---- */
+    .balance-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .balance-badge.balanced   { background: #dcfce7; color: var(--success); border: 1.5px solid #86efac; }
+    .balance-badge.imbalanced { background: #fee2e2; color: var(--danger);  border: 1.5px solid #fca5a5; }
+    .balance-icon { font-size: 1.4rem; }
+
+    /* ---- Tables ---- */
+    .table-wrap { overflow-x: auto; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th {
+      text-align: left; font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em;
+      color: var(--muted);
+      border-bottom: 2px solid var(--border);
+      padding: 8px 10px;
+      white-space: nowrap;
+    }
+    td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    tr:nth-child(even) td { background: #f8fafc; }
+    tr.total-row td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: none; background: #f1f5f9; }
+    .num { text-align: right; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .muted-cell { color: var(--muted); font-size: 0.82rem; }
+    .dr-row td:first-child { color: var(--primary); }
+    .cr-row td:first-child { color: #64748b; padding-left: 24px; }
+
+    /* ---- Warnings ---- */
+    .warning-list { display: flex; flex-direction: column; gap: 8px; }
+    .warning-item {
+      background: #fffbeb; border: 1px solid #fcd34d;
+      border-left: 4px solid var(--warning);
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: #92400e;
+    }
+    .warning-item::before { content: "⚠ "; font-weight: 700; }
+
+    /* ---- Download buttons ---- */
+    .btn-dl {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid;
+      transition: background .15s;
+      text-decoration: none;
+    }
+    .btn-dl-csv  { background: #f0fdf4; color: var(--success); border-color: #86efac; }
+    .btn-dl-csv:hover  { background: #dcfce7; }
+    .btn-dl-txt  { background: #eff6ff; color: var(--accent);  border-color: #93c5fd; }
+    .btn-dl-txt:hover  { background: #dbeafe; }
+    .dl-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    /* ---- Collapsible ---- */
+    .collapsible-header {
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none;
+    }
+    .collapsible-header .toggle-icon { font-size: 0.8rem; color: var(--muted); }
+    .collapsible-body { display: none; margin-top: 14px; }
+    .collapsible-body.open { display: block; }
+
+    /* ---- Section title ---- */
+    .section-title {
+      font-size: 0.85rem; font-weight: 700; color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    /* ---- Hidden until ready ---- */
+    #results { display: none; }
+    #loading { display: none; align-items: center; gap: 10px; color: var(--muted); font-size: 0.9rem; padding: 12px 0; }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2.5px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>Payroll JE Generator</h1>
+  <p>10X HVAC of CA, LLC — Gundlach's</p>
+</header>
+
+<main class="container">
+
+  <!-- ======== INPUTS ======== -->
+  <div class="card">
+    <div class="card-title">1. HR Check Journal Report</div>
+    <div class="drop-zone" id="dz-hr" tabindex="0">
+      <input type="file" id="file-hr" accept=".xlsx" />
+      <div class="dz-icon">📊</div>
+      <div class="dz-label">Drag &amp; drop your <strong>.xlsx</strong> file here, or click to browse</div>
+      <div class="dz-status" id="dz-hr-status"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">2. PRISM Invoices (PDF)</div>
+    <div class="drop-zone" id="dz-pdf" tabindex="0">
+      <input type="file" id="file-pdf" accept=".pdf" multiple />
+      <div class="dz-icon">🧾</div>
+      <div class="dz-label">Drag &amp; drop <strong>.pdf</strong> invoice files here (multiple allowed), or click to browse</div>
+      <div class="dz-status" id="dz-pdf-status"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">3. Health Insurance &amp; PRISM Override</div>
+    <div class="inputs-row">
+      <div class="field">
+        <label for="cigna-dr">Cigna DR ($)</label>
+        <input type="number" id="cigna-dr" placeholder="from CV invoice" min="0" step="0.01" />
+        <div class="helper">Employer Cigna premium from CV invoice</div>
+      </div>
+      <div class="field">
+        <label for="guardian-dr">Guardian DR ($)</label>
+        <input type="number" id="guardian-dr" value="0" min="0" step="0.01" />
+        <div class="helper">Employer Guardian premium (usually 0)</div>
+      </div>
+      <div class="field">
+        <label for="prism-override">PRISM Total Override ($)</label>
+        <input type="number" id="prism-override" placeholder="Leave blank to use PDFs" min="0" step="0.01" />
+        <div class="helper">Leave blank to use invoice PDFs</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding-bottom: 20px;">
+    <button class="btn-generate" id="btn-generate" disabled>
+      <span>⚡</span> Generate Journal Entry
+    </button>
+    <div id="loading">
+      <div class="spinner"></div>
+      <span id="loading-msg">Processing…</span>
+    </div>
+  </div>
+
+  <!-- ======== RESULTS ======== -->
+  <div id="results">
+
+    <!-- Balance badge -->
+    <div id="balance-badge-wrap"></div>
+
+    <!-- JE Table -->
+    <div class="card">
+      <div class="section-title">Journal Entry Lines</div>
+      <div class="table-wrap">
+        <table id="je-table">
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th class="num">Debit</th>
+              <th class="num">Credit</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="je-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Invoice Detail -->
+    <div class="card" id="invoice-card">
+      <div class="section-title">Vensure / PRISM Invoices</div>
+      <div class="table-wrap">
+        <table id="invoice-table">
+          <thead>
+            <tr>
+              <th>Invoice #</th>
+              <th>Date</th>
+              <th class="num">Amount</th>
+              <th>Filename</th>
+            </tr>
+          </thead>
+          <tbody id="invoice-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Employee Wages (collapsible) -->
+    <div class="card">
+      <div class="collapsible-header" onclick="toggleWages()">
+        <div class="section-title" style="margin-bottom:0">Employee Wages</div>
+        <span class="toggle-icon" id="wages-toggle-icon">▶ Show</span>
+      </div>
+      <div class="collapsible-body" id="wages-body">
+        <div class="table-wrap" style="margin-top:14px">
+          <table id="wages-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th class="num">Wages</th>
+              </tr>
+            </thead>
+            <tbody id="wages-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Warnings -->
+    <div class="card" id="warnings-card" style="display:none">
+      <div class="section-title">Warnings</div>
+      <div class="warning-list" id="warnings-list"></div>
+    </div>
+
+    <!-- Downloads -->
+    <div class="card">
+      <div class="section-title">Download</div>
+      <div class="dl-row">
+        <button class="btn-dl btn-dl-csv" id="btn-csv">⬇ Download CSV (QBO Import)</button>
+        <button class="btn-dl btn-dl-txt" id="btn-txt">⬇ Download Summary TXT</button>
+      </div>
+    </div>
+
+  </div><!-- /results -->
+
+</main>
+
+<script>
+// ============================================================
+// pdf.js worker
+// ============================================================
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ============================================================
+// CONFIGURATION CONSTANTS
+// ============================================================
+const EMPLOYEE_COST_CENTER = {
+  "ABOYTES ERNESTO": "HVAC Direct-R",
+  "ALVAREZ JARED D": "HVAC Direct-R",
+  "ARAMBULA JOAB P": "HVAC Direct-R",
+  "BURNS BRENT S": "HVAC Sales",
+  "CASTANEDA MATTHEU E": "HVAC Direct-R",
+  "CRISANTOS JESUS J": "HVAC Direct-R",
+  "CRUZ HECTOR": "HVAC Direct-R",
+  "CRUZ THOMAS L": "HVAC Direct-R",
+  "ELKINS ALEXANDER THOMAS": "HVAC Direct-R",
+  "GONZALEZ II ANTHONY S": "Plumbing Direct",
+  "GONZALEZ JAVIER A": "HVAC Direct-R",
+  "HAMON GERALD W": "HVAC Direct-R",
+  "HERNANDEZ TRINITY R": "Admin/Managers",
+  "JENKINS STEPHEN M": "HVAC Sales",
+  "JUAREZ PHILLIP JOAQUIN": "HVAC Direct-R",
+  "KIRKLAND MICHAEL J": "Plumbing Direct",
+  "LOHAN MALIA J": "Admin/Managers",
+  "LOPEZ JOSHUA D": "HVAC Direct-R",
+  "LUNA ADRIAN A": "HVAC Direct-R",
+  "MARINEZ CHRISTOPHER A": "HVAC Direct-R",
+  "MAXWELL ANNE M": "Admin/Managers",
+  "MAYER MICHAEL": "HVAC Direct-R",
+  "MCCLANAHAN KALEB": "Plumbing Direct",
+  "MILNER DANIEL L": "Admin/Managers",
+  "O'TOOLE DANIEL T": "HVAC Direct-R",
+  "PADILLA FABIAN": "HVAC Direct-C",
+  "PARMELEE TERESA R": "Admin/Managers",
+  "PEREZ STEVE R": "HVAC Direct-R",
+  "PHILLIPS-HORNE JOSHUA J": "HVAC Direct-R",
+  "PORTERFIELD TREVOR L": "HVAC Direct-R",
+  "RASAVONG JR PHAT": "HVAC Direct-R",
+  "RODRIGUEZ JACOB": "HVAC Direct-R",
+  "RODRIGUEZ MARGARITA S": "Admin/Managers",
+  "RODRIGUEZ OSCAR": "HVAC Direct-R",
+  "ROGERS JONAH ORLAND": "HVAC Direct-R",
+  "ROYAL BAILEY DANIEL": "HVAC Direct-R",
+  "SANCHEZ JERRY A": "HVAC Direct-R",
+  "SEARLS LUIS": "HVAC Direct-R",
+  "SMITH BRANDON M": "Admin/Managers",
+  "TORRES JOSE ENRIQUE": "HVAC Direct-C",
+  "VASQUEZ ISMAEL R": "HVAC Direct-R",
+  "WOOD MARTY L": "HVAC Direct-R",
+  "ALVEAR EDDIE": "HVAC Direct-R",
+  "LISH MEGAN J": "Admin/Managers",
+  "FRANCOIS HENRY L": "HVAC Direct-R",
+};
+
+const COST_CENTER_ACCOUNT = {
+  "HVAC Direct-C":   "51200 HVAC-C Direct Labor",
+  "HVAC Direct-R":   "52200 HVAC-R Direct Labor",
+  "Plumbing Direct": "52200 Plumbing Direct Labor",
+  "Admin/Managers":  "61020 Administrative Staff & Managers",
+  "HVAC Sales":      "52400 HVAC Commissions Residential",
+};
+
+const WAGE_ACCOUNT_ORDER = [
+  "61020 Administrative Staff & Managers",
+  "51200 HVAC-C Direct Labor",
+  "52200 HVAC-R Direct Labor",
+  "52200 Plumbing Direct Labor",
+  "52400 HVAC Commissions Residential",
+];
+
+const CONTRIBUTION_ACCOUNT = {
+  "MEDICARE - EMPLOYER": "Employer Payroll Taxes",
+  "OASDI - EMPLOYER": "Employer Payroll Taxes",
+  "FEDERAL UNEMPLOYMENT": "Employer Payroll Taxes",
+  "CA SUTA": "Employer Payroll Taxes",
+  "CA EMPLOYMENT TRAINING TAX": "Employer Payroll Taxes",
+  "CIGNA OAP HSA 3300 80/50": "Health Insurance v",
+  "CIGNA OAP HSA 3200 80/50": "Health Insurance v",
+  "CIGNA OAP HSA 2850 80/50": "Health Insurance v",
+  "200537 CIGNA OAP HSA 3300 80/50": "Health Insurance v",
+  "CIGNA OAP 1000 80/50": "Health Insurance v",
+  "CIGNA OAP 500 100/50": "Health Insurance v",
+  "200537 CIGNA OAP 1000 80/50": "Health Insurance v",
+  "200537 CIGNA OAP 500 100/50": "Health Insurance v",
+  "TRION GUARDIAN BASIC LIFE 50K": "Health Insurance",
+  "TRION GUARDIAN DENTAL HIGH": "Health Insurance",
+  "TRION GUARDIAN DENTAL MID": "Health Insurance",
+  "TRION GUARDIAN ER PD LTD 10K": "Health Insurance",
+  "TRION GUARDIAN ER PD STD 1K": "Health Insurance",
+  "TRION GUARDIAN EMPLOYER PAID LONG TERM DISABILITY": "Health Insurance",
+  "TRION GUARDIAN EMPLOYER PAID SHORT TERM DISABILITY 1K": "Health Insurance",
+  "TRION GUARDIAN VISION DAVIS NETWORK": "Health Insurance",
+  "TRION GUARDIAN VISION VSP NETWORK": "Health Insurance",
+  "TRION GUARDIAN VISION AVESIS NETWORK": "Health Insurance",
+  "TRION GUARDIAN ACCIDENT LOW OPTION": "Health Insurance",
+  "TRION GUARDIAN ACCIDENT HIGH OPTION": "Health Insurance",
+  "TRION GUARDIAN HOSPITAL INDEMNITY LOW OPTION": "Health Insurance",
+  "TRION GUARDIAN HOSPITAL INDEMNITY HIGH OPTION": "Health Insurance",
+  "TRION GUARDIAN VOLUNTARY TERM LIFE": "Health Insurance",
+  "TRION GUARDIAN CRITICAL ILLNESS": "Health Insurance",
+  "Critical Illnes": "Health Insurance",
+  "METLIFE BASIC LIFE 50K": "Health Insurance",
+  "METLIFE DENTAL HIGH": "Health Insurance",
+  "METLIFE DENTAL MID": "Health Insurance",
+  "METLIFE LTD ER PAID": "Health Insurance",
+  "METLIFE STD ER PAID": "Health Insurance",
+  "METLIFE VISION": "Health Insurance",
+  "HEALTH SAVINGS ACCOUNT": "Health Insurance",
+  "W/C CA 5183": "Worker's Compensation Insurance",
+  "W/C CA 5538": "Worker's Compensation Insurance",
+  "W/C CA 5542": "Worker's Compensation Insurance",
+  "W/C CA 8742": "Worker's Compensation Insurance",
+  "W/C CA 8810": "Worker's Compensation Insurance",
+  "EPLI": "Business Insurance",
+  "ADMIN FEE": "Payroll Services",
+  "ADD'L PAYROLL FEE NC": "Payroll Services",
+  "ADDITIONAL PAYROLL RUN": "Payroll Services",
+  "MISCELLANEOUS CREDIT PW": "Payroll Services",
+  "NET PAYROLL": "Payroll Services",
+  "BACKGROUND CHECK": "Payroll Services",
+  "RETIREMENT": "Retirement",
+  "MISCELLANEOUS CREDIT": "Accrued Payroll",
+  "CLIENT MEDICAL": "_CLIENT_MEDICAL",
+  "CLIENT 401K": "_CLIENT_401K",
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let hrFile = null;
+let pdfFiles = [];
+let lastResult = null;   // { jeLines, imbalance, warnings, invoiceDetail, wages, unknownEmps, monthYear, periodDesc }
+
+// ============================================================
+// UTILITY
+// ============================================================
+function fmt(n) {
+  if (n === 0 || n === null || n === undefined) return '';
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtBadge(n) {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ============================================================
+// isMetadata
+// ============================================================
+function isMetadata(val) {
+  if (val === null || val === undefined || val === '') return true;
+  const s = String(val).trim();
+  if (s === '' || s === 'nan') return true;
+  const prefixes = [
+    'Pay Method', 'Chk/Deposit', 'Check Number', 'Check Date',
+    'Period Start', 'Period End', 'WkComp Class', 'Employee ID',
+    'Net Pay', 'GRAND TOTALS', 'Break Total', 'Deduction Total',
+    'Contribution Total', 'MAIN', 'LOCATION', 'Details'
+  ];
+  return prefixes.some(p => s.startsWith(p));
+}
+
+// ============================================================
+// parseHrReport
+// ============================================================
+function parseHrReport(rows) {
+  // rows = array of arrays from SheetJS { header:1, defval:null }
+  const wages = {};
+  const contributions = {};
+  let employee401k = 0;
+  let employeeHealth = 0;
+  const unknownEmps = [];
+  let monthYear = [null, null];
+  let periodDesc = '';
+
+  // Detect period: scan col[2] for "Pay Dates from"
+  for (const row of rows) {
+    const val = row[2] != null ? String(row[2]) : '';
+    if (val.includes('Pay Dates from')) {
+      const m = val.match(/(\d{2}\/\d{2}\/\d{4}) to (\d{2}\/\d{2}\/\d{4})/);
+      if (m) {
+        periodDesc = `${m[1]} to ${m[2]}`;
+        const parts = m[2].split('/');
+        monthYear = [parseInt(parts[0], 10), parseInt(parts[2], 10)];
+      }
+      break;
+    }
+  }
+
+  // Find block starts: rows where col[0] is not null/undefined/empty
+  const blockStarts = [];
+  for (let i = 0; i < rows.length; i++) {
+    const v = rows[i][0];
+    if (v !== null && v !== undefined && String(v).trim() !== '') {
+      blockStarts.push(i);
+    }
+  }
+
+  for (let bi = 0; bi < blockStarts.length; bi++) {
+    const start = blockStarts[bi];
+    const end = bi + 1 < blockStarts.length ? blockStarts[bi + 1] : rows.length;
+    const block = rows.slice(start, end);
+
+    // Skip GRAND TOTALS / Break Total blocks
+    const firstCol3 = block[0][3] != null ? String(block[0][3]).trim() : '';
+    if (firstCol3.includes('GRAND TOTALS') || firstCol3.includes('Break Total')) continue;
+
+    // Find employee name
+    let empName = null;
+    for (const brow of block) {
+      const val = brow[3] != null ? String(brow[3]).trim() : '';
+      if (!isMetadata(val)) { empName = val; break; }
+    }
+    if (!empName) continue;
+
+    // Track unknown employees
+    if (!(empName in EMPLOYEE_COST_CENTER) && !unknownEmps.includes(empName)) {
+      unknownEmps.push(empName);
+    }
+
+    // Get wages: look for "Pay Total:" in col[4]
+    let payTotalFound = false;
+    for (const brow of block) {
+      const col4 = brow[4] != null ? String(brow[4]).trim() : '';
+      if (col4 === 'Pay Total:') {
+        const amt = brow[7];
+        if (amt != null && amt !== '') {
+          wages[empName] = (wages[empName] || 0) + parseFloat(amt);
+        }
+        payTotalFound = true;
+        break;
+      }
+    }
+    if (!payTotalFound) {
+      // Fallback: sum individual pay rows
+      for (const brow of block) {
+        const col4 = brow[4] != null ? String(brow[4]).trim() : '';
+        if (col4 && col4 !== 'Pay Total:') {
+          const amt = brow[7];
+          if (amt != null && amt !== '') {
+            try { wages[empName] = (wages[empName] || 0) + parseFloat(amt); } catch(e) {}
+          }
+        }
+      }
+    }
+
+    // Contributions: col[10] = desc, col[11] = amount
+    for (const brow of block) {
+      const desc = brow[10] != null ? String(brow[10]).trim() : '';
+      const amt  = brow[11] != null ? brow[11] : 0;
+      if (!desc || desc === 'nan' || desc === 'Contribution Total:' || desc === 'Contribution Description') continue;
+      try {
+        const famt = parseFloat(amt);
+        contributions[desc] = (contributions[desc] || 0) + famt;
+      } catch(e) {}
+    }
+
+    // Employee deductions: col[8] = desc, col[9] = amount
+    for (const brow of block) {
+      const desc = brow[8] != null ? String(brow[8]).trim() : '';
+      const amt  = brow[9] != null ? brow[9] : 0;
+      if (!desc || desc === 'nan' || desc === 'Deduction Total:' || desc === 'Deduction Description') continue;
+      try {
+        const famt = parseFloat(amt);
+        if (desc === '401K' || desc === '401k ROTH' || desc === '401K ROTH') {
+          employee401k += famt;
+        } else if (desc === 'MEDICAL') {
+          employeeHealth += famt;
+        }
+      } catch(e) {}
+    }
+  }
+
+  return { wages, contributions, employee401k, employeeHealth, monthYear, periodDesc, unknownEmps };
+}
+
+// ============================================================
+// parsePrismPdf
+// ============================================================
+async function parsePrismPdf(file) {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = '';
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      text += content.items.map(item => item.str).join(' ') + '\n';
+    }
+
+    let invNum = '?', invDate = '?', invTotal = 0;
+
+    let m = text.match(/Vensure HR Invoice\s+(\d+)/);
+    if (m) invNum = m[1];
+
+    m = text.match(/Date\s+(\d{2}\/\d{2}\/\d{4})/);
+    if (m) invDate = m[1];
+
+    m = text.match(/TOTAL INVOICE\s+([\d,]+\.?\d*)/);
+    if (!m) m = text.match(/TOTAL\s+INVOICE\s+([\d,]+\.?\d*)/);
+    if (m) invTotal = parseFloat(m[1].replace(/,/g, ''));
+
+    return { fileName: file.name, invNum, invDate, invTotal };
+  } catch(e) {
+    return { fileName: file.name, invNum: '?', invDate: '?', invTotal: 0, error: e.message };
+  }
+}
+
+// ============================================================
+// buildJe
+// ============================================================
+function buildJe(wages, contributions, employee401k, employeeHealth,
+                 prismTotal, cignaOverride, guardianOverride) {
+  const warnings = [];
+
+  // 1. Wages by account
+  const wagesByAcct = {};
+  const sortedEmps = Object.keys(wages).sort();
+  for (const emp of sortedEmps) {
+    const amt = wages[emp];
+    const cc = EMPLOYEE_COST_CENTER[emp];
+    if (cc) {
+      const acct = COST_CENTER_ACCOUNT[cc];
+      if (acct) {
+        wagesByAcct[acct] = (wagesByAcct[acct] || 0) + amt;
+      } else {
+        warnings.push(`Unknown cost center account for: ${cc} (employee: ${emp})`);
+      }
+    } else {
+      warnings.push(`Employee not in lookup -- unclassified wages $${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}: ${emp}`);
+    }
+  }
+
+  // 2. Contribution mapping
+  const acctTotals = {};
+  for (const [desc, amt] of Object.entries(contributions)) {
+    const jeAcct = CONTRIBUTION_ACCOUNT[desc];
+    if (jeAcct) {
+      acctTotals[jeAcct] = (acctTotals[jeAcct] || 0) + amt;
+    } else if (amt !== 0) {
+      warnings.push(`Unmapped contribution '${desc}' = $${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`);
+    }
+  }
+
+  // 3. Special items
+  const clientMedicalContra = acctTotals['_CLIENT_MEDICAL'] || 0;
+  delete acctTotals['_CLIENT_MEDICAL'];
+  const client401kContra = acctTotals['_CLIENT_401K'] || 0;
+  delete acctTotals['_CLIENT_401K'];
+
+  // 4. Health insurance netting
+  const trionEmployer = acctTotals['Health Insurance'] || 0;
+  delete acctTotals['Health Insurance'];
+  let healthInsCr = Math.abs(clientMedicalContra) - trionEmployer;
+  if (healthInsCr < 0) {
+    warnings.push('Health Insurance CR is negative -- check Trion contributions vs employee deductions.');
+    healthInsCr = 0;
+  }
+
+  // 5. HR-derived Cigna (fallback)
+  const hrCigna = acctTotals['Health Insurance v'] || 0;
+  delete acctTotals['Health Insurance v'];
+
+  // 6. Override logic
+  const cignadr = (cignaOverride !== null && cignaOverride !== undefined) ? cignaOverride : hrCigna;
+  const guardianDr = (guardianOverride !== null && guardianOverride !== undefined) ? guardianOverride : 0;
+
+  if (cignaOverride === null || cignaOverride === undefined) {
+    warnings.push(
+      `Cigna amount not provided -- using HR-report estimate $${hrCigna.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}. ` +
+      `Enter the correct CV invoice amount in the Cigna DR field.`
+    );
+  }
+
+  // 7. Retirement
+  const retirementAmt = acctTotals['Retirement'] || 0;
+  delete acctTotals['Retirement'];
+  const retirement401kLiability = Math.abs(client401kContra) + retirementAmt;
+
+  // 8. Assemble JE lines
+  const je = [];
+
+  je.push({ account: 'Employer Payroll Taxes',
+            dr: acctTotals['Employer Payroll Taxes'] || 0, cr: 0,
+            note: 'FICA-ER, FUTA, SUTA, CA ETT' });
+
+  je.push({ account: 'Health Insurance - Cigna',
+            dr: cignadr, cr: 0,
+            note: 'From CV Cigna invoice (manual)' });
+
+  je.push({ account: 'Health Insurance - Guardian',
+            dr: guardianDr, cr: 0,
+            note: 'From CV Guardian invoice (manual)' });
+
+  for (const acct of WAGE_ACCOUNT_ORDER) {
+    const amt = wagesByAcct[acct] || 0;
+    if (amt) {
+      je.push({ account: acct, dr: amt, cr: 0, note: '' });
+    }
+  }
+
+  je.push({ account: "Worker's Compensation Insurance",
+            dr: acctTotals["Worker's Compensation Insurance"] || 0, cr: 0,
+            note: '' });
+
+  je.push({ account: 'Business Insurance',
+            dr: acctTotals['Business Insurance'] || 0, cr: 0,
+            note: 'EPLI' });
+
+  je.push({ account: 'Payroll Services',
+            dr: acctTotals['Payroll Services'] || 0, cr: 0,
+            note: 'Admin fee' });
+
+  const accrued = acctTotals['Accrued Payroll'] || 0;
+  je.push({ account: 'Accrued Payroll',
+            dr: accrued > 0 ? accrued : 0,
+            cr: accrued < 0 ? accrued : 0,
+            note: '' });
+
+  je.push({ account: 'Retirement',
+            dr: retirementAmt, cr: 0,
+            note: 'Employer retirement contribution' });
+
+  je.push({ account: 'Health Insurance',
+            dr: 0, cr: healthInsCr,
+            note: 'Employee medical deductions net of Trion employer premiums' });
+
+  je.push({ account: 'Payroll Liabilities (balance sheet)',
+            dr: 0, cr: prismTotal,
+            note: 'Sum of Vensure/PRISM invoices = cash out' });
+
+  je.push({ account: '401K Liability (balance sheet)',
+            dr: 0, cr: retirement401kLiability,
+            note: '|CLIENT 401K| + Retirement employer contribution' });
+
+  const dueToCv = cignadr + guardianDr;
+  je.push({ account: 'Due to CV',
+            dr: 0, cr: dueToCv,
+            note: 'Intercompany -- CV pays Cigna/Guardian' });
+
+  // 9. Filter zero lines (keep Accrued Payroll)
+  const filtered = je.filter(ln => ln.dr !== 0 || ln.cr !== 0 || ln.account === 'Accrued Payroll');
+
+  // 10. Imbalance
+  const totalDr = filtered.reduce((s, ln) => s + ln.dr, 0);
+  const totalCr = filtered.reduce((s, ln) => s + ln.cr, 0);
+  const imbalance = Math.round((totalDr - totalCr) * 100) / 100;
+
+  return { jeLines: filtered, imbalance, warnings, hrHealthHint: { cigna: hrCigna } };
+}
+
+// ============================================================
+// buildCsv
+// ============================================================
+function buildCsv(jeLines, monthYear, periodDesc) {
+  const [month, year] = monthYear;
+  const jeNo = (month && year)
+    ? `PAYROLL-${year}-${String(month).padStart(2,'0')}`
+    : 'PAYROLL';
+  const dateStr = (month && year)
+    ? `${String(month).padStart(2,'0')}/01/${year}`
+    : '??/??/????';
+  const memo = `Payroll JE ${periodDesc}`;
+
+  const rows = [['JournalEntryNo','JournalEntryDate','Memo','AccountName','Debit','Credit','Description']];
+  for (const ln of jeLines) {
+    rows.push([
+      jeNo, dateStr, memo, ln.account,
+      ln.dr ? ln.dr.toFixed(2) : '',
+      ln.cr ? ln.cr.toFixed(2) : '',
+      ln.note
+    ]);
+  }
+  return rows.map(r => r.map(cell => {
+    const s = String(cell);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g,'""')}"`;
+    return s;
+  }).join(',')).join('\r\n');
+}
+
+// ============================================================
+// buildSummaryText
+// ============================================================
+function buildSummaryText(jeLines, imbalance, warnings, invoiceDetail, wages, unknownEmps, periodDesc) {
+  const totalDr = jeLines.reduce((s,ln) => s + ln.dr, 0);
+  const totalCr = jeLines.reduce((s,ln) => s + ln.cr, 0);
+  const sep65 = '='.repeat(65);
+  const dash65 = '-'.repeat(65);
+
+  const lines = [];
+  lines.push(sep65);
+  lines.push('  PAYROLL JOURNAL ENTRY SUMMARY');
+  lines.push(`  Period: ${periodDesc}`);
+  lines.push(sep65);
+  lines.push('');
+  lines.push(`  ${'Account'.padEnd(45)} ${'DR'.padStart(12)}  ${'CR'.padStart(12)}`);
+  lines.push(`  ${'-'.repeat(45)} ${'-'.repeat(12)}  ${'-'.repeat(12)}`);
+  for (const ln of jeLines) {
+    const drStr = ln.dr ? ln.dr.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12) : ' '.repeat(13);
+    const crStr = ln.cr ? ln.cr.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12) : ' '.repeat(13);
+    lines.push(`  ${ln.account.padEnd(45)} ${drStr}  ${crStr}`);
+  }
+  lines.push(`  ${'-'.repeat(45)} ${'-'.repeat(12)}  ${'-'.repeat(12)}`);
+  const totDrStr = totalDr.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12);
+  const totCrStr = totalCr.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12);
+  lines.push(`  ${'TOTAL'.padEnd(45)} ${totDrStr}  ${totCrStr}`);
+  lines.push('');
+  if (Math.abs(imbalance) < 0.02) {
+    lines.push('  [OK] JE BALANCED');
+  } else {
+    const imbStr = imbalance.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    lines.push(`  [!!] IMBALANCE: $${imbStr}  (positive = DR > CR; likely due to Cigna/CV health adjustment)`);
+  }
+  lines.push('');
+
+  lines.push(dash65);
+  lines.push('  VENSURE / PRISM INVOICES');
+  lines.push(dash65);
+  for (const inv of invoiceDetail) {
+    const numStr = String(inv.invNum).padStart(8);
+    const totStr = inv.invTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12);
+    lines.push(`  Invoice ${numStr}  ${inv.invDate}  $${totStr}  ${inv.fileName}`);
+  }
+  const totalInv = invoiceDetail.reduce((s,i) => s + i.invTotal, 0);
+  const totalInvStr = totalInv.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12);
+  lines.push(`  ${'TOTAL'.padStart(30)}              $${totalInvStr}`);
+  lines.push('');
+
+  lines.push(dash65);
+  lines.push('  WAGES BY EMPLOYEE (for reference)');
+  lines.push(dash65);
+  for (const emp of Object.keys(wages).sort()) {
+    const wStr = wages[emp].toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(10);
+    lines.push(`  ${emp.padEnd(40)} $${wStr}`);
+  }
+  const totalWages = Object.values(wages).reduce((s,v) => s+v, 0);
+  const totalWagesStr = totalWages.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(10);
+  lines.push(`  ${'TOTAL'.padEnd(40)} $${totalWagesStr}`);
+  lines.push('');
+
+  if (unknownEmps && unknownEmps.length > 0) {
+    lines.push(dash65);
+    lines.push('  [!] EMPLOYEES NOT IN LOOKUP -- add to EMPLOYEE_COST_CENTER');
+    lines.push(dash65);
+    for (const emp of unknownEmps) lines.push(`  ${emp}`);
+    lines.push('');
+  }
+
+  if (warnings && warnings.length > 0) {
+    lines.push(dash65);
+    lines.push('  WARNINGS');
+    lines.push(dash65);
+    for (const w of warnings) lines.push(`  [!] ${w}`);
+    lines.push('');
+  }
+
+  lines.push(dash65);
+  lines.push('  NOTES FOR REVIEWER');
+  lines.push(dash65);
+  lines.push("  1. 'Health Insurance - Cigna' and 'Health Insurance - Guardian' DR amounts");
+  lines.push("     come from CV's invoice (manual). Enter via the Cigna/Guardian DR fields.");
+  lines.push("     'Due to CV' CR mirrors these DR lines exactly.");
+  lines.push("  2. 'Payroll Liabilities' CR = sum of PRISM/Vensure invoices.");
+  lines.push("     Verify this matches the Trion payment in QBO.");
+  lines.push("  3. '401K Liability' CR = |CLIENT 401K| + Retirement employer contribution.");
+  lines.push("     Verify this matches the 401K remittance in QBO.");
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+// ============================================================
+// UI helpers
+// ============================================================
+function setLoading(msg) {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('loading-msg').textContent = msg || 'Processing…';
+}
+function clearLoading() {
+  document.getElementById('loading').style.display = 'none';
+}
+
+function renderResults(result) {
+  const { jeLines, imbalance, warnings, invoiceDetail, wages, unknownEmps, monthYear, periodDesc } = result;
+
+  // Balance badge
+  const wrap = document.getElementById('balance-badge-wrap');
+  const totalDr = jeLines.reduce((s,ln) => s + ln.dr, 0);
+  const isBalanced = Math.abs(imbalance) < 0.02;
+  wrap.innerHTML = `
+    <div class="balance-badge ${isBalanced ? 'balanced' : 'imbalanced'}">
+      <span class="balance-icon">${isBalanced ? '✓' : '⚠'}</span>
+      <span>${isBalanced
+        ? `BALANCED &nbsp;$${fmtBadge(totalDr)}`
+        : `IMBALANCE &nbsp;$${fmtBadge(Math.abs(imbalance))}`
+      }</span>
+    </div>`;
+
+  // JE Table
+  const jeTbody = document.getElementById('je-tbody');
+  jeTbody.innerHTML = '';
+  let sumDr = 0, sumCr = 0;
+  for (const ln of jeLines) {
+    sumDr += ln.dr; sumCr += ln.cr;
+    const isCr = ln.dr === 0 && ln.cr !== 0;
+    const tr = document.createElement('tr');
+    tr.className = isCr ? 'cr-row' : 'dr-row';
+    tr.innerHTML = `
+      <td>${escHtml(ln.account)}</td>
+      <td class="num">${ln.dr ? fmt(ln.dr) : ''}</td>
+      <td class="num">${ln.cr ? fmt(ln.cr) : ''}</td>
+      <td class="muted-cell">${escHtml(ln.note)}</td>`;
+    jeTbody.appendChild(tr);
+  }
+  const totTr = document.createElement('tr');
+  totTr.className = 'total-row';
+  totTr.innerHTML = `<td>TOTAL</td><td class="num">${fmt(sumDr)}</td><td class="num">${fmt(sumCr)}</td><td></td>`;
+  jeTbody.appendChild(totTr);
+
+  // Invoice Table
+  const invTbody = document.getElementById('invoice-tbody');
+  invTbody.innerHTML = '';
+  let sumInv = 0;
+  if (invoiceDetail && invoiceDetail.length > 0) {
+    for (const inv of invoiceDetail) {
+      sumInv += inv.invTotal;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escHtml(inv.invNum)}</td>
+        <td>${escHtml(inv.invDate)}</td>
+        <td class="num">${fmt(inv.invTotal)}</td>
+        <td class="muted-cell">${escHtml(inv.fileName)}</td>`;
+      invTbody.appendChild(tr);
+    }
+    const totTr = document.createElement('tr');
+    totTr.className = 'total-row';
+    totTr.innerHTML = `<td colspan="2">TOTAL</td><td class="num">${fmt(sumInv)}</td><td></td>`;
+    invTbody.appendChild(totTr);
+    document.getElementById('invoice-card').style.display = '';
+  } else {
+    document.getElementById('invoice-card').style.display = 'none';
+  }
+
+  // Wages Table
+  const wagesTbody = document.getElementById('wages-tbody');
+  wagesTbody.innerHTML = '';
+  let sumWages = 0;
+  for (const emp of Object.keys(wages).sort()) {
+    sumWages += wages[emp];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${escHtml(emp)}</td><td class="num">${fmt(wages[emp])}</td>`;
+    wagesTbody.appendChild(tr);
+  }
+  const wTotTr = document.createElement('tr');
+  wTotTr.className = 'total-row';
+  wTotTr.innerHTML = `<td>TOTAL</td><td class="num">${fmt(sumWages)}</td>`;
+  wagesTbody.appendChild(wTotTr);
+
+  // Warnings
+  const warnCard = document.getElementById('warnings-card');
+  const warnList = document.getElementById('warnings-list');
+  warnList.innerHTML = '';
+  const allWarnings = [...(warnings || [])];
+  if (unknownEmps && unknownEmps.length > 0) {
+    allWarnings.push(`Employees not in lookup (wages unclassified): ${unknownEmps.join(', ')}`);
+  }
+  if (allWarnings.length > 0) {
+    warnCard.style.display = '';
+    for (const w of allWarnings) {
+      const div = document.createElement('div');
+      div.className = 'warning-item';
+      div.textContent = w;
+      warnList.appendChild(div);
+    }
+  } else {
+    warnCard.style.display = 'none';
+  }
+
+  document.getElementById('results').style.display = '';
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleWages() {
+  const body = document.getElementById('wages-body');
+  const icon = document.getElementById('wages-toggle-icon');
+  body.classList.toggle('open');
+  icon.textContent = body.classList.contains('open') ? '▼ Hide' : '▶ Show';
+}
+
+function downloadText(content, filename) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// MAIN GENERATE HANDLER
+// ============================================================
+async function generate() {
+  if (!hrFile) return;
+
+  document.getElementById('results').style.display = 'none';
+  setLoading('Reading HR report…');
+  document.getElementById('btn-generate').disabled = true;
+
+  try {
+    // -- Read HR report --
+    const hrArrayBuffer = await hrFile.arrayBuffer();
+    const wb = XLSX.read(hrArrayBuffer, { type: 'array', cellDates: false });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+    const hrData = parseHrReport(rows);
+
+    // -- Read PDFs --
+    let invoiceDetail = [];
+    let prismTotal = 0;
+
+    const prismOverrideVal = document.getElementById('prism-override').value.trim();
+    if (prismOverrideVal !== '') {
+      prismTotal = parseFloat(prismOverrideVal) || 0;
+      // Show a synthetic invoice entry for the override
+      invoiceDetail = [{ fileName: '(manual override)', invNum: 'N/A', invDate: 'N/A', invTotal: prismTotal }];
+    } else if (pdfFiles.length > 0) {
+      setLoading(`Parsing ${pdfFiles.length} PDF(s)…`);
+      for (const f of pdfFiles) {
+        const inv = await parsePrismPdf(f);
+        invoiceDetail.push(inv);
+        if (inv.error) {
+          console.warn('PDF parse error:', inv.fileName, inv.error);
+        } else {
+          prismTotal += inv.invTotal;
+        }
+      }
+    }
+
+    // -- Health insurance overrides --
+    const cignaVal = document.getElementById('cigna-dr').value.trim();
+    const guardianVal = document.getElementById('guardian-dr').value.trim();
+    const cignaOverride = cignaVal !== '' ? parseFloat(cignaVal) : null;
+    const guardianOverride = guardianVal !== '' ? parseFloat(guardianVal) : null;
+
+    setLoading('Building journal entry…');
+
+    const { jeLines, imbalance, warnings, hrHealthHint } = buildJe(
+      hrData.wages, hrData.contributions,
+      hrData.employee401k, hrData.employeeHealth,
+      prismTotal, cignaOverride, guardianOverride
+    );
+
+    lastResult = {
+      jeLines, imbalance, warnings,
+      invoiceDetail,
+      wages: hrData.wages,
+      unknownEmps: hrData.unknownEmps,
+      monthYear: hrData.monthYear,
+      periodDesc: hrData.periodDesc
+    };
+
+    clearLoading();
+    renderResults(lastResult);
+
+  } catch(err) {
+    clearLoading();
+    alert('Error: ' + err.message);
+    console.error(err);
+  }
+
+  document.getElementById('btn-generate').disabled = false;
+}
+
+// ============================================================
+// FILE INPUT WIRING
+// ============================================================
+function setupDropZone(dzId, inputId, multiple, onFiles) {
+  const dz = document.getElementById(dzId);
+  const input = document.getElementById(inputId);
+
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files);
+    onFiles(files);
+  });
+  input.addEventListener('change', () => {
+    const files = Array.from(input.files);
+    onFiles(files);
+    input.value = ''; // reset so same file can be re-selected
+  });
+}
+
+setupDropZone('dz-hr', 'file-hr', false, files => {
+  const f = files.find(f => f.name.endsWith('.xlsx'));
+  if (!f) { alert('Please select an .xlsx file.'); return; }
+  hrFile = f;
+  const status = document.getElementById('dz-hr-status');
+  status.innerHTML = `<span class="dz-ok">✓ ${escHtml(f.name)}</span>`;
+  document.getElementById('btn-generate').disabled = false;
+});
+
+setupDropZone('dz-pdf', 'file-pdf', true, files => {
+  const pdfs = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+  if (pdfs.length === 0) { alert('Please select .pdf files.'); return; }
+  pdfFiles = pdfs;
+  const status = document.getElementById('dz-pdf-status');
+  const ul = document.createElement('ul');
+  ul.className = 'dz-files';
+  for (const f of pdfs) {
+    const li = document.createElement('li');
+    li.textContent = f.name;
+    ul.appendChild(li);
+  }
+  status.innerHTML = '';
+  status.appendChild(ul);
+});
+
+// Generate button
+document.getElementById('btn-generate').addEventListener('click', generate);
+
+// Download buttons
+document.getElementById('btn-csv').addEventListener('click', () => {
+  if (!lastResult) return;
+  const csv = buildCsv(lastResult.jeLines, lastResult.monthYear, lastResult.periodDesc);
+  const [month, year] = lastResult.monthYear;
+  const fname = (month && year)
+    ? `payroll_je_${year}_${String(month).padStart(2,'0')}.csv`
+    : 'payroll_je.csv';
+  downloadText(csv, fname);
+});
+
+document.getElementById('btn-txt').addEventListener('click', () => {
+  if (!lastResult) return;
+  const txt = buildSummaryText(
+    lastResult.jeLines, lastResult.imbalance, lastResult.warnings,
+    lastResult.invoiceDetail, lastResult.wages, lastResult.unknownEmps,
+    lastResult.periodDesc
+  );
+  const [month, year] = lastResult.monthYear;
+  const fname = (month && year)
+    ? `payroll_je_${year}_${String(month).padStart(2,'0')}_summary.txt`
+    : 'payroll_je_summary.txt';
+  downloadText(txt, fname);
+});
+</script>
+
+<script>const TOOL_KEY='payroll-je-hvac'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

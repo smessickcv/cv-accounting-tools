@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSuite Cash Sale Import Tool</title>
+<style>
+:root{--primary:#2563eb;--primary-dk:#1d4ed8;--success:#16a34a;--warn:#d97706;--danger:#dc2626;--bg:#f8fafc;--surface:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+.navbar{background:var(--primary);color:#fff;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 4px rgba(0,0,0,.12)}
+.navbar h1{font-size:17px;font-weight:600}
+.nav-right{display:flex;align-items:center;gap:12px}
+.db-badges{display:flex;gap:8px;font-size:11px}
+.badge{padding:3px 9px;border-radius:10px;cursor:default;font-weight:500}
+.badge-ok{background:rgba(22,163,74,.35);color:#d1fae5}
+.badge-warn{background:rgba(234,179,8,.35);color:#fef9c3}
+.btn-setup{padding:6px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;cursor:pointer;font-size:12px;font-weight:500}
+.btn-setup:hover{background:rgba(255,255,255,.25)}
+.container{max-width:1100px;margin:0 auto;padding:24px}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:20px}
+.tab{padding:10px 28px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:all .15s}
+.tab:hover{background:#f1f5f9;color:var(--text)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);background:#fff}
+.tab-content{display:none}.tab-content.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-warn{border-color:#fcd34d;background:#fffbeb}
+.card-info{border-color:#93c5fd;background:#eff6ff}
+.step{background:var(--primary);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.drop-zone{border:2px dashed var(--border);border-radius:8px;padding:36px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg);position:relative}
+.drop-zone:hover,.drop-zone.over{border-color:var(--primary);background:#eff6ff}
+.drop-zone.has-file{border-color:var(--success);background:#f0fdf4}
+.drop-icon{font-size:32px;margin-bottom:8px}
+.drop-text{color:var(--muted);font-size:13px;margin-top:4px}
+.drop-filename{font-weight:600;color:var(--success);font-size:14px}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.form-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.form-label{font-weight:500;font-size:13px;min-width:90px}
+.form-input{border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;outline:none}
+.form-input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(37,99,235,.12)}
+.form-hint{font-size:11px;color:var(--muted)}
+.btn{padding:8px 18px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;transition:all .15s;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dk)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#15803d}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text)}.btn-outline:hover{background:var(--bg)}
+.btn-warn{background:var(--warn);color:#fff}.btn-warn:hover{background:#b45309}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-lg{padding:12px 28px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
+.btn-group{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.stats-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.stat{padding:5px 13px;border-radius:16px;font-size:12px;font-weight:500}
+.stat-green{background:#dcfce7;color:#166534}.stat-yellow{background:#fef3c7;color:#854d0e}.stat-blue{background:#dbeafe;color:#1e40af}.stat-red{background:#fee2e2;color:#991b1b}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:8px;max-height:360px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#f1f5f9;padding:7px 10px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);position:sticky;top:0;white-space:nowrap;z-index:1}
+td{padding:6px 10px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.td-warn{background:#fffbeb!important;color:#92400e}
+.td-err{background:#fee2e2!important;color:#991b1b}
+/* Missing-entry tables */
+.entry-table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0}
+.entry-table th{background:#f1f5f9;padding:8px 10px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);font-size:12px;position:static}
+.entry-table td{padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.entry-table tr:last-child td{border-bottom:none}
+.entry-input{border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:13px;width:100%;outline:none}
+.entry-input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(37,99,235,.1)}
+.entry-input.required{border-color:#fbbf24;background:#fffbeb}
+.entry-input.required:focus{border-color:var(--primary);background:#fff}
+.entry-input.filled{border-color:var(--success);background:#f0fdf4}
+.workflow-steps{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.workflow-step{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#f8fafc;border-radius:6px;border:1px solid var(--border)}
+.workflow-step-num{background:var(--primary);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.workflow-step-body{flex:1;font-size:13px}
+.workflow-step-body strong{display:block;margin-bottom:2px}
+.workflow-step-body .hint{font-size:12px;color:var(--muted)}
+.alert{padding:10px 14px;border-radius:6px;margin-bottom:10px;font-size:13px;display:flex;align-items:flex-start;gap:8px}
+.alert-info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.alert-warn{background:#fffbeb;border:1px solid #fcd34d;color:#78350f}
+.alert-success{background:#f0fdf4;border:1px solid #86efac;color:#166534}
+.section-label{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:12px;width:720px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-hdr{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;border-radius:12px 12px 0 0}
+.modal-hdr h2{font-size:16px;font-weight:600}
+.modal-x{width:28px;height:28px;border-radius:50%;border:none;background:var(--bg);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.modal-x:hover{background:var(--border)}
+.modal-body{padding:20px 22px}
+.modal-sec{margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid var(--border)}
+.modal-sec:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.modal-sec h3{font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text);text-transform:uppercase;letter-spacing:.5px}
+.db-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.db-status{font-size:13px;color:var(--muted);flex:1;min-width:200px}
+.db-status.loaded{color:var(--success);font-weight:500}
+.rules-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+.rules-table th{background:#f1f5f9;padding:6px 8px;font-weight:600;position:static;z-index:0}
+.rules-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.rules-table select,.rules-table input[type=text]{border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px;width:100%}
+.inp-sm{width:90px!important}
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{background:#1e293b;color:#fff;padding:10px 15px;border-radius:8px;font-size:13px;max-width:300px;animation:slideIn .2s ease;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.toast.ok{background:var(--success)}.toast.warn{background:var(--warn)}.toast.err{background:var(--danger)}
+@keyframes slideIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+.include-check{width:15px;height:15px;cursor:pointer;accent-color:var(--primary)}
+.item-sel{border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;max-width:200px}
+.email-cell{color:var(--muted);font-size:12px}
+.saved-tag{display:inline-block;background:#dcfce7;color:#166534;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:500;margin-left:6px}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <h1>&#128197; NetSuite Cash Sale Import Tool</h1>
+  <div class="nav-right">
+    <div class="db-badges">
+      <span class="badge badge-warn" id="badge-cust">&#128100; Customers: Not loaded</span>
+      <span class="badge badge-warn" id="badge-items">&#128230; Items: Not loaded</span>
+    </div>
+    <button class="btn-setup" onclick="openSetup()">&#9881;&#65039; Setup</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('shopify',this)">&#128722; Shopify</button>
+    <button class="tab" onclick="switchTab('square',this)">&#9642; Square</button>
+    <button class="tab" onclick="switchTab('stripe',this)">&#9889; Stripe</button>
+  </div>
+
+  <!-- SHOPIFY -->
+  <div class="tab-content active" id="tab-shopify">
+    <div class="card">
+      <div class="card-title"><span class="step">1</span> Upload Shopify Orders Export</div>
+      <div class="drop-zone" id="drop-shopify" ondragover="doDragOver(event,'drop-shopify')" ondragleave="doDragLeave('drop-shopify')" ondrop="doDrop(event,'shopify')">
+        <div class="drop-icon">&#128452;</div>
+        <div id="drop-shopify-name" class="drop-text">Drag &amp; drop your <strong>orders_export</strong> CSV here, or click to browse</div>
+        <input type="file" accept=".csv" onchange="fileSelected(event,'shopify')">
+      </div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label class="btn btn-outline" style="cursor:pointer;font-size:12px">
+          &#127873; Upload Payments by Gateway Report
+          <input type="file" accept=".csv" style="display:none" onchange="loadGatewayReport(event)">
+        </label>
+        <span id="gw-status" class="form-hint">Optional — required for gift card line items</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="step">2</span> Configure</div>
+      <div class="form-row">
+        <span class="form-label">Your Initials</span>
+        <input class="form-input" id="shopify-initials" style="width:80px" placeholder="DB" maxlength="6" oninput="saveInitials(this.value)">
+        <span class="form-hint">e.g.&nbsp;<code>DB_SHOPIFY_Mar2226_1</code></span>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Import Date</span>
+        <input class="form-input" id="shopify-date" type="date" style="width:160px">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="step">3</span> Generate</div>
+      <button class="btn btn-primary btn-lg" id="btn-shopify" onclick="runShopify()" disabled>&#9654; Generate Import CSV</button>
+    </div>
+    <div id="results-shopify"></div>
+  </div>
+
+  <!-- SQUARE -->
+  <div class="tab-content" id="tab-square">
+    <div class="card">
+      <div class="card-title"><span class="step">1</span> Upload Square Items Export</div>
+      <div class="drop-zone" id="drop-square" ondragover="doDragOver(event,'drop-square')" ondragleave="doDragLeave('drop-square')" ondrop="doDrop(event,'square')">
+        <div class="drop-icon">&#128452;</div>
+        <div id="drop-square-name" class="drop-text">Drag &amp; drop your <strong>SQUAREitems</strong> CSV here, or click to browse</div>
+        <input type="file" accept=".csv" onchange="fileSelected(event,'square')">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="step">2</span> Generate</div>
+      <div class="alert alert-info" style="margin-bottom:12px">&#8505;&#65039; Upload the native Square <strong>Item Sales</strong> export. The tool converts it to NetSuite format, matching item names to Internal IDs from your database.</div>
+      <button class="btn btn-primary btn-lg" id="btn-square" onclick="runSquare()" disabled>&#9654; Generate Import CSV</button>
+    </div>
+    <div id="results-square"></div>
+  </div>
+
+  <!-- STRIPE -->
+  <div class="tab-content" id="tab-stripe">
+    <div class="card">
+      <div class="card-title"><span class="step">1</span> Upload Stripe Unified Payments Export</div>
+      <div class="drop-zone" id="drop-stripe" ondragover="doDragOver(event,'drop-stripe')" ondragleave="doDragLeave('drop-stripe')" ondrop="doDrop(event,'stripe')">
+        <div class="drop-icon">&#128452;</div>
+        <div id="drop-stripe-name" class="drop-text">Drag &amp; drop your <strong>unified_payments</strong> CSV here, or click to browse</div>
+        <input type="file" accept=".csv" onchange="fileSelected(event,'stripe')">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="step">2</span> Configure</div>
+      <div class="form-row">
+        <span class="form-label">Your Initials</span>
+        <input class="form-input" id="stripe-initials" style="width:80px" placeholder="DB" maxlength="6" oninput="saveInitials(this.value)">
+        <span class="form-hint">e.g.&nbsp;<code>DB_CS_032026__1</code></span>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Import Date</span>
+        <input class="form-input" id="stripe-date" type="date" style="width:160px">
+        <span class="form-hint">Used in External ID</span>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Cash Sale Date</span>
+        <input class="form-input" id="stripe-cashsale-date" type="date" style="width:160px" oninput="updateCashSaleDateNote()">
+        <button class="btn btn-outline" style="font-size:11px;padding:3px 8px" onclick="document.getElementById('stripe-cashsale-date').value='';updateCashSaleDateNote()" title="Clear — use per-transaction dates">&#10005; Clear</button>
+      </div>
+      <div id="cashsale-date-note" class="form-hint" style="margin-bottom:4px;padding:5px 8px;border-radius:5px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px">
+        &#128197; <strong>Multi-day mode</strong> — each transaction uses its own date. Set a date above to override all rows to one day (single-day uploads).
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="step">3</span> Review &amp; Generate</div>
+      <div class="alert alert-info" style="margin-bottom:12px">&#8505;&#65039; Only payments <strong>under $497</strong> are included. Records are matched to NetSuite items using the rules in Setup — primarily on <code>order_products (metadata)</code>. Unmatched records are flagged for manual review before download.</div>
+      <button class="btn btn-primary btn-lg" id="btn-stripe" onclick="runStripe()" disabled>&#9654; Process &amp; Review</button>
+    </div>
+    <div id="results-stripe"></div>
+  </div>
+</div>
+
+<!-- SETUP MODAL -->
+<div class="modal-overlay" id="modal-setup">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h2>&#9881;&#65039; Setup &amp; Databases</h2>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button id="btn-update-check" class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="checkForUpdates()">&#8635; Check for Updates <span id="update-version-badge" style="font-size:10px;color:var(--muted)"></span></button>
+        <button class="modal-x" onclick="closeSetup()">&#10005;</button>
+      </div>
+    </div>
+    <div class="modal-body">
+
+      <div class="modal-sec">
+        <h3>&#128100; Customer Database</h3>
+        <div class="db-row"><div class="db-status" id="cust-status">Not loaded</div></div>
+        <div class="db-row">
+          <label class="btn btn-outline" style="cursor:pointer">
+            &#128228; Bulk Load from NetSuite CSV
+            <input type="file" accept=".csv" style="display:none" onchange="loadCustomersCSV(event)">
+          </label>
+          <button class="btn btn-danger" onclick="clearCustomers()" style="margin-left:auto">&#128465; Clear</button>
+        </div>
+        <div class="form-hint" style="margin-top:4px">One-time bulk load from a NetSuite <em>CustomersProjects</em> export. New customers found during imports are added automatically via the inline ID entry workflow — no re-uploading needed.</div>
+      </div>
+
+      <div class="modal-sec">
+        <h3>&#128230; Items Catalog</h3>
+        <div class="db-row"><div class="db-status" id="items-status">Not loaded</div></div>
+        <div class="db-row">
+          <label class="btn btn-outline" style="cursor:pointer">
+            &#128228; Bulk Load from NetSuite CSV
+            <input type="file" accept=".csv" style="display:none" onchange="loadItemsCSV(event)">
+          </label>
+          <button class="btn btn-danger" onclick="clearItems()" style="margin-left:auto">&#128465; Clear</button>
+        </div>
+        <div class="form-hint" style="margin-top:4px">One-time bulk load from a NetSuite <em>Items</em> export. Unknown SKUs found during Shopify imports can be mapped inline — no re-uploading needed.</div>
+      </div>
+
+      <div class="modal-sec">
+        <h3>&#128722; Shopify SKU Override Rules</h3>
+        <div class="form-hint" style="margin-bottom:10px">Match on SKU — evaluated before the items DB lookup. Use to force a specific NetSuite item when duplicates exist (e.g. inventory vs. non-inventory).</div>
+        <div class="table-wrap" style="max-height:200px;margin-bottom:10px">
+          <table class="rules-table">
+            <thead><tr><th>#</th><th>Condition</th><th>SKU Value</th><th>NetSuite Item</th><th></th></tr></thead>
+            <tbody id="shopify-rules-tbody"></tbody>
+          </table>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-outline" onclick="addShopifyRule()">&#43; Add Rule</button>
+          <button class="btn btn-outline" onclick="exportShopifyRules()">&#11015; Export</button>
+          <label class="btn btn-outline" style="cursor:pointer;margin:0">&#11014; Import<input type="file" accept=".json" style="display:none" onchange="importShopifyRules(this)"></label>
+        </div>
+      </div>
+
+      <div class="modal-sec">
+        <h3>&#9642; Square Item Name Override Rules</h3>
+        <div class="form-hint" style="margin-bottom:10px">Match on Item Name — evaluated before fuzzy matching. Use to resolve ambiguous or duplicate item names.</div>
+        <div class="table-wrap" style="max-height:200px;margin-bottom:10px">
+          <table class="rules-table">
+            <thead><tr><th>#</th><th>Condition</th><th>Item Name Value</th><th>NetSuite Item</th><th></th></tr></thead>
+            <tbody id="square-rules-tbody"></tbody>
+          </table>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-outline" onclick="addSquareRule()">&#43; Add Rule</button>
+          <button class="btn btn-outline" onclick="exportSquareRules()">&#11015; Export</button>
+          <label class="btn btn-outline" style="cursor:pointer;margin:0">&#11014; Import<input type="file" accept=".json" style="display:none" onchange="importSquareRules(this)"></label>
+        </div>
+      </div>
+
+      <div class="modal-sec">
+        <h3>&#9889; Stripe Item Mapping Rules</h3>
+        <div class="form-hint" style="margin-bottom:10px">Evaluated top-to-bottom; first match wins. Unmatched records appear for manual review.</div>
+        <div class="table-wrap" style="max-height:240px;margin-bottom:10px">
+          <table class="rules-table">
+            <thead><tr><th>#</th><th>Field</th><th>Condition</th><th>Value</th><th>NetSuite Item</th><th>Auto-Include</th><th></th></tr></thead>
+            <tbody id="rules-tbody"></tbody>
+          </table>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-outline" onclick="addRule()">&#43; Add Rule</button>
+          <button class="btn btn-outline" onclick="resetRules()">&#8635; Reset Defaults</button>
+          <button class="btn btn-outline" onclick="exportRules()">&#11015; Export Rules</button>
+          <label class="btn btn-outline" style="cursor:pointer;margin:0">&#11014; Import Rules<input type="file" accept=".json" style="display:none" onchange="importRules(this)"></label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────
+const LS_CUSTOMERS      = 'ns_tool_customers';
+const LS_ITEMS          = 'ns_tool_items';
+const LS_RULES          = 'ns_tool_stripe_rules';
+const LS_SHOPIFY_RULES  = 'ns_tool_shopify_rules';
+const LS_SQUARE_RULES   = 'ns_tool_square_rules';
+const LS_INITIALS       = 'ns_tool_initials';
+const LS_SQUARE_ITEMS   = 'ns_tool_square_items'; // { 'Item Name': 'internalId' }
+const VERSION = '1.0.0'; // ← bump this string with every release pushed to GitHub
+
+// ── GitHub update source (fill in before distributing) ────────
+const GH_OWNER  = 'YOUR_GITHUB_USERNAME_OR_ORG';  // e.g. 'cardone-ventures'
+const GH_REPO   = 'YOUR_REPO_NAME';               // e.g. 'ns-import-tool'
+const GH_BRANCH = 'main';
+const GH_FILE   = 'ns-import-tool.html';
+// Fine-grained PAT — Contents: Read-only on this repo only
+const GH_TOKEN  = 'YOUR_FINE_GRAINED_PAT_HERE';
+
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const STRIPE_AMOUNT_THRESHOLD = 497; // payments >= this amount are excluded automatically
+
+const DEFAULT_RULES = [
+  // Primary: match on order_products (metadata) — most reliable source
+  {id:1,field:'metadata_products',cond:'contains',val:'Scale Messaging Fees',    itemId:981, autoInclude:true},
+  {id:2,field:'metadata_products',cond:'contains',val:'TeamWork Book',           itemId:919, autoInclude:true},
+  {id:3,field:'metadata_products',cond:'contains',val:'Millionaire Mastermind',  itemId:1775,autoInclude:true},
+  {id:4,field:'metadata_products',cond:'contains',val:'Remix Your Business',     itemId:1970,autoInclude:true},
+  // Fallback: description-based for Auto-Recharge (GoHighLevel wallet top-ups)
+  {id:5,field:'description',      cond:'contains',val:'Auto-Recharge',           itemId:981, autoInclude:true},
+  // Catch-all fallback — marks for manual review
+  {id:6,field:'amount',           cond:'lte',     val:'496.99',                  itemId:981, autoInclude:false},
+];
+
+// ── STORAGE ──────────────────────────────────────────────────
+const getCustomers = () => { try{return JSON.parse(localStorage.getItem(LS_CUSTOMERS)||'null')}catch(e){return null} };
+const getItems     = () => { try{return JSON.parse(localStorage.getItem(LS_ITEMS)||'null')}catch(e){return null} };
+const getRules     = () => { try{return JSON.parse(localStorage.getItem(LS_RULES)||'null')||DEFAULT_RULES}catch(e){return DEFAULT_RULES} };
+const saveCustomers    = a => localStorage.setItem(LS_CUSTOMERS,    JSON.stringify(a));
+const saveItems        = a => localStorage.setItem(LS_ITEMS,        JSON.stringify(a));
+const saveRules        = a => localStorage.setItem(LS_RULES,        JSON.stringify(a));
+const saveInitials     = v => { localStorage.setItem(LS_INITIALS, v); syncInitials(); };
+const getInitials      = () => localStorage.getItem(LS_INITIALS) || '';
+const getSquareItemMap   = () => { try{return JSON.parse(localStorage.getItem(LS_SQUARE_ITEMS)||'{}')}catch(e){return{}} };
+const saveSquareItemMap  = m  => localStorage.setItem(LS_SQUARE_ITEMS, JSON.stringify(m));
+const getShopifyRules    = () => { try{return JSON.parse(localStorage.getItem(LS_SHOPIFY_RULES)||'null')||[]}catch(e){return[]} };
+const saveShopifyRules   = a  => localStorage.setItem(LS_SHOPIFY_RULES, JSON.stringify(a));
+const getSquareRules     = () => { try{return JSON.parse(localStorage.getItem(LS_SQUARE_RULES)||'null')||[]}catch(e){return[]} };
+const saveSquareRules    = a  => localStorage.setItem(LS_SQUARE_RULES, JSON.stringify(a));
+
+// ── CONSTANTS ────────────────────────────────────────────────
+const GIFT_CARD_ITEM_ID = 27625;
+
+// ── STATE ────────────────────────────────────────────────────
+const state = { shopify:{raw:null, gateway:null}, square:{raw:null}, stripe:{raw:null} };
+
+// ── CSV PARSER ───────────────────────────────────────────────
+function parseCSV(text) {
+  const results=[], n=text.length;
+  let row=[], field='', inQ=false, i=0;
+  while(i<=n){
+    const c=i<n?text[i]:null;
+    if(inQ){
+      if(c==='"'){if(i+1<n&&text[i+1]==='"'){field+='"';i+=2;}else{inQ=false;i++;}}
+      else if(c===null){row.push(field);results.push(row);break;}
+      else{field+=c;i++;}
+    }else{
+      if(c==='"'){inQ=true;i++;}
+      else if(c===','){row.push(field);field='';i++;}
+      else if(c==='\r'||c==='\n'){
+        if(c==='\r'&&i+1<n&&text[i+1]==='\n')i++;
+        row.push(field);field='';
+        if(row.some(f=>f!=='')||row.length>1)results.push(row);
+        row=[];i++;
+      }else if(c===null){
+        row.push(field);
+        if(row.some(f=>f!=='')||row.length>1)results.push(row);
+        break;
+      }else{field+=c;i++;}
+    }
+  }
+  return results;
+}
+
+function csvToObjects(text){
+  const rows=parseCSV(text);
+  if(rows.length<2)return[];
+  const h=rows[0];
+  return rows.slice(1).map(r=>{const o={};h.forEach((k,i)=>{o[k.trim()]=(r[i]||'').trim()});return o;});
+}
+
+// ── DATE HELPERS ─────────────────────────────────────────────
+const todayInput = () => new Date().toISOString().slice(0,10);
+
+function formatDateMDY(s){
+  if(!s)return'';
+  const str=String(s).trim();
+  // Already M/D/YYYY — extract just the date part in case a time is appended (e.g. "3/22/2026 12:00:00 AM")
+  if(/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(str)){const m=str.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})/);return m?m[1]:str;}
+  // Strip time component: handle both ISO "T" separator and space separator
+  const datePart=str.split('T')[0].split(' ')[0];
+  const parts=datePart.split('-');
+  if(parts.length===3){const[y,m,d]=parts;if(+y&&+m&&+d)return`${+m}/${+d}/${+y}`;}
+  // Last resort: JS Date with UTC getters to avoid timezone shifts
+  const dt=new Date(datePart);
+  if(!isNaN(dt))return`${dt.getUTCMonth()+1}/${dt.getUTCDate()}/${dt.getUTCFullYear()}`;
+  return str;
+}
+
+function shopifyExtDate(v){ // "2026-03-22" → "Mar2226"
+  if(!v)return'date'; const p=v.split('-');
+  return`${MON[parseInt(p[1])-1]}${String(parseInt(p[2])).padStart(2,'0')}${p[0].slice(-2)}`;
+}
+function stripeExtDate(v){ // "2026-04-01" → "04012026"
+  if(!v)return'date'; const p=v.split('-'); return`${p[1]}${p[2]}${p[0]}`;
+}
+
+// Convert a UTC datetime string ("2026-04-01 05:40:18") to Arizona local date (UTC-7, no DST)
+function utcToAZDate(s){
+  if(!s)return'';
+  const parts=s.trim().split(' ');
+  if(parts.length<2)return formatDateMDY(s); // date-only fallback
+  const [y,mo,d]=parts[0].split('-').map(Number);
+  const [h,mi,sc]=(parts[1]||'00:00:00').split(':').map(Number);
+  // Arizona is always UTC-7 (no daylight saving time)
+  const utcMs=Date.UTC(y,mo-1,d,h,mi,sc||0);
+  const azMs=utcMs+(-7*60*60*1000);
+  const az=new Date(azMs);
+  return`${az.getUTCMonth()+1}/${az.getUTCDate()}/${az.getUTCFullYear()}`;
+}
+
+// ── CSV EXPORT ───────────────────────────────────────────────
+function q(v){ const s=String(v==null?'':v); return(s.includes(',')||s.includes('"')||s.includes('\n'))?'"'+s.replace(/"/g,'""')+'"':s; }
+function toCSV(arr,cols){ return cols.map(q).join(',')+'\r\n'+arr.map(r=>cols.map(c=>q(r[c]??'')).join(',')).join('\r\n'); }
+function dl(csv,name,mime){ const b=new Blob([csv],{type:mime||'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),5000); }
+
+// ── LOOKUP HELPERS ───────────────────────────────────────────
+function findCustomer(customers,email){
+  if(!customers||!email)return null;
+  const e=email.trim().toLowerCase();
+  return customers.find(c=>c.email&&c.email.toLowerCase()===e)||null;
+}
+
+// ── PLATFORM RULE ENGINES ─────────────────────────────────────
+function applySimpleRule(val, rules){
+  if(!rules||!rules.length||!val)return null;
+  const low=val.toLowerCase();
+  for(const r of rules){
+    const rv=(r.val||'').toLowerCase(); if(!rv)continue;
+    let m=false;
+    if(r.cond==='contains')   m=low.includes(rv);
+    else if(r.cond==='equals')     m=low===rv;
+    else if(r.cond==='startswith') m=low.startsWith(rv);
+    if(m)return String(r.itemId||'');
+  }
+  return null;
+}
+
+function resolveItemBySku(items,sku,shopifyRules){
+  if(!sku)return null;
+  const s=sku.trim();
+  // 1. Shopify rules take priority — explicit override beats DB lookup
+  const ruleId=applySimpleRule(s,shopifyRules);
+  if(ruleId)return ruleId;
+  if(!items)return null;
+  const active=items.filter(i=>i.inactive!=='Yes');
+  let m=active.find(i=>i.name===s); if(m)return m.internalId;
+  let base=s;
+  while(base.lastIndexOf('-')>0){
+    base=base.substring(0,base.lastIndexOf('-'));
+    m=active.find(i=>i.name===base); if(m)return m.internalId;
+    m=active.find(i=>i.name.startsWith(base)&&!i.name.includes(' ')); if(m)return m.internalId;
+  }
+  return null;
+}
+
+function itemLabel(items,id){ if(!items||!id)return String(id||''); const m=items.find(i=>i.internalId==id); return m?`${m.internalId} – ${m.name}`:String(id); }
+
+// ── LOAD DATABASES ───────────────────────────────────────────
+function loadCustomersCSV(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const rows=csvToObjects(e.target.result);
+    const c=rows.map(r=>({internalId:r['Internal ID'],name:r['Name'],email:r['Email']})).filter(c=>c.internalId);
+    saveCustomers(c); updateDBStatus(); toast(`Loaded ${c.length} customers`,'ok');
+    ev.target.value='';
+  };
+  r.readAsText(f);
+}
+function loadItemsCSV(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const rows=csvToObjects(e.target.result);
+    const items=rows.map(r=>({internalId:r['Internal ID']||r['Internal ID.1'],name:r['Name'],displayName:r['Display Name'],inactive:r['Inactive']})).filter(i=>i.internalId&&i.name);
+    saveItems(items); updateDBStatus(); toast(`Loaded ${items.length} items`,'ok'); renderRulesTable();
+    ev.target.value='';
+  };
+  r.readAsText(f);
+}
+function clearCustomers(){ if(!confirm('Clear customer database?'))return; localStorage.removeItem(LS_CUSTOMERS); updateDBStatus(); toast('Customer database cleared','warn'); }
+function clearItems(){ if(!confirm('Clear items database?'))return; localStorage.removeItem(LS_ITEMS); updateDBStatus(); toast('Items database cleared','warn'); }
+
+function updateDBStatus(){
+  const c=getCustomers(), it=getItems();
+  const bc=document.getElementById('badge-cust'), bi=document.getElementById('badge-items');
+  const cs=document.getElementById('cust-status'), is=document.getElementById('items-status');
+  if(c){bc.textContent=`👤 ${c.length} Customers`;bc.className='badge badge-ok';if(cs){cs.textContent=`✅ ${c.length} customers`;cs.className='db-status loaded';}}
+  else{bc.textContent='👤 Customers: Not loaded';bc.className='badge badge-warn';if(cs){cs.textContent='Not loaded';cs.className='db-status';}}
+  if(it){bi.textContent=`📦 ${it.length} Items`;bi.className='badge badge-ok';if(is){is.textContent=`✅ ${it.length} items`;is.className='db-status loaded';}}
+  else{bi.textContent='📦 Items: Not loaded';bi.className='badge badge-warn';if(is){is.textContent='Not loaded';is.className='db-status';}}
+}
+
+// ── ADD MISSING CUSTOMERS TO DB ──────────────────────────────
+// Called after user enters NetSuite-assigned IDs
+function saveCustomerIDs(platform){
+  const missing = window[`_${platform}Missing`];
+  if(!missing||!missing.length)return;
+  const customers = getCustomers()||[];
+  let added=0, skipped=0;
+  missing.forEach((c,i)=>{
+    const id   = (document.getElementById(`cust-id-${i}`)||{}).value?.trim()||'';
+    const name = (document.getElementById(`cust-name-${i}`)||{}).value?.trim()||c.name||'';
+    const biz  = (document.getElementById(`cust-biz-${i}`)||{}).value?.trim()||'';
+    if(!id){skipped++;return;}
+    const idx=customers.findIndex(x=>x.email&&x.email.toLowerCase()===(c.email||'').toLowerCase());
+    if(idx>=0){customers[idx].internalId=id;customers[idx].name=name;customers[idx].businessName=biz;}
+    else{customers.push({internalId:id,name,email:c.email,businessName:biz});}
+    added++;
+  });
+  saveCustomers(customers); updateDBStatus();
+  if(skipped) toast(`Saved ${added} customers. ${skipped} skipped (no ID entered).`,'warn');
+  else toast(`Saved ${added} new customers to database`,'ok');
+  if(added){
+    if(platform==='shopify') runShopify();
+    else if(platform==='stripe') runStripe();
+  }
+}
+
+// ── ADD MISSING SKU MAPPINGS TO DB ───────────────────────────
+function saveSkuMappings(platform){
+  const skus = window[`_${platform}MissingSkus`];
+  if(!skus||!skus.length)return;
+  const items = getItems()||[];
+  let added=0, skipped=0;
+  skus.forEach((sku,i)=>{
+    const id   = (document.getElementById(`sku-id-${i}`)||{}).value?.trim()||'';
+    const dname= (document.getElementById(`sku-name-${i}`)||{}).value?.trim()||sku;
+    if(!id){skipped++;return;}
+    const idx=items.findIndex(it=>it.name===sku);
+    if(idx>=0){items[idx].internalId=id;items[idx].displayName=dname;}
+    else{items.push({internalId:id,name:sku,displayName:dname,inactive:'No'});}
+    added++;
+  });
+  saveItems(items); updateDBStatus();
+  if(skipped) toast(`Saved ${added} SKU mappings. ${skipped} skipped (no ID entered).`,'warn');
+  else toast(`Saved ${added} SKU mappings to database`,'ok');
+  if(added){
+    if(platform==='shopify') runShopify();
+    else if(platform==='stripe') runStripe();
+  }
+}
+
+// ── CUSTOMER IMPORT TEMPLATE CSV ─────────────────────────────
+function downloadCustomerTemplate(platform){
+  const missing=window[`_${platform}Missing`]||[];
+  const resolved=missing.map((c,i)=>({
+    ...c,
+    name:(document.getElementById(`cust-name-${i}`)?.value||c.name||'').trim(),
+    bizName:(document.getElementById(`cust-biz-${i}`)?.value||c.name||'').trim(),
+  }));
+  dl(buildCustomerTemplateCSV(resolved),'New_Customers_Template.csv');
+}
+
+function buildCustomerTemplateCSV(missing){
+  const cols=['Customer Name','Business Name','Customer Email','External ID','Customer Address','Country'];
+  const rows=missing.map(c=>({
+    'Customer Name':c.name||'',
+    'Business Name':c.bizName||c.name||'',
+    'Customer Email':c.email||'',
+    'External ID':`NEW_${(c.email||'').replace(/[^a-zA-Z0-9]/g,'_')}`,
+    'Customer Address':c.address||'',
+    'Country':c.country||'US',
+  }));
+  return toCSV(rows,cols);
+}
+
+// ── MISSING CUSTOMERS PANEL ──────────────────────────────────
+function renderMissingCustomers(missing, platform){
+  if(!missing||!missing.length)return'';
+  const rows=missing.map((c,i)=>`
+    <tr${c.noName?' style="background:#fef9c3"':''}>
+      <td>
+        <div style="font-weight:500">${c.noName?'<span style="color:#b45309;font-size:11px">⚠ No name — check Stripe</span>':esc(c.name)}</div>
+        <div class="email-cell">${esc(c.email)}</div>
+      </td>
+      <td><code style="font-size:11px;user-select:all">${esc(c.chargeId||'—')}</code></td>
+      <td><input id="cust-id-${i}" class="entry-input required" placeholder="Required" oninput="markFilled(this)" style="width:130px"></td>
+      <td><input id="cust-name-${i}" class="entry-input${c.noName?' required':''}" value="${esc(c.name||'')}" placeholder="${c.noName?'Required — enter name':'Company name'}" oninput="markFilled(this)" style="width:160px"></td>
+      <td><input id="cust-biz-${i}" class="entry-input${c.noName?' required':''}" value="${esc(c.name||'')}" placeholder="${c.noName?'Required — enter name':'Business owner name'}" oninput="markFilled(this)" style="width:160px"></td>
+    </tr>`).join('');
+  return`
+  <div class="card card-warn" style="margin-top:16px">
+    <div class="card-title">&#9888;&#65039; ${missing.length} Missing Customer${missing.length>1?'s':''}</div>
+    <div class="workflow-steps">
+      <div class="workflow-step">
+        <div class="workflow-step-num">1</div>
+        <div class="workflow-step-body">
+          <strong>Download &amp; import customer template to NetSuite</strong>
+          <span class="hint">This creates the customer records and NetSuite assigns each an Internal ID.</span>
+          <div style="margin-top:8px"><button class="btn btn-outline" onclick="downloadCustomerTemplate('${platform}')">&#11015; Download Customer Import Template</button></div>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <div class="workflow-step-num">2</div>
+        <div class="workflow-step-body">
+          <strong>Enter the NetSuite-assigned Internal IDs below</strong>
+          <span class="hint">Find them in NetSuite after the import completes.</span>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap" style="max-height:none;border:none;margin:0">
+      <table class="entry-table">
+        <thead><tr><th>Customer</th><th>Charge ID</th><th>Internal ID *</th><th>Company Name</th><th>Business Owner Name</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+      <button class="btn btn-primary" onclick="saveCustomerIDs('${platform}')">&#10003; Save IDs &amp; Regenerate Import</button>
+      <span class="form-hint">Saved customers are remembered permanently — you won't need to enter them again.</span>
+    </div>
+  </div>`;
+}
+
+// ── MISSING SKU PANEL ────────────────────────────────────────
+function renderMissingSkus(skus, platform){
+  if(!skus||!skus.length)return'';
+  const rows=skus.map((sku,i)=>`
+    <tr>
+      <td><code>${esc(sku)}</code></td>
+      <td><input id="sku-id-${i}" class="entry-input required" placeholder="Required" oninput="markFilled(this)" style="width:130px"></td>
+      <td><input id="sku-name-${i}" class="entry-input" placeholder="e.g. CV Performance Full Zip" style="width:220px"></td>
+    </tr>`).join('');
+  return`
+  <div class="card card-warn" style="margin-top:8px">
+    <div class="card-title">&#9888;&#65039; ${skus.length} Unresolved SKU${skus.length>1?'s':''}</div>
+    <div class="alert alert-warn" style="margin-bottom:12px">These Shopify SKUs weren't found in the items catalog. Look up each Item Internal ID in NetSuite and enter it below.</div>
+    <div class="table-wrap" style="max-height:none;border:none;margin:0">
+      <table class="entry-table">
+        <thead><tr><th>Shopify SKU</th><th>NetSuite Item Internal ID *</th><th>Display Name (optional)</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+      <button class="btn btn-primary" onclick="saveSkuMappings('${platform}')">&#10003; Save SKU Mappings &amp; Regenerate</button>
+      <span class="form-hint">Saved SKUs are remembered permanently for future imports.</span>
+    </div>
+  </div>`;
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function markFilled(el){ el.classList.toggle('filled', el.value.trim()!==''); el.classList.toggle('required', el.value.trim()===''); }
+
+// ── GATEWAY REPORT ───────────────────────────────────────────
+// Builds a map of { '#2766': 50.00 } from the Payments by Gateway Summary CSV
+function loadGatewayReport(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const rows=csvToObjects(e.target.result);
+    // Sum gift_card amounts per order name
+    const map={};
+    rows.forEach(row=>{
+      if((row['Payment gateway']||'').toLowerCase()==='gift_card'){
+        const name=(row['Order name']||'').trim();
+        const amt=parseFloat(row['Gross payments']||'0');
+        if(name) map[name]=(map[name]||0)+amt;
+      }
+    });
+    state.shopify.gateway=map;
+    const count=Object.keys(map).length;
+    document.getElementById('gw-status').textContent=`✓ ${count} gift card order${count!==1?'s':''} loaded`;
+    document.getElementById('gw-status').style.color='var(--success)';
+    ev.target.value='';
+    toast(`Gateway report loaded — ${count} gift card orders`,'ok');
+  };
+  r.readAsText(f);
+}
+
+// ── SHOPIFY PROCESSOR ────────────────────────────────────────
+function runShopify(){
+  const {raw}=state.shopify; if(!raw)return;
+  const customers=getCustomers(), items=getItems(), shopifyRules=getShopifyRules();
+  const initials=document.getElementById('shopify-initials').value.trim()||'XX';
+  const dateVal=document.getElementById('shopify-date').value||todayInput();
+  const datePart=shopifyExtDate(dateVal);
+
+  const allRows=csvToObjects(raw);
+  const orderMap={}, orderSeq=[];
+  allRows.forEach(row=>{
+    const name=row['Name']; if(!name)return;
+    if(!orderMap[name]){orderMap[name]={header:null,lines:[]};orderSeq.push(name);}
+    if(row['Financial Status'])orderMap[name].header=row;
+    orderMap[name].lines.push(row);
+  });
+
+  const output=[], missingCustomers=[], missingSkus=[];
+  const seenEmails=new Set(), seenSkus=new Set();
+  const validOrders=orderSeq.filter(n=>orderMap[n].header);
+
+  // newest-first assignment of External IDs (idx=0 → _1)
+  validOrders.forEach((name,idx)=>{
+    const ord=orderMap[name], h=ord.header;
+    const extId=`${initials}_SHOPIFY_${datePart}_${idx+1}`;
+    const email=h['Email'];
+    const date=formatDateMDY(h['Paid at']||h['Created at']);
+    const memo=name;
+    const discount=parseFloat(h['Discount Amount'])||0;
+    const shipping=parseFloat(h['Shipping'])||0;
+
+    const cust=customers?findCustomer(customers,email):null;
+    if(!cust&&email&&!seenEmails.has(email.toLowerCase())){
+      seenEmails.add(email.toLowerCase());
+      missingCustomers.push({email,name:h['Billing Name']||h['Shipping Name']||'',address:h['Billing Address1']||'',country:h['Billing Country']||'US'});
+    }
+    const custId=cust?cust.internalId:'';
+
+    let firstItem=true;
+    ord.lines.forEach(line=>{
+      const sku=line['Lineitem sku']; if(!sku)return;
+      const qty=line['Lineitem quantity']||'1';
+      const price=parseFloat(line['Lineitem price'])||0;
+      const itemId=resolveItemBySku(items,sku,shopifyRules)||'';
+      if(items&&!itemId&&!seenSkus.has(sku)){seenSkus.add(sku);missingSkus.push(sku);}
+
+      output.push({
+        __warn:(!cust&&!!email)||(!itemId&&!!sku),
+        __warnCols:[...(!cust&&email?['Customer Internal ID']:[]),...(!itemId&&sku?['Item InternalID']:[])],
+        'External ID':extId,'Customer Email':email,'Customer Internal ID':custId,
+        'Date':date,'Undeposted Funds':'FALSE','Account':331,'Price Level':'Custom',
+        'Item SKU':sku,'Item InternalID':itemId||'','Item Qty':qty,'Item Amount':price,
+        'Discount Item':firstItem&&discount>0?1162:'',
+        'Discount Amount':firstItem?(discount>0?-discount:'0.00'):'0.00',
+        'Memo':memo,'Location':'AZ Office',
+      });
+      firstItem=false;
+    });
+    // Shipping row always added
+    output.push({'External ID':extId,'Customer Email':email,'Customer Internal ID':custId,'Date':date,'Undeposted Funds':'FALSE','Account':331,'Price Level':'Custom','Item SKU':'','Item InternalID':1316,'Item Qty':1,'Item Amount':shipping,'Discount Item':'','Discount Amount':'','Memo':memo,'Location':'AZ Office'});
+
+    // Gift card row — negative amount to offset cash received
+    const gcAmt = state.shopify.gateway ? (state.shopify.gateway[name]||0) : 0;
+    if(gcAmt>0){
+      output.push({'External ID':extId,'Customer Email':email,'Customer Internal ID':custId,'Date':date,'Undeposted Funds':'FALSE','Account':331,'Price Level':'Custom','Item SKU':'','Item InternalID':GIFT_CARD_ITEM_ID,'Item Qty':1,'Item Amount':-gcAmt,'Discount Item':'','Discount Amount':'','Memo':memo,'Location':'AZ Office'});
+    }
+  });
+
+  // Sort oldest-first in output (highest ext ID number = oldest)
+  output.sort((a,b)=>{ const ia=parseInt(a['External ID'].split('_').pop()), ib=parseInt(b['External ID'].split('_').pop()); return ib-ia; });
+
+  const COLS=['External ID','Customer Email','Customer Internal ID','Date','Undeposted Funds','Account','Price Level','Item SKU','Item InternalID','Item Qty','Item Amount','Discount Item','Discount Amount','Memo','Location'];
+  window._shopifyOutput=output; window._shopifyCols=COLS;
+  window._shopifyMissing=missingCustomers; window._shopifyMissingSkus=missingSkus;
+
+  const gcMap = state.shopify.gateway||{};
+  const gcOrderCount = validOrders.filter(n=>gcMap[n]>0).length;
+  const dateStr=dateVal.replace(/-/g,'');
+  let html=buildResultsHTML({
+    stats:[
+      {cls:'stat-green',label:`✓ ${validOrders.length} orders`},
+      {cls:'stat-blue',label:`${output.length} output rows`},
+      ...(gcOrderCount?[{cls:'stat-blue',label:`🎁 ${gcOrderCount} gift card order${gcOrderCount!==1?'s':''}`}]:[]),
+      ...(!state.shopify.gateway?[{cls:'stat-yellow',label:`⚠ No gateway report — gift cards not applied`}]:[]),
+      ...(missingCustomers.length?[{cls:'stat-yellow',label:`⚠ ${missingCustomers.length} missing customer${missingCustomers.length>1?'s':''}`}]:[]),
+      ...(missingSkus.length?[{cls:'stat-yellow',label:`⚠ ${missingSkus.length} unknown SKU${missingSkus.length>1?'s':''}`}]:[]),
+      ...(!customers?[{cls:'stat-red',label:'⚠ No customer DB — load in Setup'}]:[]),
+    ],
+    downloadBtn:`<button class="btn btn-success btn-lg" onclick="dl(toCSV(window._shopifyOutput,window._shopifyCols),'Shopify_Import_${dateStr}.csv')">&#11015; Download Import CSV</button>`,
+    rows:output, cols:COLS,
+  });
+  html+=renderMissingCustomers(missingCustomers,'shopify');
+  html+=renderMissingSkus(missingSkus,'shopify');
+  document.getElementById('results-shopify').innerHTML=html;
+  toast(`${validOrders.length} orders → ${output.length} rows`,'ok');
+}
+
+// ── SQUARE PROCESSOR ─────────────────────────────────────────
+// Transforms Square's native Item Sales CSV export into NetSuite import format.
+
+function parseMoney(s){ return parseFloat((s||'0').replace(/[$,\s]/g,'')||'0'); }
+function parseQty(s)  { return parseFloat(s||'1')||1; }
+
+function resolveSquareItem(items, squareMap, name, squareRules){
+  if(!name)return null;
+  // 1. Square rules take priority — explicit override beats all matching
+  const ruleId=applySimpleRule(name, squareRules);
+  if(ruleId)return ruleId;
+  // 2. Manual mapping saved previously
+  if(squareMap[name]) return squareMap[name];
+  if(!items) return null;
+  const active=items.filter(i=>i.inactive!=='Yes');
+  const lower=name.toLowerCase();
+  // 3. Exact display name match
+  let m=active.find(i=>(i.displayName||'').toLowerCase()===lower);
+  if(m)return m.internalId;
+  // 4. Exact item name match
+  m=active.find(i=>(i.name||'').toLowerCase()===lower);
+  if(m)return m.internalId;
+  // 5. Partial: display name contains item name or vice versa
+  m=active.find(i=>lower.includes((i.displayName||'').toLowerCase()) && (i.displayName||'').length>3);
+  if(m)return m.internalId;
+  m=active.find(i=>(i.displayName||'').toLowerCase().includes(lower) && lower.length>3);
+  if(m)return m.internalId;
+  return null;
+}
+
+function runSquare(){
+  const {raw}=state.square; if(!raw)return;
+  const items=getItems(), squareMap=getSquareItemMap(), squareRules=getSquareRules();
+
+  const allRows=csvToObjects(raw);
+  // Only process Payment events; skip $0 net sales
+  const salesRows=allRows.filter(r=>{
+    const type=(r['Event Type']||'').toLowerCase();
+    if(type && type!=='payment') return false;
+    return parseMoney(r['Net Sales'])!==0;
+  });
+  const zeroCt=allRows.length-salesRows.length;
+
+  // Group rows by Transaction ID to assign sequential Line IDs per transaction
+  const txnLines={};
+  salesRows.forEach(r=>{
+    const t=r['Transaction ID']||'';
+    if(!txnLines[t])txnLines[t]=[];
+    txnLines[t].push(r);
+  });
+
+  const COLS=['External ID','Customer Internal ID','Date','Line ID','Item Internal ID','Rate','Tax','Total','Qty','Item Amount','Memo','Rev Start Date','Rev End Date','Undeposited Funds','Transaction ID'];
+  const output=[], missingItems=[];
+  const seenItems=new Set();
+
+  salesRows.forEach(r=>{
+    const txnId  = r['Transaction ID']||'';
+    const date   = formatDateMDY(r['Date']||'');
+    const extId  = `Square${txnId}`;
+    const name   = (r['Item']||'').trim();
+    const qty    = parseQty(r['Qty']);
+    const net    = parseMoney(r['Net Sales']);
+    const tax    = parseMoney(r['Tax']);
+    const total  = net + tax;
+    const lineId = txnLines[txnId].indexOf(r)+1;
+
+    const itemId = resolveSquareItem(items, squareMap, name, squareRules);
+    if(!itemId && name && !seenItems.has(name)){
+      seenItems.add(name); missingItems.push(name);
+    }
+
+    output.push({
+      __warn: !itemId && !!name,
+      __warnCols: !itemId&&name ? ['Item Internal ID','Memo'] : [],
+      'External ID':        extId,
+      'Customer Internal ID': '',
+      'Date':               date,
+      'Line ID':            lineId,
+      'Item Internal ID':   itemId||'',
+      'Rate':               +net.toFixed(2),
+      'Tax':                +tax.toFixed(2),
+      'Total':              +total.toFixed(2),
+      'Qty':                qty,
+      'Item Amount':        +net.toFixed(2),
+      'Memo':               name,
+      'Rev Start Date':     date,
+      'Rev End Date':       date,
+      'Undeposited Funds':  'Yes',
+      'Transaction ID':     txnId,
+    });
+  });
+
+  window._squareOutput=output; window._squareCols=COLS; window._squareMissingItems=missingItems;
+
+  let html=buildResultsHTML({
+    stats:[
+      {cls:'stat-green', label:`✓ ${Object.keys(txnLines).length} transactions / ${output.length} line items`},
+      ...(zeroCt?[{cls:'stat-blue',label:`${zeroCt} non-payment rows skipped`}]:[]),
+      ...(missingItems.length?[{cls:'stat-yellow',label:`⚠ ${missingItems.length} unresolved item${missingItems.length>1?'s':''}`}]:[]),
+      ...(!items?[{cls:'stat-red',label:'⚠ No items DB — load in Setup'}]:[]),
+    ],
+    downloadBtn:`<button class="btn btn-success btn-lg" onclick="dl(toCSV(window._squareOutput,window._squareCols),'Square_Import.csv')">&#11015; Download Import CSV</button>`,
+    rows:output, cols:COLS,
+  });
+  html+=renderMissingSquareItems(missingItems);
+  document.getElementById('results-square').innerHTML=html;
+  toast(`Square: ${Object.keys(txnLines).length} transactions → ${output.length} line items`,'ok');
+}
+
+function renderMissingSquareItems(missing){
+  if(!missing||!missing.length)return'';
+  const rows=missing.map((name,i)=>`
+    <tr>
+      <td><strong>${esc(name)}</strong></td>
+      <td><input id="sqitem-id-${i}" class="entry-input required" placeholder="Required" oninput="markFilled(this)" style="width:130px"></td>
+    </tr>`).join('');
+  return`
+  <div class="card card-warn" style="margin-top:8px">
+    <div class="card-title">&#9888;&#65039; ${missing.length} Unresolved Square Item${missing.length>1?'s':''}</div>
+    <div class="alert alert-warn" style="margin-bottom:12px">These item names from Square weren't found in the items catalog. Look up each NetSuite Item Internal ID and enter it below — saved permanently for future imports.</div>
+    <div class="table-wrap" style="max-height:none;border:none;margin:0">
+      <table class="entry-table">
+        <thead><tr><th>Square Item Name</th><th>NetSuite Item Internal ID *</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+      <button class="btn btn-primary" onclick="saveSquareItemMappings()">&#10003; Save Mappings &amp; Regenerate</button>
+      <span class="form-hint">Once saved, these items will resolve automatically on every future Square import.</span>
+    </div>
+  </div>`;
+}
+
+function saveSquareItemMappings(){
+  const missing=window._squareMissingItems; if(!missing||!missing.length)return;
+  const map=getSquareItemMap();
+  let added=0, skipped=0;
+  missing.forEach((name,i)=>{
+    const id=(document.getElementById(`sqitem-id-${i}`)||{}).value?.trim()||'';
+    if(!id){skipped++;return;}
+    map[name]=id; added++;
+  });
+  saveSquareItemMap(map);
+  if(skipped) toast(`Saved ${added} mappings. ${skipped} skipped (no ID entered).`,'warn');
+  else toast(`Saved ${added} Square item mappings`,'ok');
+  if(added) runSquare();
+}
+
+// ── STRIPE PROCESSOR ─────────────────────────────────────────
+
+// Parse "Seller | email | Products: A, B, C" description into product entries
+function parseStripeProducts(row){
+  const desc=row['Description']||'';
+  const m=desc.match(/Products?:\s*(.+)/i);
+  if(!m)return null;
+  const entries=m[1].split(',').map(s=>s.trim()).filter(s=>s);
+  if(!entries.length)return null;
+  return entries.map(entry=>{
+    // Strip "(Retail: $XX.XX)" or "(Retail: $X,XXX.XX)"
+    const clean=entry.replace(/\s*\(Retail:\s*\$[\d,]+\.?\d*\)/i,'').trim();
+    // Strip leading quantity number: "1 TeamWork Book" → "TeamWork Book"
+    const name=clean.replace(/^\d+\s+/,'').trim()||clean;
+    return{rawEntry:entry,name};
+  });
+}
+
+// Match a product name against rules (metadata_products / description contains rules)
+function matchProductToItem(name,rules){
+  const low=name.toLowerCase();
+  for(const r of rules){
+    if((r.field==='metadata_products'||r.field==='description')&&r.cond==='contains'){
+      if(low.includes((r.val||'').toLowerCase()))
+        return{itemId:String(r.itemId||''),ruleName:r.val,autoInclude:!!r.autoInclude};
+    }
+  }
+  return{itemId:'',ruleName:'No match',autoInclude:false};
+}
+
+function runStripe(){
+  const {raw}=state.stripe; if(!raw)return;
+  const customers=getCustomers(), items=getItems(), rules=getRules();
+  const initials=document.getElementById('stripe-initials').value.trim()||'XX';
+  const dateVal=document.getElementById('stripe-date').value||todayInput();
+  const datePart=stripeExtDate(dateVal);
+  const cashSaleDateRaw=document.getElementById('stripe-cashsale-date').value;
+  let cashSaleDate=cashSaleDateRaw?formatDateMDY(cashSaleDateRaw):null;
+  const _now=new Date(); const timePart=`${String(_now.getHours()).padStart(2,'0')}-${String(_now.getMinutes()).padStart(2,'0')}`;
+
+  const allRows=csvToObjects(raw);
+  const allPaid=allRows.filter(r=>r['Status']==='Paid'&&parseFloat(r['Amount Refunded']||'0')===0&&r['Captured']!=='false');
+  // Include only rows with a populated Application ID (funnel/app transactions)
+  const paid=allPaid.filter(r=>(r['Application ID']||'').trim()!=='');
+  const excludedCount=allPaid.length-paid.length;
+
+  const COLS_OUT=['External ID','Customer Internal ID','Date','Line ID','Item Internal ID','Rate','Qty','Item Amount','Memo','Rev Start Date','Rev End Date','Undeposited Funds','Account','Price Level'];
+  const groups=[];
+  const missingCustomers=[], seenEmails=new Set();
+  const itms=(items||[]).filter(i=>i.inactive!=='Yes');
+
+  // Build item options HTML helper (called per line so selected is correct)
+  const makeOpts=selectedId=>'<option value="">— select item —</option>'+
+    itms.map(i=>`<option value="${i.internalId}"${String(i.internalId)===String(selectedId)?' selected':''}>${i.internalId} \u2013 ${i.name}</option>`).join('');
+
+  paid.forEach(row=>{
+    const email=row['Customer Email']||row['email (metadata)']||'';
+    const amount=parseFloat(row['Amount']||'0');
+    const chargeId=row['id']||'';
+    const date=utcToAZDate(row['Created date (UTC)']||'');
+    const cust=customers?findCustomer(customers,email):null;
+    const aboveThresh=amount>=STRIPE_AMOUNT_THRESHOLD;
+
+    if(!cust&&email&&!seenEmails.has(email.toLowerCase())){
+      seenEmails.add(email.toLowerCase());
+      const shipName=row['Shipping Name']||'';
+      const fallback=row['name (metadata)']||row['Customer Description']||'';
+      const resolvedName=shipName||fallback;
+      missingCustomers.push({email,name:resolvedName,noName:!resolvedName,chargeId,address:row['Shipping Address Line1']||'',country:row['Shipping Address Country']||'US'});
+    }
+
+    // Parse product lines from Description
+    const products=parseStripeProducts(row);
+    let lines;
+    if(products&&products.length){
+      // Split amount evenly; fix last line rounding
+      const perLine=+(amount/products.length).toFixed(2);
+      const sumOthers=+((perLine*(products.length-1)).toFixed(2));
+      lines=products.map((p,pi)=>{
+        const match=matchProductToItem(p.name,rules);
+        return{product:p.name,rawEntry:p.rawEntry,itemId:match.itemId,ruleName:match.ruleName,
+               autoInclude:match.autoInclude,rate:pi<products.length-1?perLine:+(amount-sumOthers).toFixed(2)};
+      });
+    } else {
+      // No product list — fall back to whole-transaction rule match
+      const rule=applyStripeRule(row,rules);
+      lines=[{product:'',rawEntry:row['Description']||'',itemId:rule?String(rule.itemId):'',
+              ruleName:rule?`Rule ${rules.indexOf(rule)+1}`:'No match',autoInclude:rule?!!rule.autoInclude:false,rate:amount}];
+    }
+
+    const allMatched=lines.every(l=>l.itemId);
+    const include=allMatched&&lines.every(l=>l.autoInclude)&&!aboveThresh;
+    groups.push({row,txId:chargeId,email,date,amount,cust,chargeId,aboveThresh,include,lines});
+  });
+
+  // ── Auto-detect Cash Sale Date from converted AZ dates ──────
+  {
+    const uniqueDates=new Set(groups.map(g=>g.date).filter(Boolean));
+    const el=document.getElementById('stripe-cashsale-date');
+    if(uniqueDates.size===1){
+      const [mm,dd,yyyy]=[...uniqueDates][0].split('/');
+      const iso=`${yyyy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+      el.value=iso;
+      cashSaleDate=formatDateMDY(iso);
+    } else {
+      el.value='';
+      cashSaleDate=null;
+    }
+    updateCashSaleDateNote();
+  }
+
+  window._stripeGroups=groups; window._stripeMissing=missingCustomers;
+  window._stripeCols=COLS_OUT; window._stripeInitials=initials; window._stripeDatePart=datePart; window._stripeTimePart=timePart; window._stripeCashSaleDate=cashSaleDate;
+
+  const autoCount=groups.filter(g=>g.include).length;
+  const reviewCount=groups.length-autoCount;
+  const aboveThreshCount=groups.filter(g=>g.aboveThresh).length;
+  const totalLines=groups.reduce((s,g)=>s+g.lines.length,0);
+  const dateStr=dateVal.replace(/-/g,'');
+
+  let html=`<div class="card" style="margin-top:8px">
+    <div class="card-title">&#128203; Review Records</div>
+    <div class="stats-row">
+      <span class="stat stat-green">&#10003; ${autoCount} auto-included</span>
+      <span class="stat stat-yellow">${reviewCount} need review</span>
+      <span class="stat stat-blue">${paid.length} transactions &middot; ${totalLines} lines</span>
+      <span class="stat stat-blue">${excludedCount} excluded (no App ID)</span>
+      ${cashSaleDate
+        ?`<span class="stat stat-yellow">&#128197; All dates overridden &rarr; ${cashSaleDate}</span>`
+        :`<span class="stat stat-blue">&#128197; Multi-day — using per-transaction dates</span>`}
+      ${aboveThreshCount?`<span class="stat stat-yellow">&#9888; ${aboveThreshCount} above $${STRIPE_AMOUNT_THRESHOLD} &mdash; manual review</span>`:''}
+      ${missingCustomers.length?`<span class="stat stat-red">&#9888; ${missingCustomers.length} missing customer${missingCustomers.length>1?'s':''}</span>`:''}
+      ${missingCustomers.filter(c=>c.noName).length?`<span class="stat stat-yellow">&#9888; ${missingCustomers.filter(c=>c.noName).length} no Shipping Name</span>`:''}
+    </div>
+    <div class="btn-group" style="margin-bottom:14px">
+      <button class="btn btn-success btn-lg" onclick="downloadStripeImport('${dateStr}')">&#11015; Download Import CSV</button>
+    </div>
+    <div class="section-label">Check transactions to include &mdash; verify item per product line &mdash; then download</div>
+    <div class="table-wrap" style="max-height:560px">
+    <table id="stripe-tbl">
+    <thead><tr>
+      <th><input type="checkbox" id="chk-all" onchange="stripeToggleAll(this.checked)" title="Select all"></th>
+      <th>Date</th><th>Total</th><th>Email</th><th>Info</th><th>Match</th><th>NetSuite Item</th><th>Cust ID</th>
+    </tr></thead><tbody>`;
+
+  groups.forEach((g,gIdx)=>{
+    const cw=!g.cust&&g.email?' td-warn':'';
+    const amtClass=g.aboveThresh?' td-warn':'';
+    const amtLabel=g.aboveThresh?` <span title="Above $${STRIPE_AMOUNT_THRESHOLD} \u2014 manual review required" style="color:#b45309;font-size:11px">&#9888; review</span>`:'';
+    const prodLabel=g.lines.length===1&&!g.lines[0].product?'1 tx':''+g.lines.length+' product'+(g.lines.length>1?'s':'');
+    const shortId=g.chargeId.slice(-10);
+    html+=`<tr id="stx-${gIdx}" style="border-top:2px solid #e2e8f0;background:#f8fafc">
+      <td><input type="checkbox" class="tx-chk include-check" ${g.include?'checked':''} onchange="stripeToggleTx(${gIdx},this.checked)"></td>
+      <td><strong>${g.date}</strong></td>
+      <td class="${amtClass}"><strong>$${g.amount.toFixed(2)}</strong>${amtLabel}</td>
+      <td class="${cw}" style="font-size:12px">${esc(g.email)}</td>
+      <td style="font-size:11px;color:#64748b">${prodLabel} &middot; <code style="font-size:10px">${esc(shortId)}</code></td>
+      <td></td><td></td>
+      <td class="${cw}" style="font-size:12px">${g.cust?g.cust.internalId:'&#8212;'}</td>
+    </tr>`;
+    g.lines.forEach((line,li)=>{
+      const iw=!line.itemId?' td-err':'';
+      const displayName=line.product||line.rawEntry.slice(0,60);
+      html+=`<tr class="sline-${gIdx}" style="background:#fff">
+        <td style="color:#94a3b8;text-align:center;font-size:12px">&#8627;</td>
+        <td colspan="2" style="padding-left:10px;font-size:12px;color:#475569">${esc(displayName)}</td>
+        <td style="font-size:12px;color:#64748b">$${line.rate.toFixed(2)}</td>
+        <td></td>
+        <td style="font-size:11px;color:#64748b">${esc(line.ruleName)}</td>
+        <td class="${iw}"><select class="item-sel" onchange="stripeLineItem(${gIdx},${li},this.value)">${makeOpts(line.itemId)}</select></td>
+        <td></td>
+      </tr>`;
+    });
+  });
+  html+=`</tbody></table></div></div>`;
+  html+=renderMissingCustomers(missingCustomers,'stripe');
+  document.getElementById('results-stripe').innerHTML=html;
+  toast(`Stripe: ${paid.length} transactions \u2192 ${totalLines} product lines`,'ok');
+}
+
+function applyStripeRule(row,rules){
+  const amount=parseFloat(row['Amount']||'0');
+  const desc=(row['Description']||'').toLowerCase();
+  const meta=(row['products (metadata)']||row['order_products (metadata)']||'').toLowerCase();
+  for(const r of rules){
+    const val=(r.val||'').toLowerCase();
+    const src=r.field==='description'?desc:r.field==='amount'?String(amount):r.field==='metadata_products'?meta:'';
+    let m=false;
+    if(r.cond==='contains')m=src.includes(val);
+    else if(r.cond==='equals')m=Math.abs(parseFloat(r.val||0)-amount)<0.01;
+    else if(r.cond==='lte')m=amount<=parseFloat(r.val||0);
+    else if(r.cond==='gte')m=amount>=parseFloat(r.val||0);
+    else if(r.cond==='startswith')m=src.startsWith(val);
+    if(m)return r;
+  }
+  return null;
+}
+
+function stripeToggleTx(gIdx,checked){
+  const g=window._stripeGroups&&window._stripeGroups[gIdx]; if(!g)return;
+  g.include=checked;
+  document.querySelectorAll(`.sline-${gIdx}`).forEach(tr=>tr.style.opacity=checked?'1':'0.45');
+}
+
+function stripeToggleAll(checked){
+  (window._stripeGroups||[]).forEach((g,gIdx)=>{
+    g.include=checked;
+    const cb=document.querySelector(`#stx-${gIdx} .tx-chk`);
+    if(cb)cb.checked=checked;
+    document.querySelectorAll(`.sline-${gIdx}`).forEach(tr=>tr.style.opacity=checked?'1':'0.45');
+  });
+}
+
+function stripeLineItem(gIdx,li,itemId){
+  const g=window._stripeGroups&&window._stripeGroups[gIdx];
+  if(g&&g.lines[li])g.lines[li].itemId=itemId;
+}
+
+function downloadStripeImport(dateStr){
+  if(!window._stripeGroups)return;
+  const initials=window._stripeInitials||'XX', datePart=window._stripeDatePart||'000000', timePart=window._stripeTimePart||'00-00';
+  const included=window._stripeGroups.filter(g=>g.include);
+  if(!included.length){toast('No transactions selected','warn');return;}
+  const csDate=window._stripeCashSaleDate||null;
+  let extCtr=1;
+  const rows=[];
+  included.forEach(g=>{
+    const extId=`${initials}_CS_${datePart}_${timePart}__${extCtr++}`;
+    g.lines.forEach((line,li)=>{
+      rows.push({
+        'External ID':extId,
+        'Customer Internal ID':g.cust?g.cust.internalId:'',
+        'Date':csDate||g.date,
+        'Line ID':li+1,
+        'Item Internal ID':line.itemId||'',
+        'Rate':line.rate,
+        'Qty':1,
+        'Item Amount':line.rate,
+        'Memo':g.chargeId,
+        'Rev Start Date':csDate||g.date,
+        'Rev End Date':csDate||g.date,
+        'Undeposited Funds':'FALSE',
+        'Account':332,
+        'Price Level':'CUSTOM',
+      });
+    });
+  });
+  dl(toCSV(rows,window._stripeCols),`Stripe_Import_${dateStr||'export'}.csv`);
+  toast(`Downloaded ${included.length} transactions \u2192 ${rows.length} lines`,'ok');
+}
+
+// ── RESULTS HTML BUILDER ─────────────────────────────────────
+function buildResultsHTML({stats,downloadBtn,rows,cols}){
+  let html=`<div class="card" style="margin-top:8px"><div class="stats-row">${stats.map(s=>`<span class="stat ${s.cls}">${s.label}</span>`).join('')}</div>`;
+  html+=`<div class="btn-group" style="margin-bottom:14px">${downloadBtn}</div>`;
+  if(rows&&rows.length){
+    html+=`<div class="section-label">Preview — first 50 of ${rows.length} rows</div><div class="table-wrap"><table><thead><tr>`;
+    cols.forEach(c=>{html+=`<th>${c}</th>`;});
+    html+=`</tr></thead><tbody>`;
+    rows.slice(0,50).forEach(r=>{
+      html+=`<tr>`;
+      cols.forEach(c=>{const v=r[c]??'',warn=r.__warnCols&&r.__warnCols.includes(c);html+=`<td${warn?' class="td-warn"':''}>${esc(String(v))}</td>`;});
+      html+=`</tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+
+// ── STRIPE RULES UI ──────────────────────────────────────────
+function renderRulesTable(){
+  const rules=getRules(), items=getItems()||[];
+  const tbody=document.getElementById('rules-tbody'); if(!tbody)return;
+  tbody.innerHTML=rules.map((r,idx)=>{
+    const opts=items.filter(i=>i.inactive!=='Yes').slice(0,500).map(i=>`<option value="${i.internalId}" ${i.internalId==r.itemId?'selected':''}>${i.internalId} – ${i.name}</option>`).join('');
+    return`<tr>
+      <td>${idx+1}</td>
+      <td><select onchange="updateRule(${r.id},'field',this.value)">
+        <option value="description" ${r.field==='description'?'selected':''}>Description</option>
+        <option value="amount" ${r.field==='amount'?'selected':''}>Amount</option>
+        <option value="metadata_products" ${r.field==='metadata_products'?'selected':''}>order_products (metadata)</option>
+      </select></td>
+      <td><select onchange="updateRule(${r.id},'cond',this.value)">
+        <option value="contains" ${r.cond==='contains'?'selected':''}>contains</option>
+        <option value="equals" ${r.cond==='equals'?'selected':''}>equals</option>
+        <option value="lte" ${r.cond==='lte'?'selected':''}>≤</option>
+        <option value="gte" ${r.cond==='gte'?'selected':''}>≥</option>
+        <option value="startswith" ${r.cond==='startswith'?'selected':''}>starts with</option>
+      </select></td>
+      <td><input type="text" class="inp-sm" value="${esc(r.val||'')}" onchange="updateRule(${r.id},'val',this.value)"></td>
+      <td><select onchange="updateRule(${r.id},'itemId',this.value)">${opts}</select></td>
+      <td style="text-align:center"><input type="checkbox" ${r.autoInclude?'checked':''} onchange="updateRule(${r.id},'autoInclude',this.checked)"></td>
+      <td><button class="btn btn-danger" style="padding:2px 7px;font-size:11px" onclick="deleteRule(${r.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+function updateRule(id,field,value){ const r=getRules(); const x=r.find(x=>x.id===id); if(x){x[field]=value;saveRules(r);} }
+function addRule(){ const r=getRules(),newId=Math.max(0,...r.map(x=>x.id))+1; r.push({id:newId,field:'description',cond:'contains',val:'',itemId:981,autoInclude:false}); saveRules(r); renderRulesTable(); }
+function deleteRule(id){ saveRules(getRules().filter(r=>r.id!==id)); renderRulesTable(); }
+function resetRules(){ if(!confirm('Reset to defaults?'))return; saveRules(DEFAULT_RULES); renderRulesTable(); toast('Rules reset','ok'); }
+// ── SHOPIFY RULES UI ──────────────────────────────────────────
+function renderShopifyRulesTable(){
+  const rules=getShopifyRules(), items=getItems()||[];
+  const tbody=document.getElementById('shopify-rules-tbody'); if(!tbody)return;
+  if(!rules.length){tbody.innerHTML='<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:12px">No rules yet — all SKUs resolved via items DB</td></tr>';return;}
+  const opts=items.filter(i=>i.inactive!=='Yes').slice(0,500).map(i=>`<option value="${i.internalId}">${i.internalId} – ${i.name}</option>`).join('');
+  tbody.innerHTML=rules.map((r,idx)=>`<tr>
+    <td>${idx+1}</td>
+    <td><select onchange="updateShopifyRule(${r.id},'cond',this.value)">
+      <option value="contains"   ${r.cond==='contains'?'selected':''}>contains</option>
+      <option value="equals"     ${r.cond==='equals'?'selected':''}>equals</option>
+      <option value="startswith" ${r.cond==='startswith'?'selected':''}>starts with</option>
+    </select></td>
+    <td><input type="text" class="inp-sm" style="width:140px" value="${esc(r.val||'')}" placeholder="e.g. CVPERFZIP" onchange="updateShopifyRule(${r.id},'val',this.value)"></td>
+    <td><select onchange="updateShopifyRule(${r.id},'itemId',this.value)"><option value="">— select —</option>${opts.replace(`value="${r.itemId}"`,`value="${r.itemId}" selected`)}</select></td>
+    <td><button class="btn btn-danger" style="padding:2px 7px;font-size:11px" onclick="deleteShopifyRule(${r.id})">✕</button></td>
+  </tr>`).join('');
+}
+function updateShopifyRule(id,f,v){const r=getShopifyRules();const x=r.find(x=>x.id===id);if(x){x[f]=v;saveShopifyRules(r);}}
+function addShopifyRule(){const r=getShopifyRules(),nid=Math.max(0,...r.map(x=>x.id))+1;r.push({id:nid,cond:'equals',val:'',itemId:''});saveShopifyRules(r);renderShopifyRulesTable();}
+function deleteShopifyRule(id){saveShopifyRules(getShopifyRules().filter(r=>r.id!==id));renderShopifyRulesTable();}
+function exportShopifyRules(){dl(JSON.stringify(getShopifyRules(),null,2),'shopify_rules.json','application/json');toast('Shopify rules exported','ok');}
+function importShopifyRules(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{try{const r=JSON.parse(e.target.result);if(!Array.isArray(r))throw 0;if(!confirm(`Import ${r.length} Shopify rules?`))return;saveShopifyRules(r);renderShopifyRulesTable();toast(`Imported ${r.length} Shopify rules`,'ok');}catch{toast('Invalid file','warn');}};
+  reader.readAsText(file);input.value='';
+}
+
+// ── SQUARE RULES UI ───────────────────────────────────────────
+function renderSquareRulesTable(){
+  const rules=getSquareRules(), items=getItems()||[];
+  const tbody=document.getElementById('square-rules-tbody'); if(!tbody)return;
+  if(!rules.length){tbody.innerHTML='<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:12px">No rules yet — all items resolved via fuzzy name matching</td></tr>';return;}
+  const opts=items.filter(i=>i.inactive!=='Yes').slice(0,500).map(i=>`<option value="${i.internalId}">${i.internalId} – ${i.name}</option>`).join('');
+  tbody.innerHTML=rules.map((r,idx)=>`<tr>
+    <td>${idx+1}</td>
+    <td><select onchange="updateSquareRule(${r.id},'cond',this.value)">
+      <option value="contains"   ${r.cond==='contains'?'selected':''}>contains</option>
+      <option value="equals"     ${r.cond==='equals'?'selected':''}>equals</option>
+      <option value="startswith" ${r.cond==='startswith'?'selected':''}>starts with</option>
+    </select></td>
+    <td><input type="text" class="inp-sm" style="width:160px" value="${esc(r.val||'')}" placeholder="e.g. CV Performance Zip" onchange="updateSquareRule(${r.id},'val',this.value)"></td>
+    <td><select onchange="updateSquareRule(${r.id},'itemId',this.value)"><option value="">— select —</option>${opts.replace(`value="${r.itemId}"`,`value="${r.itemId}" selected`)}</select></td>
+    <td><button class="btn btn-danger" style="padding:2px 7px;font-size:11px" onclick="deleteSquareRule(${r.id})">✕</button></td>
+  </tr>`).join('');
+}
+function updateSquareRule(id,f,v){const r=getSquareRules();const x=r.find(x=>x.id===id);if(x){x[f]=v;saveSquareRules(r);}}
+function addSquareRule(){const r=getSquareRules(),nid=Math.max(0,...r.map(x=>x.id))+1;r.push({id:nid,cond:'equals',val:'',itemId:''});saveSquareRules(r);renderSquareRulesTable();}
+function deleteSquareRule(id){saveSquareRules(getSquareRules().filter(r=>r.id!==id));renderSquareRulesTable();}
+function exportSquareRules(){dl(JSON.stringify(getSquareRules(),null,2),'square_rules.json','application/json');toast('Square rules exported','ok');}
+function importSquareRules(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{try{const r=JSON.parse(e.target.result);if(!Array.isArray(r))throw 0;if(!confirm(`Import ${r.length} Square rules?`))return;saveSquareRules(r);renderSquareRulesTable();toast(`Imported ${r.length} Square rules`,'ok');}catch{toast('Invalid file','warn');}};
+  reader.readAsText(file);input.value='';
+}
+
+function exportRules(){ dl(JSON.stringify(getRules(),null,2),'stripe_rules.json','application/json'); toast('Rules exported','ok'); }
+function importRules(input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const rules=JSON.parse(e.target.result);
+      if(!Array.isArray(rules))throw new Error('Not an array');
+      if(!confirm(`Import ${rules.length} rules? This will replace your current rules.`))return;
+      saveRules(rules); renderRulesTable(); toast(`Imported ${rules.length} rules`,'ok');
+    }catch(err){ toast('Invalid rules file — check JSON format','warn'); }
+  };
+  reader.readAsText(file);
+  input.value=''; // reset so same file can be re-selected
+}
+
+// ── FILE UPLOAD ──────────────────────────────────────────────
+function doDragOver(e,id){e.preventDefault();document.getElementById(id).classList.add('over');}
+function doDragLeave(id){document.getElementById(id).classList.remove('over');}
+function doDrop(e,p){e.preventDefault();document.getElementById('drop-'+p).classList.remove('over');const f=e.dataTransfer.files[0];if(f)processFile(f,p);}
+function fileSelected(e,p){const f=e.target.files[0];if(f)processFile(f,p);}
+function processFile(file,p){
+  const r=new FileReader();
+  r.onload=e=>{
+    state[p].raw=e.target.result;
+    const zone=document.getElementById('drop-'+p);
+    const lbl=document.getElementById('drop-'+p+'-name');
+    zone.classList.add('has-file');
+    lbl.innerHTML=`<span class="drop-filename">✓ ${file.name}</span><div class="drop-text" style="margin-top:4px">Drop a different file to replace</div>`;
+    document.getElementById('btn-'+p).disabled=false;
+    document.getElementById('results-'+p).innerHTML='';
+  };
+  r.readAsText(file);
+}
+
+// ── UI ───────────────────────────────────────────────────────
+function switchTab(name,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+function openSetup(){document.getElementById('modal-setup').classList.add('open');updateDBStatus();renderShopifyRulesTable();renderSquareRulesTable();renderRulesTable();}
+
+function updateCashSaleDateNote(){
+  const val=document.getElementById('stripe-cashsale-date').value;
+  const note=document.getElementById('cashsale-date-note'); if(!note)return;
+  if(val){
+    const d=formatDateMDY(val);
+    note.style.background='#fef3c7';note.style.borderColor='#fcd34d';note.style.color='#78350f';
+    note.innerHTML=`&#128197; <strong>Single-day mode</strong> — all rows will use <strong>${d}</strong> as the cash sale date.`;
+  } else {
+    note.style.background='#eff6ff';note.style.borderColor='#bfdbfe';note.style.color='#1e40af';
+    note.innerHTML=`&#128197; <strong>Multi-day mode</strong> — each transaction uses its own date. Set a date above to override all rows to one day (single-day uploads).`;
+  }
+}
+function closeSetup(){document.getElementById('modal-setup').classList.remove('open');}
+
+// ── CHECK FOR UPDATES ─────────────────────────────────────────
+async function checkForUpdates(){
+  const btn=document.getElementById('btn-update-check');
+  const badge=document.getElementById('update-version-badge');
+  if(btn){btn.disabled=true;btn.style.opacity='0.6';}
+  toast('Checking for updates…','');
+  try{
+    if(!GH_TOKEN||GH_TOKEN.startsWith('YOUR_')){ toast('Update check not configured — see GH_TOKEN in source','warn'); return; }
+    const apiUrl=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}?ref=${GH_BRANCH}`;
+    const r=await fetch(apiUrl,{headers:{'Authorization':`Bearer ${GH_TOKEN}`,'Accept':'application/vnd.github.v3.raw','Cache-Control':'no-cache'}});
+    if(!r.ok){
+      if(r.status===401||r.status===403) throw new Error('Token invalid or expired — update GH_TOKEN in the HTML');
+      if(r.status===404) throw new Error('Repo or file not found — check GH_OWNER, GH_REPO, GH_FILE');
+      throw new Error(`GitHub returned ${r.status}`);
+    }
+    const latestHtml=await r.text();
+    const m=latestHtml.match(/const VERSION\s*=\s*['"]([^'"]+)['"]/);
+    const latestVer=m?m[1]:null;
+    if(!latestVer) throw new Error('Could not read version from latest file');
+    if(latestVer===VERSION){
+      toast(`You're up to date (v${VERSION}) ✓`,'ok');
+      if(badge) badge.textContent=`v${VERSION} ✓`;
+    } else {
+      if(badge) badge.textContent=`v${VERSION} → v${latestVer}`;
+      const go=confirm(`Update available!\n\nYour version:   v${VERSION}\nLatest version: v${latestVer}\n\nDownload the new version now?\n\nAfter downloading, replace this file with the new one.`);
+      if(go){
+        dl(latestHtml,'ns-import-tool.html','text/html');
+        toast(`Downloaded v${latestVer} — replace this file with the downloaded copy`,'ok');
+      }
+    }
+  } catch(e){
+    toast(`Update check failed: ${e.message}`,'warn');
+    console.error('checkForUpdates:',e);
+  } finally {
+    if(btn){btn.disabled=false;btn.style.opacity='';}
+  }
+}
+function syncInitials(){ const v=getInitials(); ['shopify-initials','stripe-initials'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.matches(':focus'))el.value=v;}); }
+function toast(msg,type){ const w=document.getElementById('toasts'),el=document.createElement('div');el.className='toast '+(type||'');el.textContent=msg;w.appendChild(el);setTimeout(()=>el.style.opacity='0',2800);setTimeout(()=>el.remove(),3200); }
+
+// ── INIT ─────────────────────────────────────────────────────
+(function init(){
+  const today=todayInput();
+  document.getElementById('shopify-date').value=today;
+  document.getElementById('stripe-date').value=today;
+  // stripe-cashsale-date intentionally left blank — multi-day mode by default
+  const saved=getInitials();
+  if(saved){document.getElementById('shopify-initials').value=saved;document.getElementById('stripe-initials').value=saved;}
+  updateDBStatus();
+  document.getElementById('modal-setup').addEventListener('click',e=>{if(e.target===document.getElementById('modal-setup'))closeSetup();});
+  // Set version badge
+  const vb=document.getElementById('update-version-badge'); if(vb) vb.textContent=`v${VERSION}`;
+})();
+</script>
+
+<script>const TOOL_KEY='ns-import'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

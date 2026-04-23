@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Subsidiary Payroll JE Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f2f5; color: #222; font-size: 14px; }
+
+header {
+  background: #1a3a5c;
+  color: #fff;
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+header h1 { font-size: 20px; font-weight: 700; }
+header span { font-size: 13px; opacity: 0.7; }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+/* Drop Zone */
+.drop-zone {
+  border: 2px dashed #b0bec5;
+  border-radius: 10px;
+  background: #fff;
+  padding: 48px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  margin-bottom: 20px;
+}
+.drop-zone.dragover { border-color: #1a3a5c; background: #e8f0fb; }
+.drop-zone.loaded { border-color: #2e7d32; background: #f1f8e9; }
+.drop-icon { font-size: 48px; margin-bottom: 12px; }
+.drop-zone h2 { font-size: 18px; margin-bottom: 8px; color: #1a3a5c; }
+.drop-zone p { color: #666; font-size: 13px; }
+.drop-zone input[type=file] { display: none; }
+.file-name { font-weight: 700; color: #2e7d32; font-size: 15px; margin-top: 8px; }
+
+/* Alerts */
+.alert-box {
+  background: #fff3e0;
+  border: 1px solid #ffb300;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  display: none;
+}
+.alert-box h3 { color: #e65100; font-size: 15px; margin-bottom: 10px; }
+.alert-item { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.alert-item label { min-width: 200px; font-weight: 600; }
+.alert-item select, .alert-item input { border: 1px solid #ccc; border-radius: 4px; padding: 4px 8px; font-size: 13px; }
+.alert-apply { background: #e65100; color: #fff; border: none; border-radius: 5px; padding: 8px 18px; cursor: pointer; font-size: 13px; margin-top: 8px; }
+.alert-apply:hover { background: #bf360c; }
+
+/* Cards */
+.card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.card-header h3 { font-size: 15px; color: #1a3a5c; font-weight: 700; }
+.card-toggle { color: #999; font-size: 18px; }
+.card-body { margin-top: 16px; }
+.card-body.hidden { display: none; }
+
+/* Settings grid */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.settings-group label { display: block; font-size: 12px; font-weight: 700; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px; }
+.settings-group input, .settings-group select {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 7px 10px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.settings-group input:focus { outline: none; border-color: #1a3a5c; }
+
+/* Lookup table editor */
+.lookup-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.lookup-table th { background: #f5f5f5; text-align: left; padding: 6px 10px; border: 1px solid #e0e0e0; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: #666; }
+.lookup-table td { padding: 5px 8px; border: 1px solid #e0e0e0; }
+.lookup-table tr:nth-child(even) td { background: #fafafa; }
+.lookup-table input, .lookup-table select { width: 100%; border: none; background: transparent; font-size: 13px; padding: 2px; }
+.lookup-table input:focus, .lookup-table select:focus { outline: 1px solid #1a3a5c; border-radius: 3px; }
+.add-row-btn { background: #e8f0fb; color: #1a3a5c; border: 1px solid #b3cdf5; border-radius: 5px; padding: 5px 12px; cursor: pointer; font-size: 12px; margin-top: 8px; }
+.add-row-btn:hover { background: #c5d9f5; }
+.del-row-btn { background: none; border: none; color: #c00; cursor: pointer; font-size: 16px; padding: 0 4px; line-height: 1; }
+
+/* Results */
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.results-header h3 { font-size: 16px; font-weight: 700; color: #1a3a5c; }
+.btn-group { display: flex; gap: 10px; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background .15s;
+}
+.btn-primary { background: #1a3a5c; color: #fff; }
+.btn-primary:hover { background: #0d2640; }
+.btn-secondary { background: #2e7d32; color: #fff; }
+.btn-secondary:hover { background: #1b5e20; }
+.btn-outline { background: #fff; color: #1a3a5c; border: 1px solid #1a3a5c; }
+.btn-outline:hover { background: #e8f0fb; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Preview Table */
+.preview-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 6px; }
+.preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.preview-table th { background: #1a3a5c; color: #fff; position: sticky; top: 0; padding: 7px 10px; text-align: left; white-space: nowrap; z-index: 1; }
+.preview-table td { padding: 5px 10px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+.preview-table tr.sub-cv td { background: #e8f0fb; }
+.preview-table tr.sub-side td { background: #f1f8e9; }
+.preview-table tr.sub-separator td { background: #eee; border-top: 2px solid #ccc; font-weight: 700; font-size: 11px; color: #666; }
+.preview-table td.debit { color: #1565c0; font-weight: 600; }
+.preview-table td.credit { color: #2e7d32; font-weight: 600; }
+.preview-table td.zero { color: #bbb; }
+
+/* Summary */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.summary-card { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 7px; padding: 14px; text-align: center; }
+.summary-card .num { font-size: 22px; font-weight: 700; color: #1a3a5c; }
+.summary-card .lbl { font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+
+/* Messages */
+.msg-info { background: #e3f2fd; border: 1px solid #90caf9; border-radius: 6px; padding: 12px 16px; color: #1565c0; font-size: 13px; margin-bottom: 16px; }
+.msg-success { background: #f1f8e9; border: 1px solid #a5d6a7; border-radius: 6px; padding: 12px 16px; color: #2e7d32; font-size: 13px; margin-bottom: 16px; }
+.msg-warn { background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 12px 16px; color: #f57f17; font-size: 13px; margin-bottom: 16px; }
+
+/* Tab control for detail/consolidated */
+.tab-btns { display: flex; gap: 0; border-bottom: 2px solid #e0e0e0; margin-bottom: 16px; }
+.tab-btn { background: none; border: none; padding: 8px 18px; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; color: #666; }
+.tab-btn.active { border-bottom-color: #1a3a5c; color: #1a3a5c; font-weight: 700; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="drop-icon" style="font-size:28px;margin:0">&#128194;</div>
+  <div>
+    <h1>Subsidiary Payroll JE Generator</h1>
+    <span>Cardone Ventures &mdash; Intercompany Journal Entry Automation &mdash; v1.7</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Drop Zone -->
+  <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <div class="drop-icon">&#128462;</div>
+    <h2>Drop PE Extract Here</h2>
+    <p>Drop your <strong>PE_XXXX.xlsx</strong> file here, or click to browse<br>
+       Expects tabs: <strong>BuySell</strong> (Sub 3) and/or <strong>HS</strong> (Sub 20)</p>
+    <div id="fileNameDisplay" class="file-name" style="display:none"></div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+  </div>
+
+  <!-- Missing Lookups Alert -->
+  <div class="alert-box" id="alertBox">
+    <h3>&#9888; Missing Lookup Data &mdash; Fill in below and click "Apply &amp; Recalculate"</h3>
+    <div id="missingCodesSection" style="display:none">
+      <strong>Unknown Pay Codes:</strong> (set Bucket and whether to include in JE)
+      <div id="missingCodesList" style="margin-top:8px"></div>
+    </div>
+    <div id="missingEmpsSection" style="display:none;margin-top:12px">
+      <strong>Unmapped Employees:</strong> (set their CV-side department)
+      <div id="missingEmpsList" style="margin-top:8px"></div>
+    </div>
+    <button class="alert-apply" onclick="applyMissingAndRecalc()">&#128260; Apply &amp; Recalculate</button>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="card">
+    <div class="card-header" onclick="toggleCard('settingsBody', 'settingsToggle')">
+      <h3>&#9881; Settings &amp; Lookup Tables</h3>
+      <span class="card-toggle" id="settingsToggle">&#9660;</span>
+    </div>
+    <div class="card-body hidden" id="settingsBody">
+
+      <div class="settings-grid" style="margin-bottom:20px">
+        <div class="settings-group">
+          <label>CV Subsidiary ID</label>
+          <input id="cfg_cvSubId" value="11">
+          <label>10X Buy/Sell Subsidiary ID</label>
+          <input id="cfg_bsSub" value="3">
+          <label>10X HomeServe Subsidiary ID</label>
+          <input id="cfg_hsSub" value="20">
+        </div>
+        <div class="settings-group">
+          <label>Due To CV Account (all subs)</label>
+          <input id="cfg_dueToCV" value="25001 Due to Cardone Ventures">
+          <label>Buy/Sell Due From Account (CV books)</label>
+          <input id="cfg_dueFromBS" value="15109 Due From : Due To/From 10X Buy Sell, LLC">
+          <label>HomeServe Due From Account (CV books)</label>
+          <input id="cfg_dueFromHS" value="15138 Due From : Due to/from 10X Home Service">
+        </div>
+        <div class="settings-group">
+          <label>Buy/Sell Primary Department (NS name)</label>
+          <input id="cfg_bsPrimaryDept" value="10X Buy/Sell">
+          <label>HomeServe Primary Department (NS name)</label>
+          <input id="cfg_hsPrimaryDept" value="General Corporate">
+          <label>Buy/Sell Sub Name (for Memo)</label>
+          <input id="cfg_bsName" value="10X Buy/Sell">
+        </div>
+        <div class="settings-group">
+          <label>HomeServe Sub Name (for Memo)</label>
+          <input id="cfg_hsName" value="10X HomeServe">
+          <label>Commission Account on CV Side</label>
+          <input id="cfg_commCV" value="51010 Commissions : CV Sales Commission">
+          <label>Commission Account on Sub Side</label>
+          <input id="cfg_commSub" value="51000 Commissions">
+        </div>
+      </div>
+
+      <h4 style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Employee &rarr; CV Department Mapping</h4>
+      <p style="font-size:12px;color:#777;margin-bottom:8px">Determines which department on CV's books each employee's expenses are posted to.</p>
+      <table class="lookup-table" id="empMapTable">
+        <thead><tr><th>Employee Name (Last, First MI)</th><th>CV Department</th><th></th></tr></thead>
+        <tbody id="empMapBody"></tbody>
+      </table>
+      <button class="add-row-btn" onclick="addEmpRow()">+ Add Employee</button>
+
+      <h4 style="font-size:13px;font-weight:700;color:#1a3a5c;margin:20px 0 8px;text-transform:uppercase;letter-spacing:.5px">Department ID &rarr; Name Mapping</h4>
+      <p style="font-size:12px;color:#777;margin-bottom:8px">Maps GL Account department codes to NetSuite department names.</p>
+      <table class="lookup-table" id="deptMapTable">
+        <thead><tr><th>Dept Code (GL Account segment)</th><th>NS Department Name</th><th></th></tr></thead>
+        <tbody id="deptMapBody"></tbody>
+      </table>
+      <button class="add-row-btn" onclick="addDeptRow()">+ Add Department</button>
+
+      <h4 style="font-size:13px;font-weight:700;color:#1a3a5c;margin:20px 0 8px;text-transform:uppercase;letter-spacing:.5px">Pay Code Reference</h4>
+      <p style="font-size:12px;color:#777;margin-bottom:8px">Codes with <strong>In JE = No</strong> are excluded from journal entries. Add new codes as they appear.</p>
+      <table class="lookup-table" id="payCodeTable">
+        <thead><tr><th>Code</th><th>Description</th><th>Bucket</th><th>In JE?</th><th></th></tr></thead>
+        <tbody id="payCodeBody"></tbody>
+      </table>
+      <button class="add-row-btn" onclick="addPayCodeRow()">+ Add Pay Code</button>
+
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsSection" class="hidden">
+    <div class="card">
+      <div class="results-header">
+        <h3 id="resultsTitle">Journal Entry Preview</h3>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnDownloadConsolidated" onclick="downloadCSV('consolidated')">&#11015; Download Consolidated CSV</button>
+          <button class="btn btn-secondary" id="btnDownloadDetail" onclick="downloadCSV('detail')">&#11015; Download Detail CSV</button>
+        </div>
+      </div>
+
+      <div class="summary-grid" id="summaryGrid"></div>
+
+      <!-- Row Filter Diagnostics (collapsible) -->
+      <div id="debugPanel" style="display:none;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 12px;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:6px;margin-bottom:0"
+             onclick="toggleDebugBody()">
+          <span style="font-size:13px;font-weight:700;color:#555">&#128202; Row Filter Diagnostics</span>
+          <span style="font-size:11px;color:#999">(click to expand/collapse)</span>
+          <span id="debugToggle" style="margin-left:auto;color:#999">&#9660;</span>
+        </div>
+        <div id="debugBody" class="hidden" style="padding:12px;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 6px 6px;background:#fff;font-size:13px"></div>
+      </div>
+
+      <div class="tab-btns">
+        <button class="tab-btn active" id="tabConsolidated" onclick="switchTab('consolidated')">Consolidated</button>
+        <button class="tab-btn" id="tabDetail" onclick="switchTab('detail')">Detail (per employee)</button>
+      </div>
+
+      <div class="preview-wrap">
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Sub</th><th>Account</th><th>Debit</th><th>Credit</th>
+              <th>Line Memo</th><th>Department</th><th>Memo</th>
+              <th>Pay Date</th><th>JE Date</th><th>Employee</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+// ============================================================
+// EMBEDDED LOOKUP DATA
+// ============================================================
+
+const DEFAULT_PAY_CODES = {
+  '401KM':   { desc: 'Ded - 401K ER Match',                    bucket: '401k',     inJE: true  },
+  'COMM':    { desc: 'Ern - Commission',                        bucket: 'COMM',     inJE: true  },
+  'CIEE':    { desc: 'Ded - Crit Illness EE',                   bucket: 'Insurance',inJE: true  },
+  'LIFEE':   { desc: 'Ded - Sup Life Emp',                      bucket: 'Insurance',inJE: true  },
+  'AZSIT':   { desc: 'Tax - AZ State Income Tax',               bucket: 'EETaxes',  inJE: false },
+  'USFIT':   { desc: 'Tax - Federal Income Tax',                bucket: 'EETaxes',  inJE: false },
+  'USMEDEE': { desc: 'Tax - Employee Medicare',                 bucket: 'EETaxes',  inJE: false },
+  'USSOCEE': { desc: 'Tax - Social Security Employee Tax',      bucket: 'EETaxes',  inJE: false },
+  'USFUTA':  { desc: 'Tax - Federal Unemployment Tax',          bucket: 'ERTaxes',  inJE: true  },
+  'NCSIT':   { desc: 'Tax - NC State Income Tax',               bucket: 'EETaxes',  inJE: false },
+  'CASDIEE': { desc: 'Tax - CA Disability Employee',            bucket: 'EETaxes',  inJE: false },
+  'CASIT':   { desc: 'Tax - CA State Income Tax',               bucket: 'EETaxes',  inJE: false },
+  'AZSUIER': { desc: 'Tax - AZ Unemployment Employer',          bucket: 'ERTaxes',  inJE: true  },
+  'USMEDER': { desc: 'Tax - Employer Medicare',                 bucket: 'ERTaxes',  inJE: true  },
+  'USSOCER': { desc: 'Tax - Social Security Employer Tax',      bucket: 'ERTaxes',  inJE: true  },
+  'NCSUIER': { desc: 'Tax - NC Unemployment Employer',          bucket: 'ERTaxes',  inJE: true  },
+  'FLSUIER': { desc: 'Tax - FL Unemployment Employer',          bucket: 'ERTaxes',  inJE: true  },
+  'CASUIER': { desc: 'Tax - CA Unemployment Employer',          bucket: 'ERTaxes',  inJE: true  },
+  'HSAER':   { desc: 'Ern - HSA ER Contri',                     bucket: 'HSA',      inJE: true  },
+  'HSAI':    { desc: 'Ded - HSA Individual',                    bucket: 'HSA',      inJE: true  },
+  'HSAF':    { desc: 'Ded - HSA Family',                        bucket: 'HSA',      inJE: true  },
+  'INCEN':   { desc: 'Ern - Incentive',                         bucket: 'Incentive',inJE: true  },
+  'K1I':     { desc: 'Ern - K1 Incentive',                      bucket: 'Incentive',inJE: true  },
+  'DEN3A':   { desc: 'Ded - Dental Option 3',                   bucket: 'Insurance',inJE: true  },
+  'DEN2A':   { desc: 'Ded - Dental Opt 2',                      bucket: 'Insurance',inJE: true  },
+  'DEN1A':   { desc: 'Ded - Dental Opt 1',                      bucket: 'Insurance',inJE: true  },
+  'DEN3B':   { desc: 'Ded - Den K1 Opt 3',                      bucket: 'Insurance',inJE: true  },
+  'DEN2B':   { desc: 'Ded - Den K1 Opt 2',                      bucket: 'Insurance',inJE: true  },
+  'DEN3C':   { desc: 'Ded - Dent Exec Opt 3',                   bucket: 'Insurance',inJE: true  },
+  'MED1A':   { desc: 'Ded - Medical Opt 1',                     bucket: 'Insurance',inJE: true  },
+  'MED2A':   { desc: 'Ded - Medical Opt 2',                     bucket: 'Insurance',inJE: true  },
+  'MED3A':   { desc: 'Ded - Medical Opt HD',                    bucket: 'Insurance',inJE: true  },
+  'MED1B':   { desc: 'Ded - Med K1 Opt 1',                      bucket: 'Insurance',inJE: true  },
+  'MED1C':   { desc: 'Ded - Med Exec Opt 1',                    bucket: 'Insurance',inJE: true  },
+  'VIS1A':   { desc: 'Ded - Vision Opt 1',                      bucket: 'Insurance',inJE: true  },
+  'VIS2A':   { desc: 'Ded - Vision Opt 2',                      bucket: 'Insurance',inJE: true  },
+  'VIS1B':   { desc: 'Ded - Vis K1 Opt 1',                      bucket: 'Insurance',inJE: true  },
+  'VIS2B':   { desc: 'Ded - Vis K1 Opt 2',                      bucket: 'Insurance',inJE: true  },
+  'VIS1C':   { desc: 'Ded - Vis Exec Opt 1',                    bucket: 'Insurance',inJE: true  },
+  'VIS2C':   { desc: 'Ded - Vis Exec Opt 2',                    bucket: 'Insurance',inJE: true  },
+  'ACC1':    { desc: 'Ded - Accident - High',                    bucket: 'Insurance',inJE: true  },
+  'CISP':    { desc: 'Ded - Crit Illness SP',                    bucket: 'Insurance',inJE: true  },
+  'HOSP1':   { desc: 'Ded - Hospital Opt 1',                    bucket: 'Insurance',inJE: true  },
+  'HOSP2':   { desc: 'Ded - Hospital Opt 2',                    bucket: 'Insurance',inJE: true  },
+  'LIFEC':   { desc: 'Ded - Sup Life Child',                     bucket: 'Insurance',inJE: true  },
+  'LIFES':   { desc: 'Ded - Sup Life Spouse',                    bucket: 'Insurance',inJE: true  },
+  'LTDK1':   { desc: 'Ded - LTD',                               bucket: 'Insurance',inJE: true  },
+  'STDK1':   { desc: 'Ded - STD K1',                            bucket: 'Insurance',inJE: true  },
+  'GLIFE':   { desc: 'Ded - GTL ER Paid',                        bucket: 'Insurance',inJE: true  },
+  'LTD':     { desc: 'Ded - LTD ER Paid',                        bucket: 'Insurance',inJE: true  },
+  'MED1C2':  { desc: 'Ded - Med Exec Opt 1 (ER)',                bucket: 'Insurance',inJE: true  },
+  'STD':     { desc: 'Ded - STD ER Paid',                        bucket: 'Insurance',inJE: true  },
+  'FSAM':    { desc: 'Ded - FSA - Medical',                      bucket: 'Insurance',inJE: true  },
+  'RCELL':   { desc: 'Ern - Cell Reimb',                         bucket: 'RCELL',    inJE: true  },
+  'K1REG':   { desc: 'Ern - K1 Owner Pay',                       bucket: 'RegPay',   inJE: true  },
+  'REG':     { desc: 'Ern - Regular Pay',                        bucket: 'RegPay',   inJE: true  },
+  'PDPLV':   { desc: 'Ern - Parental Leave',                     bucket: 'RegPay',   inJE: true  },
+  '401P':    { desc: 'Ded - 401K',                               bucket: '401P',     inJE: false },
+};
+
+const DEFAULT_DEPT_MAP = {
+  '103': 'SBU',
+  '105': 'General Corporate',
+  '108': 'Marketing',
+  '111': 'Human Resources',
+  '112': 'Accounting',
+  '113': 'FP&A',
+  '114': 'Sales',
+  '115': 'Business Operations',
+  '117': 'Revified',
+  '118': '10X Financial Services',
+  '119': '10X Marketing',
+  '120': 'Project Management',
+  '121': 'Partnerships',
+  '123': 'Events',
+  '124': 'Platform',
+  '204': 'Production',
+  '205': 'Client Concierge',
+  '207': '10X Business Advisor',
+  '208': '10X Buy/Sell',
+  '209': '10X Recruiting',
+  '214': 'CTTI',
+  '216': 'Legal',
+  '217': '10X Home Services',
+  '218': '10X Roofing',
+  '219': 'BMLP',
+  '220': '10X Business Academy',
+  '221': 'Facilities',
+  '223': 'Data & Research',
+};
+
+const DEFAULT_EMP_MAP = {
+  'Benavidez, David A.':  '10X Buy/Sell',
+  'Bucher, Jan T.':       '10X Buy/Sell',
+  'Im, Sung Jin':         '10X Buy/Sell',
+  'Karney, Quinn T.':     '10X Buy/Sell',
+  'Porter, Izach S.':     '10X Buy/Sell',
+  'Wentzel, Brody':       '10X Buy/Sell',
+  'Wills, Oliver F.':     '10X Buy/Sell',
+  'Wetzler, Darin E.':    'General Corporate',
+};
+
+// Dept ID order for sorting CV-side lines (lower ID first)
+const DEPT_ID_ORDER = Object.fromEntries(
+  Object.keys(DEFAULT_DEPT_MAP).map(k => [DEFAULT_DEPT_MAP[k], parseInt(k)])
+);
+
+// Bucket configuration: cvAccount, subAccount, isDeduction, cvMemo, subMemo, sortOrder
+const BUCKET_CFG = {
+  'RegPay':    { cvAcc: '61021 Personnel : Payroll',                                    subAcc: '61021 Personnel : Payroll',                                    isDeduction: false, cvMemo: 'Payroll',              subMemo: 'Payroll',             ord: 1 },
+  'ERTaxes':   { cvAcc: '61050 Personnel : Payroll Taxes',                              subAcc: '61050 Personnel : Payroll Taxes',                              isDeduction: false, cvMemo: 'Payroll Taxes',        subMemo: 'Payroll Taxes',       ord: 2 },
+  '401k':      { cvAcc: '61066 Personnel : Benefits : 401(k) Expense',                  subAcc: '61066 Personnel : Benefits : 401(k) Expense',                  isDeduction: false, cvMemo: '401(k) Expense',       subMemo: '401(k) Expense',      ord: 3 },
+  'RCELL':     { cvAcc: '64031 Facilities & Equipment : Utilities : Telephone/Internet', subAcc: '64031 Facilities & Equipment : Utilities : Telephone/Internet', isDeduction: false, cvMemo: 'Telephone/Internet',   subMemo: 'Telephone/Internet',  ord: 4 },
+  'COMM':      { cvAcc: 'CONFIGURABLE',                                                  subAcc: 'CONFIGURABLE',                                                  isDeduction: false, cvMemo: 'CV Sales Commission',  subMemo: null,                  ord: 5 },
+  'Incentive': { cvAcc: '61022 Personnel : Incentives',                                 subAcc: '61022 Personnel : Incentives',                                  isDeduction: false, cvMemo: 'Incentives',           subMemo: 'Incentives',          ord: 6 },
+  'Insurance': { cvAcc: '61062 Personnel : Benefits : Insurance',                       subAcc: '61062 Personnel : Benefits : Insurance',                       isDeduction: true,  cvMemo: 'Insurance',            subMemo: 'Insurance',           ord: 7 },
+  'HSA':       { cvAcc: '61062 Personnel : Benefits : Insurance',                       subAcc: '61062 Personnel : Benefits : Insurance',                       isDeduction: true,  cvMemo: 'Insurance',            subMemo: 'Insurance',           ord: 8 },
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let payCodes = JSON.parse(JSON.stringify(DEFAULT_PAY_CODES));
+let deptMap   = JSON.parse(JSON.stringify(DEFAULT_DEPT_MAP));
+let empMap    = JSON.parse(JSON.stringify(DEFAULT_EMP_MAP));
+let lastWorkbook = null;
+let consolidatedRows = [];
+let detailRows = [];
+let currentTab = 'consolidated';
+let missingCodeOverrides = {};
+let missingEmpOverrides  = {};
+let lastDebugStats = {}; // tabName → _dbg object, populated each run
+
+// ============================================================
+// INIT: RENDER LOOKUP TABLES
+// ============================================================
+function renderEmpMap() {
+  const tbody = document.getElementById('empMapBody');
+  tbody.innerHTML = '';
+  Object.entries(empMap).forEach(([name, dept]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input value="${esc(name)}" onchange="empMap[this.dataset.old]=undefined;empMap[this.value]=this.nextInput;this.dataset.old=this.value" data-old="${esc(name)}"></td>
+      <td><input value="${esc(dept)}" onchange="empMap['${esc(name)}']=this.value"></td>
+      <td><button class="del-row-btn" onclick="delete empMap['${esc(name)}'];renderEmpMap()">&#215;</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function addEmpRow() {
+  empMap['New Employee, Name'] = '10X Buy/Sell';
+  renderEmpMap();
+}
+
+function renderDeptMap() {
+  const tbody = document.getElementById('deptMapBody');
+  tbody.innerHTML = '';
+  Object.entries(deptMap).sort((a,b) => parseInt(a[0])-parseInt(b[0])).forEach(([code, name]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input value="${esc(code)}" onchange="delete deptMap['${esc(code)}'];deptMap[this.value]='${esc(name)}'"></td>
+      <td><input value="${esc(name)}" onchange="deptMap['${esc(code)}']=this.value"></td>
+      <td><button class="del-row-btn" onclick="delete deptMap['${esc(code)}'];renderDeptMap()">&#215;</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function addDeptRow() {
+  deptMap['000'] = 'New Department';
+  renderDeptMap();
+}
+
+const BUCKETS_LIST = ['RegPay','ERTaxes','401k','RCELL','COMM','Incentive','Insurance','HSA','EETaxes','ERTaxes','401P','Other'];
+
+function renderPayCodeTable() {
+  const tbody = document.getElementById('payCodeBody');
+  tbody.innerHTML = '';
+  Object.entries(payCodes).forEach(([code, info]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input value="${esc(code)}" onchange="payCodes[this.value]=payCodes['${esc(code)}']; delete payCodes['${esc(code)}']" style="width:80px"></td>
+      <td><input value="${esc(info.desc)}" onchange="payCodes['${esc(code)}'].desc=this.value" style="width:220px"></td>
+      <td>
+        <select onchange="payCodes['${esc(code)}'].bucket=this.value">
+          ${BUCKETS_LIST.map(b=>`<option value="${b}"${b===info.bucket?' selected':''}>${b}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        <input type="checkbox" ${info.inJE?'checked':''} onchange="payCodes['${esc(code)}'].inJE=this.checked">
+      </td>
+      <td><button class="del-row-btn" onclick="delete payCodes['${esc(code)}'];renderPayCodeTable()">&#215;</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function addPayCodeRow() {
+  payCodes['NEW'] = { desc: 'New Code', bucket: 'RegPay', inJE: true };
+  renderPayCodeTable();
+}
+
+function esc(s) { return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ============================================================
+// DRAG & DROP / FILE INPUT
+// ============================================================
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    lastWorkbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+    document.getElementById('fileNameDisplay').textContent = file.name;
+    document.getElementById('fileNameDisplay').style.display = 'block';
+    dropZone.classList.add('loaded');
+    missingCodeOverrides = {};
+    missingEmpOverrides  = {};
+    processAndRender();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ============================================================
+// DATE HELPERS
+// ============================================================
+function parseDate(val) {
+  if (val instanceof Date) return val;
+  if (typeof val === 'number') {
+    // Excel serial date
+    const d = new Date((val - 25569) * 86400 * 1000);
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  if (typeof val === 'string') return new Date(val);
+  return new Date(val);
+}
+
+function fmtDate(d) {
+  // Returns zero-padded MM/DD/YYYY (e.g. 03/15/2026)
+  const m   = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const y   = d.getFullYear();
+  return `${m}/${day}/${y}`;
+}
+
+function fmtDatePad(d) {
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${m}/${day}/${d.getFullYear()}`;
+}
+
+function calcJEDate(payDate) {
+  const d = parseDate(payDate);
+  if (d.getDate() > 7) {
+    // 15th of same month
+    return new Date(d.getFullYear(), d.getMonth(), 15);
+  } else {
+    // Last day of prior month
+    return new Date(d.getFullYear(), d.getMonth(), 0);
+  }
+}
+
+function lastDayOfMonth(y, m) {
+  return new Date(y, m + 1, 0).getDate();
+}
+
+function buildPeriodStr(jeDate) {
+  const m = jeDate.getMonth() + 1;
+  const y = jeDate.getFullYear();
+  if (jeDate.getDate() === 15) {
+    return `${m}/1/${y} - ${m}/15/${y}`;
+  } else {
+    const last = lastDayOfMonth(y, jeDate.getMonth());
+    const lastStr = String(jeDate.getMonth()+1).padStart(2,'0') + '/' + String(last).padStart(2,'0') + '/' + y;
+    return `${m}/16/${y} - ${lastStr}`;
+  }
+}
+
+function buildMemo(subName, payDate, jeDate) {
+  const pd = parseDate(payDate);
+  const period = buildPeriodStr(jeDate);
+  return `${subName} Payroll | Period ${period} | Pay Date: ${fmtDatePad(pd)}`;
+}
+
+function buildLineMemo(memo, accountShort) {
+  if (!accountShort) return memo + ' ';
+  return `${memo}  |  ${accountShort}`;
+}
+
+// Get last segment of account name after last ":"
+function acctShort(accName) {
+  const parts = accName.split(':');
+  return parts[parts.length - 1].trim();
+}
+
+function initials(empName) {
+  if (!empName || typeof empName !== 'string') return '??';
+  const parts = empName.split(', ');
+  const lastInit = parts[0] ? parts[0].charAt(0) : '?';
+  const firstInit = parts[1] ? parts[1].trim().charAt(0) : '?';
+  return firstInit + lastInit;
+}
+
+// ============================================================
+// MAIN PROCESSING
+// ============================================================
+function getConfig() {
+  return {
+    cvSubId: document.getElementById('cfg_cvSubId').value.trim(),
+    bsSub:   document.getElementById('cfg_bsSub').value.trim(),
+    hsSub:   document.getElementById('cfg_hsSub').value.trim(),
+    dueToCV: document.getElementById('cfg_dueToCV').value.trim(),
+    dueFromBS: document.getElementById('cfg_dueFromBS').value.trim(),
+    dueFromHS: document.getElementById('cfg_dueFromHS').value.trim(),
+    bsPrimaryDept: document.getElementById('cfg_bsPrimaryDept').value.trim(),
+    hsPrimaryDept: document.getElementById('cfg_hsPrimaryDept').value.trim(),
+    bsName: document.getElementById('cfg_bsName').value.trim(),
+    hsName: document.getElementById('cfg_hsName').value.trim(),
+    commCV: document.getElementById('cfg_commCV').value.trim(),
+    commSub: document.getElementById('cfg_commSub').value.trim(),
+  };
+}
+
+const TAB_CONFIG = wb => {
+  const cfg = getConfig();
+  return {
+    'BuySell': { subId: cfg.bsSub, subName: cfg.bsName, dueFromAcc: cfg.dueFromBS, primaryDept: cfg.bsPrimaryDept },
+    'HS':      { subId: cfg.hsSub, subName: cfg.hsName, dueFromAcc: cfg.dueFromHS, primaryDept: cfg.hsPrimaryDept },
+  };
+};
+
+function readSheetRows(ws) {
+  const data = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'mm/dd/yyyy' });
+  if (!data.length) return [];
+  const header = data[0].map(h => String(h||'').trim());
+  const rows = [];
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    if (!r || !r.length) continue;
+    const obj = {};
+    header.forEach((h, j) => { obj[h] = r[j]; });
+    rows.push(obj);
+  }
+  return rows;
+}
+
+function processAndRender() {
+  if (!lastWorkbook) return;
+  const cfg = getConfig();
+  const tabCfg = TAB_CONFIG(lastWorkbook);
+
+  const missingCodes = new Map(); // code → description
+  consolidatedRows = [];
+  detailRows = [];
+  lastDebugStats = {};
+
+  // Build merged pay code lookup (base + overrides)
+  const effectivePCs = Object.assign({}, payCodes, missingCodeOverrides);
+
+  for (const [tabName, subCfg] of Object.entries(tabCfg)) {
+    if (!lastWorkbook.SheetNames.includes(tabName)) continue;
+    const ws = lastWorkbook.Sheets[tabName];
+    const rows = readSheetRows(ws);
+    if (!rows.length) continue;
+
+    // Parse rows — strict filters to exclude subtotal/total rows from the PE extract
+    const parsed = [];
+    let dbgTotal = 0, dbgSkipGL = 0, dbgSkipEmp = 0, dbgSkipCode = 0,
+        dbgSkipDate = 0, dbgSkipPC = 0, dbgSkipInJE = 0, dbgSkipDir = 0, dbgSkipAmt = 0;
+
+    for (const row of rows) {
+      dbgTotal++;
+
+      // 1. GL Account must be exactly SubID-AcctID-DeptID (e.g. "11-1687-208")
+      const glAcct = String(row['GL Account No.'] || '').trim();
+      if (!glAcct.match(/^\d+-\d+-\d+$/)) { dbgSkipGL++; continue; }
+      const parts = glAcct.split('-');
+      const deptCode = parts[2].trim();
+
+      // 2. Employee name must be present and non-numeric (filters subtotals & Net Cash IDs)
+      const empName = String(row['Employee Name (Last Suffix, First MI)'] || '').trim();
+      if (!empName || /^\d+$/.test(empName)) { dbgSkipEmp++; continue; }
+
+      // 3. Pay Code must be alphabetic (filters Net Cash numeric check IDs in Code column)
+      const code = String(row['Code'] || '').trim();
+      const codeDesc = String(row['Code Description (All)'] || '').trim();
+      if (!code || /^\d+$/.test(code)) { dbgSkipCode++; continue; }
+
+      // 4. Pay Date must be a real, parseable date — subtotal rows often have no date
+      const payDateRaw = row['Pay Date'];
+      let payDate;
+      try { payDate = parseDate(payDateRaw); } catch(e) { dbgSkipDate++; continue; }
+      if (!payDateRaw || isNaN(payDate.getTime())) { dbgSkipDate++; continue; }
+
+      // 5. Pay code must be in our lookup table
+      const pcInfo = effectivePCs[code];
+      if (!pcInfo) { missingCodes.set(code, codeDesc); dbgSkipPC++; continue; }
+
+      // 6. Code must be flagged In JE = true
+      if (!pcInfo.inJE) { dbgSkipInJE++; continue; }
+
+      // 7. Direction filter
+      //    Non-deduction codes (RegPay, ERTaxes, 401k, etc.): the PE has two GL rows per
+      //    transaction (expense debit + liability credit). Keep only the debit row.
+      //
+      //    Insurance/HSA codes: only rows where the GL Account middle segment = "376"
+      //    are relevant. Account 376 is the supplemental-benefits clearing account that
+      //    captures net EE deductions (credits) and the ER HSA contribution (debit).
+      //    Codes whose debit and credit both land on account 1690 cancel to zero and are
+      //    NOT charged intercompany (e.g. GLIFE, LTD, STD, MED1C). Filtering to 376
+      //    eliminates those automatically and avoids all double-counting.
+      const debit  = parseFloat(String(row['Debit Amount']  || '0').replace(/[^0-9.-]/g,'')) || 0;
+      const credit = parseFloat(String(row['Credit Amount'] || '0').replace(/[^0-9.-]/g,'')) || 0;
+      const isDeduction = pcInfo.bucket === 'Insurance' || pcInfo.bucket === 'HSA';
+      if (!isDeduction && debit <= 0) { dbgSkipDir++; continue; }
+      if (isDeduction && parts[1].trim() !== '376') { dbgSkipDir++; continue; }
+
+      // 8. Must have a non-zero net amount.
+      //    For insurance: bucketAmount = credit − debit (positive for EE deductions,
+      //    negative for ER HSA contribution — both net correctly when summed).
+      const bucketAmount = isDeduction ? (credit - debit) : (debit > 0 ? debit : credit);
+      if (bucketAmount === 0) { dbgSkipAmt++; continue; }
+
+      // CV dept comes directly from the GL Account department segment
+      const cvDept = deptMap[deptCode] || `Dept-${deptCode}`;
+
+      parsed.push({ empName, code, bucket: pcInfo.bucket, debit, credit, payDate, cvDept, bucketAmount, isDeduction, deptCode });
+    }
+
+    // Store debug stats for display in renderResults
+    const dbg = { total: dbgTotal, skipGL: dbgSkipGL, skipEmp: dbgSkipEmp,
+      skipCode: dbgSkipCode, skipDate: dbgSkipDate, skipPC: dbgSkipPC,
+      skipInJE: dbgSkipInJE, skipDir: dbgSkipDir, skipAmt: dbgSkipAmt, kept: parsed.length };
+    subCfg._dbg = dbg;
+    lastDebugStats[tabName] = dbg;
+
+    // Group by pay date
+    const payDateMap = new Map();
+    for (const r of parsed) {
+      const key = r.payDate.toISOString().slice(0,10);
+      if (!payDateMap.has(key)) payDateMap.set(key, []);
+      payDateMap.get(key).push(r);
+    }
+
+    const sortedDates = [...payDateMap.keys()].sort();
+    for (const dateKey of sortedDates) {
+      const periodRows = payDateMap.get(dateKey);
+      const payDate = periodRows[0].payDate;
+      const jeDate  = calcJEDate(payDate);
+      const memo    = buildMemo(subCfg.subName, payDate, jeDate);
+
+      // Build consolidated JE
+      const cRows = buildConsolidatedJE(periodRows, subCfg, cfg, memo, payDate, jeDate);
+      consolidatedRows.push(...cRows);
+
+      // Build detail JE
+      const dRows = buildDetailJE(periodRows, subCfg, cfg, memo, payDate, jeDate);
+      detailRows.push(...dRows);
+    }
+  }
+
+  // Handle missing pay codes
+  const alertBox = document.getElementById('alertBox');
+  const missingCodesSection = document.getElementById('missingCodesSection');
+  const missingCodesList = document.getElementById('missingCodesList');
+  missingCodesList.innerHTML = '';
+
+  const unknownCodes = [...missingCodes.entries()].filter(([c]) => !missingCodeOverrides[c]);
+  if (unknownCodes.length) {
+    alertBox.style.display = 'block';
+    missingCodesSection.style.display = 'block';
+    unknownCodes.forEach(([code, desc]) => {
+      const div = document.createElement('div');
+      div.className = 'alert-item';
+      div.innerHTML = `
+        <label style="min-width:110px;font-weight:700">${code}</label>
+        <span style="min-width:260px;color:#555;font-size:12px">${desc || '—'}</span>
+        Bucket: <select id="mc_bucket_${code}">
+          ${['RegPay','ERTaxes','401k','RCELL','COMM','Incentive','Insurance','HSA','EETaxes','401P','Other'].map(b=>`<option>${b}</option>`).join('')}
+        </select>
+        &nbsp;In JE: <select id="mc_inje_${code}"><option value="true">Yes</option><option value="false">No</option></select>`;
+      missingCodesList.appendChild(div);
+    });
+  } else {
+    alertBox.style.display = 'none';
+  }
+
+  renderResults();
+}
+
+function applyMissingAndRecalc() {
+  document.querySelectorAll('[id^="mc_bucket_"]').forEach(el => {
+    const code = el.id.replace('mc_bucket_','');
+    const inJE = document.getElementById('mc_inje_'+code)?.value === 'true';
+    missingCodeOverrides[code] = { desc: code, bucket: el.value, inJE };
+    payCodes[code] = missingCodeOverrides[code];
+  });
+  renderPayCodeTable();
+  processAndRender();
+}
+
+// ============================================================
+// JE BUILDING — CONSOLIDATED
+// ============================================================
+function buildConsolidatedJE(periodRows, subCfg, cfg, memo, payDate, jeDate) {
+  const cvSubId    = cfg.cvSubId;
+  const subId      = subCfg.subId;
+  const dueFromAcc = subCfg.dueFromAcc;
+  const primaryDept = subCfg.primaryDept;
+  const commCVAcc  = cfg.commCV;
+  const commSubAcc = cfg.commSub;
+  const payDateStr = fmtDate(payDate);
+  const jeDateStr  = fmtDate(jeDate);
+
+  // Short prefix for Line Memo (e.g. "10X Buy/Sell Payroll")
+  const shortMemo = `${subCfg.subName} Payroll`;
+
+  const expenseBuckets   = ['RegPay','ERTaxes','401k','RCELL','COMM','Incentive'];
+  const deductionBuckets = ['Insurance','HSA'];
+
+  // Aggregate by (cvDept, bucket)
+  const cvDeptBuckets = new Map();
+  for (const r of periodRows) {
+    const key = `${r.cvDept}|${r.bucket}`;
+    cvDeptBuckets.set(key, (cvDeptBuckets.get(key) || 0) + r.bucketAmount);
+  }
+
+  // Always include General Corporate so zero-value rows are emitted even when
+  // no employee data falls in that department (e.g. BuySell employees are all
+  // in dept 208, but the reference requires GC rows at $0 for completeness).
+  const allDepts = new Set(['General Corporate']);
+  for (const [key] of cvDeptBuckets) allDepts.add(key.split('|')[0]);
+  const sortedDepts = [...allDepts].sort((a, b) => {
+    const aId = Object.entries(deptMap).find(([, n]) => n === a)?.[0] || '999';
+    const bId = Object.entries(deptMap).find(([, n]) => n === b)?.[0] || '999';
+    return parseInt(aId) - parseInt(bId);
+  });
+
+  // Grand totals
+  let totalExpenses = 0;
+  let totalInsurance = 0;
+  for (const dept of sortedDepts) {
+    for (const b of expenseBuckets)   totalExpenses  += cvDeptBuckets.get(`${dept}|${b}`) || 0;
+    for (const b of deductionBuckets) totalInsurance += cvDeptBuckets.get(`${dept}|${b}`) || 0;
+  }
+
+  // Per-bucket totals summed across all depts (for sub-side amounts)
+  const bucketTotals = {};
+  for (const b of [...expenseBuckets, ...deductionBuckets]) {
+    bucketTotals[b] = sortedDepts.reduce((s, d) => s + (cvDeptBuckets.get(`${d}|${b}`) || 0), 0);
+  }
+
+  const rows = [];
+  // makeRow: dueToFrom = counterparty sub ID for intercompany column
+  const makeRow = (sub, acc, debit, credit, lineMemo, dept, dueToFrom = '') => ({
+    Subsidiary: sub,
+    Account: acc,
+    Debit:  round2(debit  || 0),
+    Credit: round2(credit || 0),
+    'Line Memo': lineMemo,
+    Entity: '',
+    'Entity ID': '',
+    Department: dept || '',
+    Class: '',
+    Location: '',
+    Memo: memo,
+    'External ID': memo,
+    'Pay Date': payDateStr,
+    'JE Date': jeDateStr,
+    'Due To/From Subsidiary': dueToFrom,
+    'Employee Name': '',
+  });
+
+  // ── CV SIDE: Expense Credits (every dept × every expense bucket, even if $0) ──
+  for (const dept of sortedDepts) {
+    for (const bucket of expenseBuckets) {
+      const amt  = cvDeptBuckets.get(`${dept}|${bucket}`) || 0;
+      const bcfg = BUCKET_CFG[bucket];
+      const acc  = bucket === 'COMM' ? commCVAcc : bcfg.cvAcc;
+      const lbl  = bucket === 'COMM' ? acctShort(commCVAcc) : bcfg.cvMemo;
+      rows.push(makeRow(cvSubId, acc, 0, amt, `${shortMemo}  |  ${lbl}`, dept, subId));
+    }
+  }
+
+  // ── CV SIDE: Insurance Debits (every dept, even if $0) ──────────────────────
+  for (const dept of sortedDepts) {
+    const insAmt = deductionBuckets.reduce((s, b) => s + (cvDeptBuckets.get(`${dept}|${b}`) || 0), 0);
+    rows.push(makeRow(cvSubId, BUCKET_CFG['Insurance'].cvAcc, insAmt, 0,
+      `${shortMemo}  |  Insurance`, dept, subId));
+  }
+
+  // ── CV SIDE: Due From lines (always both, even if insurance = 0) ─────────────
+  rows.push(makeRow(cvSubId, dueFromAcc, 0, totalInsurance, `${shortMemo}  |  Insurance`, '', subId));
+  rows.push(makeRow(cvSubId, dueFromAcc, totalExpenses,     0,              shortMemo,    '', subId));
+
+  // ── SUB SIDE: Due To lines ────────────────────────────────────────────────────
+  rows.push(makeRow(subId, cfg.dueToCV, 0,             totalExpenses, shortMemo,                   '', cvSubId));
+  rows.push(makeRow(subId, cfg.dueToCV, totalInsurance, 0,            `${shortMemo}  |  Insurance`, '', cvSubId));
+
+  // ── SUB SIDE: Expense Debits (every dept × every bucket; amounts only under primaryDept) ──
+  for (const dept of sortedDepts) {
+    for (const bucket of expenseBuckets) {
+      const amt  = dept === primaryDept ? (bucketTotals[bucket] || 0) : 0;
+      const bcfg = BUCKET_CFG[bucket];
+      const acc  = bucket === 'COMM' ? commSubAcc : bcfg.subAcc;
+      const lbl  = bucket === 'COMM' ? acctShort(commSubAcc) : bcfg.subMemo;
+      rows.push(makeRow(subId, acc, amt, 0, `${shortMemo}  |  ${lbl}`, dept, cvSubId));
+    }
+  }
+
+  // ── SUB SIDE: Insurance Credit (every dept; amount only under primaryDept) ───
+  for (const dept of sortedDepts) {
+    const insAmt = dept === primaryDept ? totalInsurance : 0;
+    rows.push(makeRow(subId, BUCKET_CFG['Insurance'].subAcc, 0, insAmt,
+      `${shortMemo}  |  Insurance`, dept, cvSubId));
+  }
+
+  return rows;
+}
+
+// ============================================================
+// JE BUILDING — DETAIL (per employee)
+// ============================================================
+function buildDetailJE(periodRows, subCfg, cfg, memo, payDate, jeDate) {
+  const cvSubId    = cfg.cvSubId;
+  const subId      = subCfg.subId;
+  const dueFromAcc = subCfg.dueFromAcc;
+  const primaryDept = subCfg.primaryDept;
+  const commCVAcc  = cfg.commCV;
+  const commSubAcc = cfg.commSub;
+  const payDateStr = fmtDate(payDate);
+  const jeDateStr  = fmtDate(jeDate);
+  const shortMemo  = `${subCfg.subName} Payroll`;
+  const expenseBuckets   = ['RegPay','ERTaxes','401k','RCELL','COMM','Incentive'];
+  const deductionBuckets = ['Insurance','HSA'];
+
+  // Group by employee
+  const empGroups = new Map();
+  for (const r of periodRows) {
+    if (!empGroups.has(r.empName)) empGroups.set(r.empName, []);
+    empGroups.get(r.empName).push(r);
+  }
+
+  const rows = [];
+  const makeRow = (sub, acc, debit, credit, lineMemo, dept, empName, dueToFrom = '') => ({
+    Subsidiary: sub,
+    Account: acc,
+    Debit:  round2(debit  || 0),
+    Credit: round2(credit || 0),
+    'Line Memo': lineMemo,
+    Entity: '',
+    'Entity ID': '',
+    Department: dept || '',
+    Class: '',
+    Location: '',
+    Memo: memo,
+    'External ID': memo,
+    'Pay Date': payDateStr,
+    'JE Date': jeDateStr,
+    'Due To/From Subsidiary': dueToFrom,
+    'Employee Name': empName || '',
+  });
+
+  for (const [empName, empRows] of empGroups) {
+    const cvDept = empRows[0].cvDept;
+    const ini = initials(empName);
+    const sfx = ` | ${ini} PR`;   // line memo suffix per employee
+
+    // Aggregate by bucket for this employee
+    const bucketAmts = {};
+    for (const r of empRows) {
+      bucketAmts[r.bucket] = (bucketAmts[r.bucket] || 0) + r.bucketAmount;
+    }
+
+    const totalExpenses  = expenseBuckets.reduce((s, b)   => s + (bucketAmts[b] || 0), 0);
+    const totalInsurance = deductionBuckets.reduce((s, b) => s + (bucketAmts[b] || 0), 0);
+
+    if (!totalExpenses && !totalInsurance) continue;
+
+    // CV Due From Debit (main)
+    rows.push(makeRow(cvSubId, dueFromAcc, totalExpenses, 0,
+      shortMemo + ' ' + sfx, '', empName, subId));
+    // CV Due From Credit (insurance offset)
+    rows.push(makeRow(cvSubId, dueFromAcc, 0, totalInsurance,
+      shortMemo + ' ' + sfx, '', empName, subId));
+    // CV expense credits
+    for (const bucket of expenseBuckets) {
+      const amt = bucketAmts[bucket] || 0;
+      if (!amt) continue;
+      const bcfg = BUCKET_CFG[bucket];
+      const acc  = bucket === 'COMM' ? commCVAcc : bcfg.cvAcc;
+      const lbl  = bucket === 'COMM' ? acctShort(commCVAcc) : bcfg.cvMemo;
+      rows.push(makeRow(cvSubId, acc, 0, amt, `${shortMemo}  |  ${lbl}${sfx}`, cvDept, empName, subId));
+    }
+    // CV insurance debit
+    if (totalInsurance > 0) {
+      rows.push(makeRow(cvSubId, BUCKET_CFG['Insurance'].cvAcc, totalInsurance, 0,
+        `${shortMemo}  |  Insurance${sfx}`, cvDept, empName, subId));
+    }
+
+    // Sub Due To Credit (main)
+    rows.push(makeRow(subId, cfg.dueToCV, 0, totalExpenses,
+      shortMemo + ' ' + sfx, '', empName, cvSubId));
+    // Sub Due To Debit (insurance)
+    if (totalInsurance > 0) {
+      rows.push(makeRow(subId, cfg.dueToCV, totalInsurance, 0,
+        `${shortMemo}  |  Insurance${sfx}`, '', empName, cvSubId));
+    }
+    // Sub expense debits
+    for (const bucket of expenseBuckets) {
+      const amt = bucketAmts[bucket] || 0;
+      if (!amt) continue;
+      const bcfg = BUCKET_CFG[bucket];
+      const acc  = bucket === 'COMM' ? commSubAcc : bcfg.subAcc;
+      const lbl  = bucket === 'COMM' ? acctShort(commSubAcc) : bcfg.subMemo;
+      rows.push(makeRow(subId, acc, amt, 0, `${shortMemo}  |  ${lbl}${sfx}`, primaryDept, empName, cvSubId));
+    }
+    // Sub insurance credit
+    if (totalInsurance > 0) {
+      rows.push(makeRow(subId, BUCKET_CFG['Insurance'].subAcc, 0, totalInsurance,
+        `${shortMemo}  |  Insurance${sfx}`, primaryDept, empName, cvSubId));
+    }
+  }
+
+  return rows;
+}
+
+// ============================================================
+// RENDER RESULTS
+// ============================================================
+function round2(n) { return Math.round(n * 100) / 100; }
+
+function renderResults() {
+  const section = document.getElementById('resultsSection');
+  if (!consolidatedRows.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+
+  // Summary
+  const cfg = getConfig();
+  const totalDebit  = consolidatedRows.reduce((s,r) => s + (r.Debit||0), 0);
+  const totalCredit = consolidatedRows.reduce((s,r) => s + (r.Credit||0), 0);
+  const payDates    = [...new Set(consolidatedRows.map(r=>r['Pay Date']))];
+  const subIds      = [...new Set(consolidatedRows.map(r=>r['Subsidiary']))];
+
+  document.getElementById('summaryGrid').innerHTML = `
+    <div class="summary-card"><div class="num">${consolidatedRows.length}</div><div class="lbl">Consol. JE Lines</div></div>
+    <div class="summary-card"><div class="num">${detailRows.length}</div><div class="lbl">Detail Lines</div></div>
+    <div class="summary-card"><div class="num">${payDates.length}</div><div class="lbl">Pay Periods</div></div>
+    <div class="summary-card"><div class="num">${fmt$(totalDebit)}</div><div class="lbl">Total Debits</div></div>
+    <div class="summary-card"><div class="num">${fmt$(totalCredit)}</div><div class="lbl">Total Credits</div></div>
+    <div class="summary-card"><div class="num">${subIds.join(', ')}</div><div class="lbl">Subsidiaries</div></div>
+  `;
+
+  // Row filter diagnostics panel
+  let dbgHtml = '';
+  for (const [tabName, d] of Object.entries(lastDebugStats)) {
+    const excluded = d.total - d.kept;
+    dbgHtml += `
+      <div style="margin-bottom:12px">
+        <strong style="color:#1a3a5c">${tabName} tab</strong>
+        &nbsp;&nbsp;<span style="color:#2e7d32;font-weight:700">${d.kept} rows kept</span>
+        &nbsp;/&nbsp;<span style="color:#999">${d.total} total rows read</span>
+        &nbsp;&nbsp;<span style="color:#c00">${excluded} excluded</span>
+        <table style="margin-top:6px;font-size:12px;border-collapse:collapse;width:100%">
+          <tr>
+            <th style="text-align:left;padding:3px 10px;background:#f5f5f5;border:1px solid #e0e0e0">Filter</th>
+            <th style="text-align:right;padding:3px 10px;background:#f5f5f5;border:1px solid #e0e0e0">Rows Excluded</th>
+            <th style="text-align:left;padding:3px 10px;background:#f5f5f5;border:1px solid #e0e0e0">Reason</th>
+          </tr>
+          ${[
+            [d.skipGL,   'Bad GL Account format (subtotals/blanks)'],
+            [d.skipEmp,  'Missing/numeric employee name (subtotal rows)'],
+            [d.skipCode, 'Missing/numeric code (Net Cash check IDs)'],
+            [d.skipDate, 'Missing or unparseable pay date'],
+            [d.skipPC,   'Pay code not in lookup (logged as Unknown)'],
+            [d.skipInJE, 'Pay code has In JE = No (intentionally excluded)'],
+            [d.skipDir,  'Credit-only row for non-deduction code (payable offset — excluded to prevent double-count)'],
+            [d.skipAmt,  'Zero amount'],
+          ].map(([n, reason]) => `
+            <tr>
+              <td style="padding:3px 10px;border:1px solid #e0e0e0">${reason}</td>
+              <td style="padding:3px 10px;border:1px solid #e0e0e0;text-align:right;font-weight:${n>0?'700':'400'};color:${n>0?'#c00':'#bbb'}">${n}</td>
+              <td style="padding:3px 10px;border:1px solid #e0e0e0;color:#888"></td>
+            </tr>`).join('')}
+        </table>
+      </div>`;
+  }
+
+  const dbgPanel = document.getElementById('debugPanel');
+  const dbgBody  = document.getElementById('debugBody');
+  if (dbgPanel) {
+    dbgBody.innerHTML = dbgHtml || '<em style="color:#999">No debug data</em>';
+    dbgPanel.style.display = 'block';
+  }
+
+  renderPreviewTable(currentTab === 'consolidated' ? consolidatedRows : detailRows, cfg.cvSubId);
+}
+
+function fmt$(n) {
+  return '$' + (round2(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderPreviewTable(rows, cvSubId) {
+  const tbody = document.getElementById('previewBody');
+  tbody.innerHTML = '';
+  let lastMemo = '';
+  rows.forEach((r, i) => {
+    if (r.Memo !== lastMemo) {
+      const sep = document.createElement('tr');
+      sep.className = 'sub-separator';
+      sep.innerHTML = `<td colspan="11">${r.Memo}</td>`;
+      tbody.appendChild(sep);
+      lastMemo = r.Memo;
+    }
+    const tr = document.createElement('tr');
+    tr.className = String(r.Subsidiary) === String(cvSubId) ? 'sub-cv' : 'sub-side';
+    const db = r.Debit  ? `<span class="debit">${fmt$(r.Debit)}</span>`  : `<span class="zero">—</span>`;
+    const cr = r.Credit ? `<span class="credit">${fmt$(r.Credit)}</span>` : `<span class="zero">—</span>`;
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td><strong>${r.Subsidiary}</strong></td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.Account)}">${r.Account}</td>
+      <td>${db}</td><td>${cr}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${esc(r['Line Memo'])}">${r['Line Memo']}</td>
+      <td>${r.Department}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.Memo)}">${r.Memo.split(' | ')[0]}</td>
+      <td>${r['Pay Date']}</td>
+      <td>${r['JE Date']}</td>
+      <td>${r['Employee Name'] || ''}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ============================================================
+// DOWNLOAD CSV
+// ============================================================
+const CSV_HEADERS = ['Subsidiary','Account','Debit','Credit','Line Memo','Entity','Entity ID','Department','Class','Location','Memo','External ID','Pay Date','JE Date','Due To/From Subsidiary','Employee Name'];
+
+function downloadCSV(type) {
+  const rows = type === 'consolidated' ? consolidatedRows : detailRows;
+  if (!rows.length) return;
+
+  // Strip rows where both Debit and Credit are zero — these are placeholder lines
+  // needed for the on-screen preview but should be excluded from the NetSuite import file.
+  const exportRows = rows.filter(r => (r.Debit || 0) !== 0 || (r.Credit || 0) !== 0);
+
+  const lines = [CSV_HEADERS.join(',')];
+  for (const r of exportRows) {
+    const vals = CSV_HEADERS.map(h => {
+      let v = r[h] !== undefined ? r[h] : '';
+      if (h === 'Debit' || h === 'Credit') v = Number(v || 0).toFixed(2);
+      v = String(v);
+      if (v.includes(',') || v.includes('"') || v.includes('\n')) v = '"' + v.replace(/"/g, '""') + '"';
+      return v;
+    });
+    lines.push(vals.join(','));
+  }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const stamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  a.href = url;
+  a.download = `Subsidiary_Payroll_JE_${type === 'consolidated' ? 'Consolidated' : 'Detail'}_${stamp}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function toggleCard(bodyId, toggleId) {
+  const body = document.getElementById(bodyId);
+  const tog  = document.getElementById(toggleId);
+  body.classList.toggle('hidden');
+  tog.textContent = body.classList.contains('hidden') ? '▾' : '▴';
+}
+
+function toggleDebugBody() {
+  const body = document.getElementById('debugBody');
+  const tog  = document.getElementById('debugToggle');
+  body.classList.toggle('hidden');
+  tog.textContent = body.classList.contains('hidden') ? '▾' : '▴';
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabConsolidated').classList.toggle('active', tab === 'consolidated');
+  document.getElementById('tabDetail').classList.toggle('active', tab === 'detail');
+  if (consolidatedRows.length) {
+    const cfg = getConfig();
+    renderPreviewTable(tab === 'consolidated' ? consolidatedRows : detailRows, cfg.cvSubId);
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+(function init() {
+  renderEmpMap();
+  renderDeptMap();
+  renderPayCodeTable();
+})();
+</script>
+
+<script>const TOOL_KEY='payroll-je-subsidiary'; const TOOL_VERSION='1.7';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

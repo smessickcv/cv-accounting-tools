@@ -1,0 +1,2147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC Reconciliation Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter','Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;font-size:13px}
+  :root{--accent:#1d4ed8;--accent-light:#eff6ff;--border:#e2e8f0}
+
+  /* Header */
+  .header{background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:white;padding:16px 24px}
+  .header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .header h1{font-size:20px;font-weight:800;letter-spacing:-0.5px}
+  .header p{font-size:11px;opacity:.75;margin-top:2px}
+  .tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.2);gap:0}
+  .tab-btn{padding:8px 18px;background:none;border:none;cursor:pointer;color:white;font-weight:700;font-size:12px;
+    border-bottom:3px solid transparent;opacity:.6;transition:all .15s;display:flex;align-items:center;gap:6px;font-family:inherit}
+  .tab-btn.active{border-bottom-color:white;opacity:1}
+  .badge{background:#ef4444;color:white;border-radius:99px;font-size:10px;font-weight:800;padding:1px 6px}
+
+  /* Layout */
+  .content{padding:20px 24px}
+  .card{background:white;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px}
+  .card-title{font-weight:700;font-size:14px;color:#1e293b;margin-bottom:4px}
+  .card-sub{font-size:11px;color:#6b7280;margin-bottom:14px}
+
+  /* Buttons */
+  .btn{border:none;border-radius:7px;padding:8px 16px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+  .btn-primary{background:var(--accent);color:white}
+  .btn-primary:hover{background:#1e40af}
+  .btn-primary:disabled{background:#93c5fd;cursor:not-allowed}
+  .btn-secondary{background:#f3f4f6;color:#374151}
+  .btn-sm{padding:4px 10px;font-size:11px}
+  .btn-danger{background:none;border:none;cursor:pointer;color:#dc2626;font-size:14px;padding:0 4px}
+  .btn-white{background:white;color:var(--accent);border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:12px;cursor:pointer}
+
+  /* File uploads */
+  .upload-grid{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .upload-zone{flex:1;min-width:140px;border:2px dashed #d1d5db;border-radius:10px;padding:16px 12px;
+    cursor:pointer;background:#fafafa;transition:all .2s;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:#eff6ff}
+  .upload-zone.loaded{border-color:#16a34a;background:#f0fdf4}
+  .upload-zone input{display:none}
+  .upload-icon{font-size:22px;margin-bottom:4px}
+  .upload-label{font-size:11px;font-weight:700;margin-bottom:2px}
+  .upload-hint{font-size:10px;color:#6b7280}
+
+  /* Alert */
+  .alert{border-radius:10px;padding:12px 16px;margin-bottom:14px}
+  .alert-warn{background:#fff7ed;border:2px solid #f97316}
+  .alert-warn .alert-title{font-weight:700;font-size:13px;color:#c2410c;margin-bottom:8px}
+  .alert-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .alert-tag{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:3px 8px;font-size:11px}
+  .alert-tag.new-card{background:#fee2e2;border:1px solid #fca5a5}
+  .alert-tag.no-suffix{background:#fef3c7;border:1px solid #fde68a}
+  .alert-tag .tag-id{font-family:monospace;font-weight:700;color:#92400e}
+  .alert-tag .tag-name{color:#6b7280}
+  .alert-tag .tag-status{font-size:10px;color:#dc2626}
+
+  /* Summary cards */
+  .summary-grid{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .stat-card{border-radius:10px;padding:10px 14px;cursor:pointer;min-width:110px;border:2px solid;transition:all .15s}
+  .stat-card .stat-num{font-size:20px;font-weight:800}
+  .stat-card .stat-label{font-size:11px;font-weight:600;margin-top:2px}
+  .stat-card .stat-amt{font-size:10px;opacity:.8;margin-top:1px}
+
+  /* Filters */
+  .filters{background:white;border-radius:10px;padding:12px 16px;margin-bottom:14px;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .filters input,.filters select{border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px;font-family:inherit}
+  .filters input{flex:2;min-width:180px}
+  .filters select{flex:1;min-width:130px}
+  .filters .count{font-size:12px;color:#6b7280;white-space:nowrap}
+
+  /* Table */
+  .table-wrap{background:white;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
+  .table-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead tr{background:#f1f5f9;border-bottom:2px solid #e2e8f0}
+  th{padding:9px 12px;text-align:left;font-weight:700;color:#374151;cursor:pointer;white-space:nowrap;user-select:none;font-size:11px}
+  th.amt-col{text-align:right}
+  tbody tr{border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .1s}
+  tbody tr:hover{background:#f8fafc!important}
+  tbody tr.expanded{background:#eff6ff!important}
+  tbody tr.faded{opacity:.5}
+  td{padding:7px 12px;vertical-align:middle}
+  td.amt-col{text-align:right;font-weight:600;white-space:nowrap}
+  td.credit{color:#16a34a}
+  .td-ellipsis{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .source-tag{font-size:10px;background:#f3f4f6;border-radius:4px;padding:1px 5px;white-space:nowrap}
+  .detail-row td{background:#eff6ff;border-bottom:2px solid #bfdbfe;padding:10px 20px}
+  .detail-grid{display:flex;gap:20px;flex-wrap:wrap;font-size:12px}
+  .detail-item b{color:#374151;display:block;margin-bottom:2px}
+  .detail-item span{color:#6b7280}
+  .issue-text{color:#dc2626}
+  .note-text{color:#1d4ed8;font-style:italic}
+
+  /* Status badge */
+  .badge-status{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;
+    border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+  .badge-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+  /* Action buttons in table */
+  .action-btn{border:1px solid #e5e7eb;border-radius:5px;padding:2px 7px;background:white;cursor:pointer;font-size:11px;font-family:inherit}
+  .action-btn.personal-on{border-color:#16a34a;background:#dcfce7;color:#16a34a}
+
+  /* Mapping table */
+  .map-table{width:100%;border-collapse:collapse;font-size:12px}
+  .map-table thead tr{background:#f1f5f9}
+  .map-table th{padding:8px 12px;text-align:left;font-weight:700;color:#374151;font-size:11px;border-bottom:2px solid #e2e8f0;white-space:nowrap}
+  .map-table tbody tr{border-bottom:1px solid #f1f5f9}
+  .map-table td{padding:7px 10px;vertical-align:middle}
+  .map-row-normal{background:white}
+  .map-row-unmapped{background:#fff7ed}
+  .map-row-new{background:#fff1f2}
+  .map-row-inactive{background:#f9fafb;opacity:.6}
+  .map-input{border:1px solid #e5e7eb;border-radius:5px;padding:4px 7px;font-size:12px;font-family:inherit}
+  .map-input-warn{border-color:#f97316;background:#fff7ed}
+  .map-input-error{border-color:#ef4444;background:#fff1f2}
+  .map-select{border:1px solid #e5e7eb;border-radius:5px;padding:4px 7px;font-size:11px;font-family:inherit;width:100%;max-width:340px}
+  .map-select-warn{border-color:#f97316;background:#fff7ed}
+  .map-select-error{border-color:#ef4444;background:#fff1f2}
+  .new-badge{font-size:9px;font-weight:800;background:#dc2626;color:white;border-radius:4px;padding:1px 5px;letter-spacing:.5px}
+  .personal-btn{border:2px solid #e5e7eb;border-radius:8px;padding:5px 9px;background:white;cursor:pointer;font-size:11px;font-family:inherit;transition:all .15s}
+  .personal-btn.on{border-color:#16a34a;background:#dcfce7;color:#16a34a}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+  .modal{background:white;border-radius:12px;padding:24px;width:420px;max-width:90vw}
+  .modal h3{font-weight:700;font-size:15px;margin-bottom:8px}
+  .modal p{font-size:12px;color:#6b7280;margin-bottom:10px}
+  .modal textarea{width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:10px;font-size:13px;height:90px;resize:vertical;font-family:inherit}
+  .modal-btns{display:flex;gap:10px;margin-top:12px}
+
+  /* Config summary */
+  .config-grid{display:flex;gap:16px;flex-wrap:wrap}
+  .config-col{flex:1;min-width:180px}
+  .config-col-title{font-weight:600;font-size:12px;margin-bottom:6px;color:#374151}
+  .config-row{font-size:11px;padding:2px 0;display:flex;gap:6px;align-items:center}
+  .mono-tag{font-family:monospace;background:#f3f4f6;padding:1px 5px;border-radius:4px}
+  .mono-tag-blue{font-family:monospace;background:#eff6ff;padding:1px 5px;border-radius:4px;color:var(--accent)}
+
+  /* Personal tags */
+  .personal-tags{display:flex;gap:6px;flex-wrap:wrap}
+  .personal-tag{display:flex;align-items:center;gap:6px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;padding:5px 10px}
+
+  /* Hidden */
+  .hidden{display:none!important}
+
+  /* Dashboard */
+  .dash-period{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+  .dash-period input{border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px;font-family:inherit}
+  .dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+  .dash-card{background:white;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
+  .dash-card-header{padding:12px 16px;font-weight:700;font-size:13px;color:white;display:flex;justify-content:space-between;align-items:center}
+  .dash-card-body{padding:0}
+  .dash-row{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-bottom:1px solid #f1f5f9;font-size:12px}
+  .dash-row:last-child{border-bottom:none}
+  .dash-row.total{font-weight:700;background:#f8fafc;font-size:13px}
+  .dash-row.balance{font-weight:800;font-size:14px;background:#f0fdf4}
+  .dash-label{color:#374151}
+  .dash-label.sub{color:#6b7280;font-size:11px;padding-left:12px}
+  .dash-val{font-family:monospace;font-weight:600}
+  .dash-val.pos{color:#16a34a}
+  .dash-val.neg{color:#dc2626}
+  .dash-val.neutral{color:#374151}
+  .dash-issues{padding:8px 16px;background:#fff7ed;font-size:11px;color:#92400e;display:flex;align-items:center;gap:6px}
+  .dash-compare-head{display:grid;grid-template-columns:1fr 90px 90px 90px;gap:0;padding:5px 16px;
+    background:#f8fafc;border-bottom:2px solid #e2e8f0;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.4px}
+  .dash-compare-head span:not(:first-child){text-align:right}
+  .dash-compare-row{display:grid;grid-template-columns:1fr 90px 90px 90px;gap:0;padding:7px 16px;
+    border-bottom:1px solid #f1f5f9;font-size:12px;align-items:center}
+  .dash-compare-row span:not(:first-child){text-align:right;font-family:monospace;font-size:11px}
+  .dash-compare-row.total-row{font-weight:700;background:#f8fafc;font-size:12px}
+  .dash-compare-row.total-row span:not(:first-child){font-size:12px}
+  .dash-compare-row.personal-row{background:#f9fafb;color:#6b7280}
+  .dash-var-good{color:#16a34a}
+  .dash-var-bad{color:#dc2626}
+  .dash-var-zero{color:#9ca3af}
+  .dash-section-divider{padding:5px 16px;background:#f1f5f9;font-size:10px;font-weight:700;
+    color:#374151;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0}
+  .dash-summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}
+  .dash-kpi{text-align:center;padding:12px;background:#f8fafc;border-radius:8px}
+  .dash-kpi-val{font-size:22px;font-weight:800;margin-bottom:2px}
+  .dash-kpi-label{font-size:11px;color:#6b7280}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1>💳 Credit Card Reconciliation</h1>
+      <p>Amex Platinum · Amex Centurion · Umpqua/Columbia · NetSuite</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label class="btn-white" title="Load a previously saved mapping config" style="cursor:pointer;display:flex;align-items:center;gap:5px">
+        <input type="file" accept=".json" style="display:none" onchange="loadConfig(this)">
+        📂 Load Config
+      </label>
+      <button class="btn-white" onclick="saveConfig()" title="Save current mappings to a JSON file you can reload next session">💾 Save Config</button>
+      <button class="btn-white" id="exportBtn" onclick="downloadCSV()" style="display:none">⬇ Export CSV</button>
+      <button class="btn-white" id="exportPersonalsBtn" onclick="downloadPersonalsCSV()" style="display:none" title="Export personal transactions only">👤 Export Personals</button>
+      <button class="btn-white" id="exportXlsxBtn" onclick="downloadDashboardXLSX()" style="display:none;background:#16a34a;border:1px solid rgba(255,255,255,.3)">📊 Export Dashboard XLSX</button>
+      <button class="btn-white" id="exportTruncBtn" onclick="downloadTruncatedRefsCSV()" style="display:none;background:#d97706;border:1px solid rgba(255,255,255,.3)" title="Export list of NS entries with truncated reference numbers for correction">⚠️ Export Truncated Refs</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="upload" onclick="switchTab('upload')">📁 Upload &amp; Run</button>
+    <button class="tab-btn" data-tab="mapping" onclick="switchTab('mapping')" id="mappingTabBtn">🗺️ Account Mapping</button>
+    <button class="tab-btn" data-tab="results" onclick="switchTab('results')" id="resultsTabBtn">📊 Results</button>
+    <button class="tab-btn" data-tab="dashboard" onclick="switchTab('dashboard')" id="dashboardTabBtn">📈 Dashboard</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ UPLOAD TAB -->
+<div class="content" id="tab-upload">
+
+  <div style="max-width:820px;margin:0 auto">
+    <div class="card">
+      <div class="card-title">📁 Upload Source Files</div>
+      <div class="upload-grid">
+        <label class="upload-zone" id="zone-plat" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropFile(event,'plat')">
+          <input type="file" accept=".csv" onchange="loadFile(this,'plat')">
+          <div class="upload-icon" id="icon-plat">📄</div>
+          <div class="upload-label" id="lbl-plat">Amex Platinum CSV</div>
+          <div class="upload-hint" id="hint-plat">Drop CSV or click</div>
+        </label>
+        <label class="upload-zone" id="zone-cent" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropFile(event,'cent')">
+          <input type="file" accept=".csv" onchange="loadFile(this,'cent')">
+          <div class="upload-icon" id="icon-cent">📄</div>
+          <div class="upload-label" id="lbl-cent">Amex Centurion CSV</div>
+          <div class="upload-hint" id="hint-cent">Drop CSV or click</div>
+        </label>
+        <label class="upload-zone" id="zone-ump" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropFile(event,'ump')">
+          <input type="file" accept=".csv" onchange="loadFile(this,'ump')">
+          <div class="upload-icon" id="icon-ump">📄</div>
+          <div class="upload-label" id="lbl-ump">Umpqua/Columbia CSV</div>
+          <div class="upload-hint" id="hint-ump">Drop CSV or click</div>
+        </label>
+        <label class="upload-zone" id="zone-ns" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropFile(event,'ns')">
+          <input type="file" accept=".csv,.xls,.xlsx" onchange="loadFile(this,'ns')">
+          <div class="upload-icon" id="icon-ns">📄</div>
+          <div class="upload-label" id="lbl-ns">NetSuite CC Transactions</div>
+          <div class="upload-hint" id="hint-ns">Combined charges &amp; refunds — CSV or XLS</div>
+        </label>
+      </div>
+
+      <div id="fileStats" style="font-size:11px;color:#6b7280;display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;display:none"></div>
+
+      <!-- Unmapped alert -->
+      <div class="alert alert-warn hidden" id="uploadAlert">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div style="flex:1">
+            <div class="alert-title" id="uploadAlertTitle"></div>
+            <div class="alert-tags" id="uploadAlertTags"></div>
+          </div>
+          <button class="btn btn-sm" style="background:#f97316;color:white;flex-shrink:0" onclick="switchTab('mapping')">Fix in Mapping Tab →</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="runBtn" onclick="runReconciliation()" disabled style="width:100%;padding:11px;font-size:14px;margin-top:4px">
+        🔁 Run Reconciliation
+      </button>
+      <div id="runHint" style="text-align:center;font-size:11px;color:#9ca3af;margin-top:6px">Upload all 4 files to enable reconciliation</div>
+    </div>
+
+    <!-- Config summary -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div class="card-title" style="margin-bottom:0">⚙️ Current Mapping Configuration</div>
+        <span id="autoSaveIndicator" style="font-size:11px;color:#16a34a;display:none">✓ Auto-saved</span>
+      </div>
+      <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Mappings auto-save to your browser and reload next session. Use <b>Save Config</b> to export a portable file, or <b>Load Config</b> to restore from a file.</p>
+      <div class="config-grid" id="configSummary"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ MAPPING TAB -->
+<div class="content hidden" id="tab-mapping">
+
+  <!-- Mapping alert banner -->
+  <div class="alert alert-warn hidden" id="mappingAlert">
+    <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <span style="font-weight:700;font-size:13px;color:#c2410c" id="mappingAlertTitle"></span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1" id="mappingAlertTags"></div>
+      <span style="font-size:11px;color:#9a3412">Assign NS accounts below, then re-run.</span>
+    </div>
+  </div>
+
+  <!-- Centurion mapping -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+      <div>
+        <div class="card-title">💳 Centurion Card → NetSuite Account Mapping</div>
+        <div class="card-sub" style="margin-bottom:0">Map each Centurion card (by Account # suffix) to its NetSuite GL account. Changes apply on next run.</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="addCentRow()">+ Add Row</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="map-table">
+        <thead><tr>
+          <th>Active</th><th>Card Suffix</th><th>Cardholder / Account Name</th>
+          <th>NS Suffix</th><th>NS Account (from NS data)</th><th></th>
+        </tr></thead>
+        <tbody id="centMapBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Personal accounts -->
+  <div class="card">
+    <div class="card-title">👤 Centurion Personal Accounts</div>
+    <div class="card-sub">Mark card suffixes as personal – excluded from NetSuite matching.</div>
+    <div class="personal-tags" id="personalTagsDisplay" style="margin-bottom:14px"></div>
+    <div id="personalToggleArea"></div>
+  </div>
+
+  <!-- Umpqua mapping -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+      <div>
+        <div class="card-title">🏦 Umpqua Card → NetSuite Account Mapping</div>
+        <div class="card-sub" style="margin-bottom:0">Map each Umpqua card (by last 4 digits) to its NetSuite GL account suffix.</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="addUmpRow()">+ Add Row</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="map-table">
+        <thead><tr>
+          <th>Active</th><th>Card Last 4</th><th>Cardholder / Account Name</th>
+          <th>NS Suffix</th><th>NS Account (from NS data)</th><th></th>
+        </tr></thead>
+        <tbody id="umpMapBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Platinum ref -->
+  <div class="card" id="platRefCard" style="display:none">
+    <div class="card-title">💎 Platinum NS Account</div>
+    <div class="card-sub">Auto-detected from NetSuite export. No mapping required.</div>
+    <div id="platRefContent"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ RESULTS TAB -->
+<div class="content hidden" id="tab-results">
+
+  <div class="summary-grid" id="summaryCards"></div>
+
+  <div class="filters">
+    <input type="text" id="searchInput" placeholder="🔍 Search description, cardholder..." oninput="renderTable()">
+    <select id="filterStatus" onchange="renderTable()"><option value="ALL">All Statuses</option></select>
+    <select id="filterAccount" onchange="renderTable()"><option value="ALL">All Accounts</option></select>
+    <select id="filterSource" onchange="renderTable()"><option value="ALL">All Sources</option></select>
+    <span class="count" id="rowCount"></span>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th onclick="sortBy('date')">Date <span id="sort-date"></span></th>
+            <th onclick="sortBy('source')">Source <span id="sort-source"></span></th>
+            <th onclick="sortBy('account')">Account <span id="sort-account"></span></th>
+            <th onclick="sortBy('description')">Description <span id="sort-description"></span></th>
+            <th onclick="sortBy('cardholder')">Cardholder <span id="sort-cardholder"></span></th>
+            <th class="amt-col" onclick="sortBy('amountRaw')">Amount <span id="sort-amountRaw"></span></th>
+            <th onclick="sortBy('status')">Status <span id="sort-status"></span></th>
+            <th>Issue / Note</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ DASHBOARD TAB -->
+<div class="content hidden" id="tab-dashboard">
+  <div class="dash-summary" id="dashSummaryCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-weight:700;font-size:16px;color:#1e293b">Period Summary</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px" id="dashPeriodLabel">Run reconciliation to generate dashboard</div>
+      </div>
+      <div class="dash-period">
+        <label style="font-size:12px;color:#374151;font-weight:600">Period Start
+          <input type="date" id="dashStart" onchange="renderDashboard()" style="display:block;margin-top:3px">
+        </label>
+        <label style="font-size:12px;color:#374151;font-weight:600">Period End
+          <input type="date" id="dashEnd" onchange="renderDashboard()" style="display:block;margin-top:3px">
+        </label>
+      </div>
+    </div>
+    <div class="dash-summary-grid" id="dashKpis"></div>
+  </div>
+  <div id="dashGrid">
+    <div style="color:#9ca3af;font-size:13px;grid-column:1/-1;text-align:center;padding:48px">
+      Run reconciliation to generate the dashboard.
+    </div>
+  </div>
+</div>
+
+<!-- NOTE MODAL -->
+<div class="modal-overlay hidden" id="noteModal">
+  <div class="modal">
+    <h3>📝 Add / Edit Note</h3>
+    <p>Notes carry into the exported CSV. Use for personal exclusions, approvals, or follow-up items.</p>
+    <textarea id="noteTextarea" placeholder="e.g. Personal charge – approved exclusion, or Date discrepancy confirmed OK..."></textarea>
+    <div class="modal-btns">
+      <button class="btn btn-primary" style="flex:1" onclick="saveNote()">Save Note</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="closeNoteModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+
+const STATE = {
+  parsed: { plat: null, cent: null, ump: null, ns: null },
+  results: [],
+  notes: {},
+  personalOverrides: {},
+  personalSuffixes: new Set(["1087","2051","1368","2408","5278"]),
+  centMap: [
+    {cardSuffix:"1053",cardName:"N Dawson",nsSuffix:"1053",nsLabel:"21108 Centurion : N Dawson - 1053",active:true},
+    {cardSuffix:"1103",cardName:"Scottsdale",nsSuffix:"1103",nsLabel:"21109 Centurion : Scottsdale - 1103",active:true},
+    {cardSuffix:"1111",cardName:"CV Travel",nsSuffix:"1111",nsLabel:"21110 Centurion : CV Travel - 1111",active:true},
+    {cardSuffix:"1178",cardName:"G Petagna",nsSuffix:"1178",nsLabel:"21122 Centurion : G Petagna - 1178",active:true},
+    {cardSuffix:"1194",cardName:"P Amacher",nsSuffix:"1194",nsLabel:"21115 Centurion : P Amacher - 1194",active:true},
+    {cardSuffix:"1251",cardName:"F Stein",nsSuffix:"1251",nsLabel:"21125 Centurion : F Stein - 1251",active:true},
+    {cardSuffix:"1269",cardName:"J Gabbert",nsSuffix:"1269",nsLabel:"21126 Centurion : J Gabbert - 1269",active:true},
+    {cardSuffix:"1293",cardName:"A Mcgee",nsSuffix:"1293",nsLabel:"21129 Centurion : A Mcgee - 1293",active:true},
+    {cardSuffix:"1327",cardName:"R Graybill",nsSuffix:"1327",nsLabel:"21132 Centurion : R Graybill - 1327",active:true},
+    {cardSuffix:"1343",cardName:"C Hanzlik",nsSuffix:"1343",nsLabel:"21134 Centurion : C Hanzlik - 1343",active:true},
+    {cardSuffix:"1376",cardName:"Brandon Dawson Tech",nsSuffix:"1376",nsLabel:"21137 Centurion : Brandon Dawson Tech - 01376",active:true},
+    {cardSuffix:"1392",cardName:"Brandon Dawson Gen Corp",nsSuffix:"1392",nsLabel:"21139 Centurion : Brandon Dawson Gen Corp - 01392",active:true},
+    {cardSuffix:"1400",cardName:"Brandon Dawson CV Mktg",nsSuffix:"1400",nsLabel:"21138 Centurion : Brandon Dawson CV Marketing - 01400",active:true},
+    {cardSuffix:"1418",cardName:"Brandon Dawson Ad Spend",nsSuffix:"1418",nsLabel:"21140 Centurion : Brandon Dawson Ad Spend - 01418",active:true},
+    {cardSuffix:"1426",cardName:"Brandon Dawson Biz Svcs",nsSuffix:"1426",nsLabel:"21141 Centurion : Brandon Dawson Business Services - 01426",active:true},
+    {cardSuffix:"1434",cardName:"L Robinson",nsSuffix:"1434",nsLabel:"21142 Centurion : L Robinson - 1434",active:true},
+    {cardSuffix:"1442",cardName:"P Cox",nsSuffix:"1442",nsLabel:"21143 Centurion : P Cox - 1442",active:true},
+    {cardSuffix:"2044",cardName:"A Mills",nsSuffix:"2044",nsLabel:"21102 Centurion : A Mills - 2044",active:true},
+    {cardSuffix:"3000",cardName:"B Dawson",nsSuffix:"3000",nsLabel:"21104 Centurion : B Dawson - 3000",active:true},
+    {cardSuffix:"3273",cardName:"M Kostowic",nsSuffix:"3273",nsLabel:"21128 Centurion : M Kostowic - 3273",active:true},
+    {cardSuffix:"4230",cardName:"T Ralston",nsSuffix:"4230",nsLabel:"21124 Centurion : T Ralston - 4230",active:true},
+  ],
+  umpMap: [
+    {cardLast4:"1173",cardName:"VIRTUAL ACCT 10XRADSPEND",nsSuffix:"1173",nsLabel:"Roofing Ad Spend 10X - 1173",active:true},
+    {cardLast4:"9162",cardName:"VIRTUAL ACCT MARKETING",nsSuffix:"4374",nsLabel:"CV Marketing - 4374",active:true},
+    {cardLast4:"0058",cardName:"MARKETING 10X SERVICES",nsSuffix:"6670",nsLabel:"Marketing 10X Services - 6670",active:true},
+    {cardLast4:"6720",cardName:"VIRTUAL ACCT 10XHPRO",nsSuffix:"",nsLabel:"⚠️ Unmapped",active:true},
+    {cardLast4:"5983",cardName:"ALEXIS VIRTUAL MILLS",nsSuffix:"5983",nsLabel:"Alexis Virtual Mills - 5983",active:true},
+    {cardLast4:"2695",cardName:"MATTHEW HENDRYX",nsSuffix:"2965",nsLabel:"BL ACCT / Matt Hendryx - 2965",active:true},
+  ],
+  sortCol: "date", sortAsc: true,
+  expandedId: null, editingId: null,
+  activeTab: "upload",
+  confirmedMatches: new Set(), // IDs of DATE_MISMATCH rows the user has confirmed as true matches
+  paymentOverrides: new Set(), // IDs of UNMATCHED_CREDIT rows promoted to PAYMENT by user
+  hiddenDashAccounts: new Set(), // account keys toggled off in dashboard
+};
+
+const STATUS_CFG = {
+  MATCHED:         {label:"Matched",          color:"#16a34a",bg:"#dcfce7",dot:"#22c55e"},
+  DATE_MISMATCH:   {label:"Date Mismatch",    color:"#d97706",bg:"#fef3c7",dot:"#f59e0b"},
+  REFUND_MATCHED:  {label:"Refund Matched",   color:"#0891b2",bg:"#e0f7fa",dot:"#06b6d4"},
+  MISSING_NS:      {label:"Missing in NS",    color:"#dc2626",bg:"#fee2e2",dot:"#ef4444"},
+  UNMATCHED_CREDIT:{label:"Unmatched Credit", color:"#be185d",bg:"#fce7f3",dot:"#ec4899"},
+  EXTRA_NS:        {label:"Extra in NS",      color:"#7c3aed",bg:"#ede9fe",dot:"#8b5cf6"},
+  NO_NS_ACCOUNT:   {label:"No NS Account",    color:"#0369a1",bg:"#e0f2fe",dot:"#0ea5e9"},
+  PERSONAL:        {label:"Personal",         color:"#6b7280",bg:"#f3f4f6",dot:"#9ca3af"},
+  PAYMENT:         {label:"Payment",          color:"#6b7280",bg:"#f3f4f6",dot:"#9ca3af"},
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+const cleanAmt = s => { if(!s) return null; const v=parseFloat(String(s).replace(/[$,]/g,"").trim()); return isNaN(v)?null:v; };
+const fmtAmt = v => v==null?"":v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const parseDate = s => { if(!s) return null; const d=new Date(s); return isNaN(d)?null:d; };
+const fmtDate = d => { if(!d) return ""; return d.toISOString().slice(0,10); };
+const daysDiff = (a,b) => { if(!a||!b) return 9999; return Math.abs((a-b)/86400000); };
+const getAcctSuffix = s => { if(!s) return ""; const m=String(s).match(/-\s*0*(\d+)\s*$/); return m?m[1]:""; };
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CSV PARSERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function parseCSVLine(line){
+  const result=[]; let cur="",inQ=false;
+  for(const ch of line){
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){result.push(cur);cur="";}
+    else{cur+=ch;}
+  }
+  result.push(cur); return result;
+}
+function csvToRows(text){
+  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+  const rows=[]; let i=0;
+  while(i<lines.length){
+    let full=lines[i];
+    while((full.match(/"/g)||[]).length%2!==0&&i+1<lines.length){i++;full+="\n"+lines[i];}
+    rows.push(parseCSVLine(full)); i++;
+  }
+  return rows;
+}
+function rowsToObjects(rows){
+  if(!rows.length) return [];
+  const headers=rows[0].map(h=>h.trim().replace(/^"|"$/g,""));
+  return rows.slice(1).map(r=>{
+    const obj={};
+    headers.forEach((h,i)=>{obj[h]=(r[i]||"").trim().replace(/^"|"$/g,"");});
+    return obj;
+  });
+}
+function parsePlatinum(text){
+  return rowsToObjects(csvToRows(text)).filter(r=>r.Date&&r.Amount).map(r=>({
+    date:fmtDate(parseDate(r.Date)),dateTs:parseDate(r.Date),
+    description:r.Description||r["Appears On Your Statement As"]||"",
+    cardholder:r["Card Member"]||"",acctNum:String(r["Account #"]||"").trim(),
+    amount:cleanAmt(r.Amount),reference:String(r.Reference||"").trim().replace(/'/g,""),
+    category:r.Category||"",source:"Amex Platinum",
+  }));
+}
+function parseCenturion(text){
+  const rows=csvToRows(text);
+  let s=0; for(let i=0;i<rows.length;i++){if(rows[i][0]?.trim()==="Date"){s=i;break;}}
+  return rowsToObjects(rows.slice(s)).filter(r=>r.Date&&r.Amount&&r.Amount.trim()!=="").map(r=>{
+    const raw=r["Account #"]||"";
+    const suffix=raw?String(Math.abs(parseFloat(raw.replace(",",""))||0)):"";
+    return{date:fmtDate(parseDate(r.Date)),dateTs:parseDate(r.Date),
+      description:r.Description||"",cardholder:r["Card Member"]||"",
+      acctNum:raw,acctSuffix:suffix,amount:cleanAmt(r.Amount),
+      reference:String(r.Reference||"").trim(),category:r.Category||"",source:"Amex Centurion"};
+  });
+}
+function parseUmpqua(text){
+  return rowsToObjects(csvToRows(text)).filter(r=>r["Transaction Date"]&&r.Amount).map(r=>{
+    const raw=r["Originating Account Number"]||"";
+    // Use Post Date for NS matching (NS entries are posted against Post Date).
+    // Transaction Date is kept as the display date for the export.
+    const postDateTs = parseDate(r["Post Date"]) || parseDate(r["Transaction Date"]);
+    return{date:fmtDate(parseDate(r["Transaction Date"])),dateTs:postDateTs,
+      postDate:fmtDate(parseDate(r["Post Date"])),
+      description:r["Merchant Name"]||"",cardholder:r["Cardholder Name"]||"",
+      acctNum:raw,acctLast4:raw.replace(/\*/g,"").slice(-4),
+      amount:cleanAmt(r.Amount),reference:r["Reference Number"]||"",
+      category:r["MCC Description"]||"",txType:r["Transaction Type"]||"",source:"Umpqua"};
+  });
+}
+// Detects Excel scientific-notation truncation of long reference numbers (e.g. 3.2026E+17)
+const SCI_NOTATION_RE = /^[\d.]+[Ee][+\-]?\d+$/;
+const isSciNotation = s => SCI_NOTATION_RE.test(String(s||"").trim());
+
+// Parses amounts including parenthetical negatives: (1,234.56) → -1234.56
+function cleanAmtNS(s) {
+  if (!s) return null;
+  const str = String(s).replace(/[$\s]/g, "").trim();
+  if (str.startsWith("(") && str.endsWith(")")) {
+    const v = parseFloat(str.slice(1,-1).replace(/,/g,""));
+    return isNaN(v) ? null : -v;
+  }
+  const v = parseFloat(str.replace(/,/g,""));
+  return isNaN(v) ? null : v;
+}
+
+// Parse SpreadsheetML XML (the format NetSuite exports as .xls)
+function parseNetSuiteXLS(xmlText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, "text/xml");
+  const NS = "urn:schemas-microsoft-com:office:spreadsheet";
+
+  // Get all rows from the first worksheet
+  const rows = Array.from(doc.getElementsByTagNameNS(NS, "Row"));
+  if (!rows.length) return [];
+
+  // Extract cell values — handle merged/skipped cells via ss:Index attribute
+  function getRowValues(row) {
+    const cells = Array.from(row.getElementsByTagNameNS(NS, "Cell"));
+    const vals = {};
+    let colIdx = 0;
+    for (const cell of cells) {
+      const idx = cell.getAttribute("ss:Index");
+      if (idx) colIdx = parseInt(idx) - 1;
+      const data = cell.getElementsByTagNameNS(NS, "Data")[0];
+      vals[colIdx] = data ? (data.textContent || "") : "";
+      colIdx++;
+    }
+    // Convert sparse object to dense array
+    const maxIdx = Math.max(...Object.keys(vals).map(Number), -1);
+    return Array.from({length: maxIdx + 1}, (_, i) => vals[i] ?? "");
+  }
+
+  const headerRow = getRowValues(rows[0]);
+  const headers = headerRow.map(h => (h || "").trim());
+
+  return rows.slice(1).map(row => {
+    const vals = getRowValues(row);
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (vals[i] || "").trim(); });
+    return obj;
+  }).filter(r => r.Date && r.Amount).map(r => {
+    const docNum = (r["Document Number"] || "").replace(/'/g, "").trim();
+    // XLS amounts are plain numbers (no $ or commas), negatives use - prefix
+    const amt = parseFloat(r.Amount);
+    return {
+      internalId: r["Internal ID"] || "",
+      docNum,
+      refTruncated: isSciNotation(docNum),
+      date: fmtDate(parseDate(r.Date)), dateTs: parseDate(r.Date),
+      name: r.Name || "", account: r.Account || "",
+      acctSuffix: getAcctSuffix(r.Account), memo: r.Memo || "",
+      amount: isNaN(amt) ? null : amt,
+      createdBy: r["Created By"] || r["Transaction Number"] || "",
+    };
+  }).filter(r => r.amount !== null);
+}
+
+function parseNetSuite(text){
+  const rows = rowsToObjects(csvToRows(text));
+  return rows.filter(r=>r.Date&&r.Amount).map(r=>{
+    // New combined file has duplicate 'Internal ID' column — first one is correct
+    // Also supports old format with 'Created By'
+    const amt = cleanAmtNS(r.Amount);
+    const docNum = (r["Document Number"] || "").replace(/'/g, "").trim();
+    return {
+      internalId: r["Internal ID"] || "",
+      docNum,
+      refTruncated: isSciNotation(docNum),
+      date: fmtDate(parseDate(r.Date)), dateTs: parseDate(r.Date),
+      name: r.Name || "", account: r.Account || "",
+      acctSuffix: getAcctSuffix(r.Account), memo: r.Memo || "",
+      amount: amt, createdBy: r["Created By"] || r["Transaction Number"] || "",
+    };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FILE LOADING
+// ═══════════════════════════════════════════════════════════════════════════
+
+function dragOver(e,el){e.preventDefault();el.classList.add("drag");}
+function dragLeave(el){el.classList.remove("drag");}
+function dropFile(e,key){e.preventDefault();const el=document.querySelector(`#zone-${key}`);el.classList.remove("drag");const f=e.dataTransfer.files[0];if(f) readFile(f,key);}
+function loadFile(input,key){if(input.files[0]) readFile(input.files[0],key);}
+
+function readFile(file,key){
+  const isXLS = key === "ns" && (file.name.toLowerCase().endsWith(".xls") || file.name.toLowerCase().endsWith(".xlsx"));
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    let data;
+    try {
+      if (key === "plat")       data = parsePlatinum(text);
+      else if (key === "cent")  data = parseCenturion(text);
+      else if (key === "ump")   data = parseUmpqua(text);
+      else if (isXLS)           data = parseNetSuiteXLS(text);
+      else                      data = parseNetSuite(text);
+    } catch(err) { alert("Error parsing " + key + ": " + err.message); return; }
+    STATE.parsed[key] = data;
+
+    // Auto-detect new unmapped cards
+    if(key==="cent"){
+      const seen=new Map();
+      for(const r of data) if(r.acctSuffix&&!seen.has(r.acctSuffix)) seen.set(r.acctSuffix,r.cardholder);
+      const existing=new Set(STATE.centMap.map(m=>m.cardSuffix));
+      for(const[suffix,name] of seen)
+        if(!existing.has(suffix)) STATE.centMap.push({cardSuffix:suffix,cardName:name,nsSuffix:"",nsLabel:"",active:true,_new:true});
+      renderCentMap();
+    }
+    if(key==="ump"){
+      const seen=new Map();
+      for(const r of data) if(r.acctLast4&&!seen.has(r.acctLast4)) seen.set(r.acctLast4,r.cardholder);
+      const existing=new Set(STATE.umpMap.map(m=>m.cardLast4));
+      for(const[last4,name] of seen)
+        if(!existing.has(last4)) STATE.umpMap.push({cardLast4:last4,cardName:name,nsSuffix:"",nsLabel:"",active:true,_new:true});
+      renderUmpMap();
+    }
+    if(key==="ns"){
+      renderCentMap(); renderUmpMap();
+      const plat=data.filter(r=>r.account.includes("Platinum")||r.account.includes("American Express"));
+      const platAccts=[...new Set(plat.map(r=>r.account))];
+      const platCard=document.getElementById("platRefCard");
+      const platContent=document.getElementById("platRefContent");
+      if(platAccts.length){
+        platCard.style.display="";
+        platContent.innerHTML=platAccts.map(a=>`<span style="display:inline-block;background:#fef3c7;border:1px solid #fde68a;border-radius:7px;padding:5px 12px;font-size:12px;color:#92400e;font-weight:600">${esc(a)}</span>`).join(" ");
+      }
+    }
+
+    // Update upload zone UI
+    const zone=document.getElementById("zone-"+key);
+    zone.classList.add("loaded"); zone.classList.remove("drag");
+    document.getElementById("icon-"+key).textContent="✅";
+    document.getElementById("lbl-"+key).style.color="#16a34a";
+    document.getElementById("hint-"+key).textContent="Loaded ✓";
+
+    updateFileStats();
+    checkRunReady();
+    updateUnmappedAlerts();
+    renderConfigSummary();
+    renderPersonalSection();
+  };
+  reader.readAsText(file);
+}
+
+function updateFileStats(){
+  const p=STATE.parsed;
+  const stats=[];
+  if(p.plat)  stats.push(`Platinum: <b>${p.plat.length}</b> txns`);
+  if(p.cent)  stats.push(`Centurion: <b>${p.cent.length}</b> txns`);
+  if(p.ump)   stats.push(`Umpqua: <b>${p.ump.length}</b> txns`);
+  if(p.ns){
+    const pos=p.ns.filter(r=>r.amount>=0).length;
+    const neg=p.ns.filter(r=>r.amount<0).length;
+    stats.push(`NetSuite: <b>${pos}</b> charges, <b>${neg}</b> refunds`);
+  }
+  const el=document.getElementById("fileStats");
+  el.innerHTML=stats.join(" &nbsp;·&nbsp; ");
+  el.style.display=stats.length?"flex":"none";
+}
+
+function checkRunReady(){
+  const p=STATE.parsed;
+  const ready=!!(p.plat&&p.cent&&p.ump&&p.ns);
+  const btn=document.getElementById("runBtn");
+  btn.disabled=!ready;
+  document.getElementById("runHint").style.display=ready?"none":"block";
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UNMAPPED ALERTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getUnmappedAlerts(){
+  const alerts=[];
+  if(STATE.parsed.cent){
+    const seen=new Map();
+    for(const r of STATE.parsed.cent) if(r.acctSuffix&&!seen.has(r.acctSuffix)) seen.set(r.acctSuffix,r.cardholder);
+    for(const[suffix,name] of seen){
+      const m=STATE.centMap.find(r=>r.cardSuffix===suffix);
+      if(!m||!m.nsSuffix) alerts.push({type:"cent",id:suffix,label:`-${suffix}`,name,mapped:!!m});
+    }
+  }
+  if(STATE.parsed.ump){
+    const seen=new Map();
+    for(const r of STATE.parsed.ump) if(r.acctLast4&&!seen.has(r.acctLast4)) seen.set(r.acctLast4,r.cardholder);
+    for(const[last4,name] of seen){
+      const m=STATE.umpMap.find(r=>r.cardLast4===last4);
+      if(!m||!m.nsSuffix) alerts.push({type:"ump",id:last4,label:`...${last4}`,name,mapped:!!m});
+    }
+  }
+  return alerts;
+}
+
+function updateUnmappedAlerts(){
+  const alerts=getUnmappedAlerts();
+  const count=alerts.length;
+
+  // Tab badge
+  const tabBtn=document.getElementById("mappingTabBtn");
+  const existing=tabBtn.querySelector(".badge");
+  if(existing) existing.remove();
+  if(count>0){
+    const b=document.createElement("span");
+    b.className="badge"; b.textContent=count;
+    tabBtn.appendChild(b);
+  }
+
+  const tagsHTML=alerts.map(a=>`
+    <span class="alert-tag ${a.mapped?"no-suffix":"new-card"}">
+      <span class="tag-id">${esc(a.label)}</span>
+      <span class="tag-name">${esc(a.name)}</span>
+      <span class="tag-status">${a.mapped?"no NS acct":"new card"}</span>
+    </span>`).join("");
+
+  // Upload tab alert
+  const ua=document.getElementById("uploadAlert");
+  const ut=document.getElementById("uploadAlertTitle");
+  const utg=document.getElementById("uploadAlertTags");
+  if(count>0&&(STATE.parsed.cent||STATE.parsed.ump)){
+    ua.classList.remove("hidden");
+    ut.textContent=`⚠️ ${count} card${count>1?"s":""} without a NetSuite account mapping`;
+    utg.innerHTML=tagsHTML;
+  } else { ua.classList.add("hidden"); }
+
+  // Mapping tab alert
+  const ma=document.getElementById("mappingAlert");
+  const mt=document.getElementById("mappingAlertTitle");
+  const mtg=document.getElementById("mappingAlertTags");
+  if(count>0){
+    ma.classList.remove("hidden");
+    mt.textContent=`⚠️ ${count} card${count>1?"s":""} need a NetSuite account assigned:`;
+    mtg.innerHTML=tagsHTML;
+  } else { ma.classList.add("hidden"); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAPPING TABLES
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getNsCentOptions(){
+  if(!STATE.parsed.ns) return [];
+  const seen=new Set();
+  return STATE.parsed.ns.filter(r=>r.account.includes("Centurion")).reduce((acc,r)=>{
+    if(!seen.has(r.account)){seen.add(r.account);acc.push({account:r.account,suffix:getAcctSuffix(r.account)});}
+    return acc;
+  },[]).sort((a,b)=>a.account.localeCompare(b.account));
+}
+function getNsUmpOptions(){
+  if(!STATE.parsed.ns) return [];
+  const seen=new Set();
+  return STATE.parsed.ns.filter(r=>r.account.includes("Umpqua")).reduce((acc,r)=>{
+    if(!seen.has(r.account)){seen.add(r.account);acc.push({account:r.account,suffix:getAcctSuffix(r.account)});}
+    return acc;
+  },[]).sort((a,b)=>a.account.localeCompare(b.account));
+}
+
+function buildSelectOptions(options,currentSuffix){
+  return`<option value="">— Not mapped —</option>`+
+    options.map(n=>`<option value="${esc(n.suffix)}"${n.suffix===currentSuffix?' selected':''}>${esc(n.account)}</option>`).join('');
+}
+
+function renderMapRow(row, idx, idField, options, updateFn, removeFn){
+  const isUnmapped=!row.nsSuffix;
+  const isNew=!!row._new;
+  const rowClass=!row.active?"map-row-inactive":isNew&&isUnmapped?"map-row-new":isUnmapped?"map-row-unmapped":"map-row-normal";
+  const inputBorderClass=isUnmapped?(isNew?"map-input-error":"map-input-warn"):"";
+  const selectClass=isUnmapped?(isNew?"map-select-error":"map-select-warn"):"map-select";
+
+  return `<tr class="${rowClass}" data-idx="${idx}">
+    <td><input type="checkbox" ${row.active?"checked":""} style="width:15px;height:15px;cursor:pointer"
+      onchange="${updateFn}(${idx},'active',this.checked)"></td>
+    <td>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input class="map-input ${inputBorderClass}" value="${esc(row[idField])}" maxlength="${idField==='cardLast4'?4:8}"
+          style="width:${idField==='cardLast4'?60:70}px;font-family:monospace;font-weight:700"
+          oninput="${updateFn}(${idx},'${idField}',this.value)">
+        ${isNew?`<span class="new-badge">NEW</span>`:''}
+      </div>
+    </td>
+    <td><input class="map-input" value="${esc(row.cardName)}" style="width:200px"
+      oninput="${updateFn}(${idx},'cardName',this.value)"></td>
+    <td><input class="map-input ${inputBorderClass}" value="${esc(row.nsSuffix)}" placeholder="e.g. 1103"
+      style="width:80px;font-family:monospace" oninput="${updateFn}(${idx},'nsSuffix',this.value)"></td>
+    <td>${options.length>0
+      ?`<select class="${selectClass}" onchange="${updateFn}(${idx},'_selectNs',this.value)">${buildSelectOptions(options,row.nsSuffix)}</select>`
+      :`<span style="font-size:11px;color:${row.nsSuffix?'#374151':'#9ca3af'};font-style:${row.nsSuffix?'':'italic'}">${esc(row.nsLabel||(isUnmapped?"⚠️ Unmapped":"—"))}</span>`
+    }</td>
+    <td><button class="btn-danger" onclick="${removeFn}(${idx})">✕</button></td>
+  </tr>`;
+}
+
+function renderCentMap(){
+  const opts=getNsCentOptions();
+  document.getElementById("centMapBody").innerHTML=
+    STATE.centMap.map((r,i)=>renderMapRow(r,i,"cardSuffix",opts,"updateCent","removeCent")).join("")||
+    `<tr><td colspan="6" style="text-align:center;padding:16px;color:#9ca3af;font-size:12px">No rows. Click + Add Row.</td></tr>`;
+}
+function renderUmpMap(){
+  const opts=getNsUmpOptions();
+  document.getElementById("umpMapBody").innerHTML=
+    STATE.umpMap.map((r,i)=>renderMapRow(r,i,"cardLast4",opts,"updateUmp","removeUmp")).join("")||
+    `<tr><td colspan="6" style="text-align:center;padding:16px;color:#9ca3af;font-size:12px">No rows. Click + Add Row.</td></tr>`;
+}
+
+function updateCent(idx,field,value){
+  if(field==='_selectNs'){
+    const opts=getNsCentOptions();
+    const sel=opts.find(n=>n.suffix===value);
+    STATE.centMap[idx].nsSuffix=value;
+    STATE.centMap[idx]._new=false;
+    if(sel) STATE.centMap[idx].nsLabel=sel.account;
+  } else {
+    STATE.centMap[idx][field]=value;
+    if(field==='nsSuffix') STATE.centMap[idx]._new=false;
+  }
+  renderCentMap(); updateUnmappedAlerts(); renderConfigSummary(); autoSave();
+}
+function updateUmp(idx,field,value){
+  if(field==='_selectNs'){
+    const opts=getNsUmpOptions();
+    const sel=opts.find(n=>n.suffix===value);
+    STATE.umpMap[idx].nsSuffix=value;
+    STATE.umpMap[idx]._new=false;
+    if(sel) STATE.umpMap[idx].nsLabel=sel.account;
+  } else {
+    STATE.umpMap[idx][field]=value;
+    if(field==='nsSuffix') STATE.umpMap[idx]._new=false;
+  }
+  renderUmpMap(); updateUnmappedAlerts(); renderConfigSummary(); autoSave();
+}
+function removeCent(idx){STATE.centMap.splice(idx,1);renderCentMap();updateUnmappedAlerts();renderConfigSummary();autoSave();}
+function removeUmp(idx){STATE.umpMap.splice(idx,1);renderUmpMap();updateUnmappedAlerts();renderConfigSummary();autoSave();}
+function addCentRow(){STATE.centMap.push({cardSuffix:"",cardName:"",nsSuffix:"",nsLabel:"",active:true});renderCentMap();autoSave();}
+function addUmpRow(){STATE.umpMap.push({cardLast4:"",cardName:"",nsSuffix:"",nsLabel:"",active:true});renderUmpMap();autoSave();}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PERSONAL ACCOUNTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderPersonalSection(){
+  const tags=document.getElementById("personalTagsDisplay");
+  const toggle=document.getElementById("personalToggleArea");
+  const suffixes=[...STATE.personalSuffixes].sort();
+  const centAccts=getCentAccounts();
+
+  // Tags row
+  if(suffixes.length===0){
+    tags.innerHTML=`<span style="color:#9ca3af;font-size:12px">No personal accounts marked.</span>`;
+  } else {
+    tags.innerHTML=suffixes.map(s=>{
+      const c=centAccts.find(x=>x.suffix===s);
+      return`<div class="personal-tag">
+        <span style="font-family:monospace;font-weight:700;font-size:12px">-${esc(s)}</span>
+        ${c?`<span style="font-size:11px;color:#6b7280">${esc(c.name)}</span>`:''}
+        <button class="btn-danger" onclick="removePersonal('${esc(s)}')">✕</button>
+      </div>`;
+    }).join("");
+  }
+
+  // Toggle buttons
+  if(centAccts.length>0){
+    toggle.innerHTML=`<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:#374151">Toggle from loaded Centurion accounts:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">`+
+      centAccts.map(c=>{
+        const isP=STATE.personalSuffixes.has(c.suffix);
+        return`<button class="personal-btn ${isP?"on":""}" onclick="togglePersonalSuffix('${esc(c.suffix)}')">
+          ${isP?"✓ ":""}-${esc(c.suffix)} ${c.name?`(${esc(c.name.split(" ").slice(0,2).join(" "))})`:""}
+        </button>`;
+      }).join("")+`</div>`;
+  } else {
+    toggle.innerHTML=`<div style="display:flex;gap:8px"><input id="newPersonalInput" placeholder="Enter suffix e.g. 1087"
+      style="border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px;width:160px">
+      <button class="btn btn-primary btn-sm" onclick="addPersonalManual()">Add</button></div>`;
+  }
+}
+function getCentAccounts(){
+  if(!STATE.parsed.cent) return [];
+  const seen=new Map();
+  for(const r of STATE.parsed.cent) if(!seen.has(r.acctSuffix)) seen.set(r.acctSuffix,r.cardholder);
+  return [...seen.entries()].map(([s,n])=>({suffix:s,name:n})).sort((a,b)=>a.suffix.localeCompare(b.suffix));
+}
+function togglePersonalSuffix(s){
+  if(STATE.personalSuffixes.has(s)) STATE.personalSuffixes.delete(s);
+  else STATE.personalSuffixes.add(s);
+  renderPersonalSection(); autoSave();
+}
+function removePersonal(s){STATE.personalSuffixes.delete(s);renderPersonalSection();autoSave();}
+function addPersonalManual(){
+  const v=document.getElementById("newPersonalInput").value.trim();
+  if(v){STATE.personalSuffixes.add(v);renderPersonalSection();autoSave();}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIG SUMMARY
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderConfigSummary(){
+  const el=document.getElementById("configSummary");
+  const active=STATE.centMap.filter(m=>m.active);
+  const centHTML=`<div class="config-col">
+    <div class="config-col-title">Centurion Mappings (${active.length} active)</div>
+    ${active.map(m=>`<div class="config-row">
+      <span class="mono-tag-blue">-${esc(m.cardSuffix)}</span>
+      <span style="color:#6b7280;flex:1">${esc(m.cardName)}</span>
+      <span style="font-family:monospace;color:${m.nsSuffix?"#1d4ed8":"#dc2626"}">→ ${m.nsSuffix||"⚠️"}</span>
+    </div>`).join("")}
+  </div>`;
+  const umpHTML=`<div class="config-col">
+    <div class="config-col-title">Umpqua Mappings (${STATE.umpMap.filter(m=>m.active).length} active)</div>
+    ${STATE.umpMap.map(m=>`<div class="config-row">
+      <span class="mono-tag">...${esc(m.cardLast4)}</span>
+      <span style="color:#6b7280;flex:1">${esc(m.cardName)}</span>
+      <span style="font-family:monospace;color:${m.nsSuffix?"#1d4ed8":"#dc2626"}">→ ${m.nsSuffix||"⚠️"}</span>
+    </div>`).join("")}
+  </div>`;
+  const persHTML=`<div class="config-col" style="min-width:160px">
+    <div class="config-col-title">Personal Suffixes</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">
+      ${[...STATE.personalSuffixes].sort().map(s=>`<span class="mono-tag">-${esc(s)}</span>`).join("")||`<span style="font-size:11px;color:#9ca3af">None</span>`}
+    </div>
+  </div>`;
+  el.innerHTML=centHTML+umpHTML+persHTML;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RECONCILIATION ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Keywords that definitively identify a CC payment (not a refund/credit)
+const PAYMENT_KEYWORDS = [
+  "online payment",
+  "internet pmt",
+  "autopay payment",
+  "automatic payment",
+  "mobile payment",
+  "web payment",
+  "payment - thank you",
+  "payment thank you",
+];
+
+function isPaymentTx(description) {
+  const d = (description || "").toLowerCase();
+  return PAYMENT_KEYWORDS.some(kw => d.includes(kw));
+}
+
+function reconcile(){
+  const{plat,cent,ump,ns}=STATE.parsed;
+
+  // Combined NS file — split by sign into charge pool (positive) and refund pool (negative)
+  const nsPool={};
+  const nsRefundPool={};
+  for(const r of (ns||[])){
+    if(r.amount<0){
+      if(!nsRefundPool[r.account]) nsRefundPool[r.account]=[];
+      nsRefundPool[r.account].push({...r,used:false});
+    } else {
+      if(!nsPool[r.account]) nsPool[r.account]=[];
+      nsPool[r.account].push({...r,used:false});
+    }
+  }
+
+  // ── Reference normalization ──────────────────────────────────────────────
+  // Centurion/Platinum:  bank "320260900502149581" == NS "320260900502149581"  (exact)
+  // Umpqua:             bank "Ref-24011346090100055185196" == NS "24011346090100055185196-0"
+  //   → strip "Ref-" from bank ref; strip trailing "-N" from NS docNum
+  const normalizeNSRef   = s => String(s||"").replace(/'/g,"").trim().replace(/-\d+$/,"");
+  const normalizeBankRef = s => String(s||"").replace(/'/g,"").trim().replace(/^Ref-/i,"");
+
+  // Build a flat docNum→NS-item lookup (both pools, keyed by normalized docNum)
+  // Used for reference-first matching across the entire NS dataset
+  const nsByRef = {};   // normalizedDocNum → NS item (charges)
+  const nsRefByRef = {}; // normalizedDocNum → NS item (refunds/credits)
+  for(const pool of [nsPool, nsRefundPool]){
+    const target = pool === nsPool ? nsByRef : nsRefByRef;
+    for(const items of Object.values(pool)){
+      for(const item of items){
+        const key = normalizeNSRef(item.docNum);
+        if(key) target[key] = item;
+      }
+    }
+  }
+
+  // Find by reference — marks item as used, returns it or null
+  const findByRef = (lookupMap, bankRef) => {
+    if(!bankRef) return null;
+    const key = normalizeBankRef(bankRef);
+    if(!key) return null;
+    const item = lookupMap[key];
+    if(item && !item.used){ item.used=true; return item; }
+    return null;
+  };
+
+  // Generic amount+date match finder — fallback when no reference match
+  const findMatch=(pool,key,dateTs,amt,maxDays=3)=>{
+    const entries=pool[key]||[]; let best=null,bestDays=9999;
+    for(const item of entries){
+      if(item.used||item.amount!==amt) continue;
+      const dd=daysDiff(item.dateTs,dateTs);
+      if(dd<=maxDays&&dd<bestDays){best=item;bestDays=dd;}
+    }
+    if(best){best.used=true;return[best,bestDays];}
+    return[null,null];
+  };
+
+  // Apply a matched NS item to a result row
+  const applyMatch=(row,m,days,isRefund=false)=>{
+    row.nsId=m.internalId; row.nsMemo=m.memo;
+    row.nsRefTruncated=m.refTruncated||false;
+    row.nsAmount=fmtAmt(m.amount); row.nsDate=m.date;
+    if(isRefund){
+      // Reference-matched refunds: always REFUND_MATCHED (ref is authoritative)
+      row.status = "REFUND_MATCHED";
+      row.issue  = days>0?`Refund matched by reference; NS date off by ${days} day(s)`:"";
+    } else {
+      // Reference match → always MATCHED regardless of date difference
+      row.status = "MATCHED";
+      row.issue  = days>0?`Matched by reference; NS date off by ${days} day(s)`:"";
+    }
+  };
+
+  const nsAcctByType=type=>Object.keys({...nsPool,...nsRefundPool}).filter(k=>k.includes(type));
+  const nsUmpMap={};
+  for(const a of [...new Set([...Object.keys(nsPool),...Object.keys(nsRefundPool)].filter(k=>k.includes("Umpqua")))]) nsUmpMap[getAcctSuffix(a)]=a;
+  const nsPlatAcct=[...new Set([...Object.keys(nsPool),...Object.keys(nsRefundPool)])].find(k=>k.includes("Platinum")||k.includes("American Express"))||"";
+
+  const nsCentBySuffix={};
+  for(const a of [...new Set([...Object.keys(nsPool),...Object.keys(nsRefundPool)].filter(k=>k.includes("Centurion")))]) nsCentBySuffix[getAcctSuffix(a)]=a;
+  const centLookup={};
+  for(const m of STATE.centMap) if(m.active) centLookup[m.cardSuffix]=m.nsSuffix?(nsCentBySuffix[m.nsSuffix]||""):"";
+  const umpLookup={};
+  for(const m of STATE.umpMap) if(m.active) umpLookup[m.cardLast4]=m.nsSuffix||null;
+
+  const result=[]; let uid=0;
+  const push=r=>result.push(r);
+
+  // Classify a negative bank-side transaction and find its NS match if any.
+  // NOTE: does NOT increment uid — caller is responsible for that.
+  function handleNegative(bankRow, nsAcct, pool, refundPool, maxDays){
+    const isPayment = isPaymentTx(bankRow.description);
+    const row={...bankRow, nsAccount:nsAcct, status:"", nsId:"", nsMemo:"", issue:""};
+
+    if(isPayment){
+      row.status="PAYMENT";
+      row.issue="CC payment – excluded from reconciliation";
+      return row;
+    }
+
+    // 1. Try reference match against refund pool (reference is authoritative)
+    const mRef = findByRef(nsRefByRef, bankRow.reference);
+    if(mRef){
+      const days = daysDiff(mRef.dateTs, bankRow.dateTs);
+      applyMatch(row, mRef, days, true);
+      return row;
+    }
+
+    // 2. Fallback: amount + date proximity
+    const[m,days]=findMatch(refundPool,nsAcct,bankRow.dateTs,bankRow.amountRaw,maxDays);
+    if(m){
+      row.status=days===0?"REFUND_MATCHED":"DATE_MISMATCH";
+      row.nsId=m.internalId; row.nsMemo=m.memo; row.nsRefTruncated=m.refTruncated||false;
+      row.nsAmount=fmtAmt(m.amount); row.nsDate=m.date;
+      row.issue=days>0?`Refund date off by ${days} day(s). NS: ${m.date}`:"";
+    } else {
+      row.status="UNMATCHED_CREDIT";
+      row.issue="Credit/refund on statement not found in NetSuite";
+    }
+    return row;
+  }
+
+  // ── PLATINUM ──
+  for(const r of plat){
+    uid++;
+    const isNeg=r.amount<0;
+    const baseRow={id:uid,source:r.source,account:"Platinum Amex",nsAccount:nsPlatAcct,
+      date:r.date,dateTs:r.dateTs,description:r.description,cardholder:r.cardholder,
+      amount:fmtAmt(r.amount),amountRaw:r.amount,reference:r.reference,
+      category:r.category,status:"",nsId:"",nsMemo:"",issue:"",personal:false,note:""};
+    if(isNeg){
+      push(handleNegative(baseRow,nsPlatAcct,nsPool,nsRefundPool,2));
+    } else {
+      // 1. Reference match (authoritative)
+      const mRef = findByRef(nsByRef, r.reference);
+      if(mRef){
+        const days=daysDiff(mRef.dateTs,r.dateTs);
+        applyMatch(baseRow,mRef,days,false);
+      } else {
+        // 2. Fallback: amount + date
+        const[m,days]=findMatch(nsPool,nsPlatAcct,r.dateTs,r.amount,1);
+        if(m){baseRow.status=days===0?"MATCHED":"DATE_MISMATCH";baseRow.nsId=m.internalId;baseRow.nsMemo=m.memo;baseRow.nsRefTruncated=m.refTruncated||false;baseRow.nsAmount=fmtAmt(m.amount);baseRow.nsDate=m.date;
+          if(days>0) baseRow.issue=`Date off by ${days} day(s). NS: ${m.date}`;}
+        else{baseRow.status="MISSING_NS";baseRow.issue="In Amex but not found in NetSuite";}
+      }
+      push(baseRow);
+    }
+  }
+  // Unmatched NS Plat positives
+  for(const item of(nsPool[nsPlatAcct]||[])){
+    if(!item.used){uid++;push({id:uid,source:"NetSuite Only",account:"Platinum Amex",nsAccount:nsPlatAcct,
+      date:item.date,description:item.memo,cardholder:item.name,amount:fmtAmt(item.amount),amountRaw:item.amount,
+      reference:item.docNum,category:"",status:"EXTRA_NS",nsId:item.internalId,nsMemo:item.memo,nsRefTruncated:item.refTruncated||false,
+      issue:"In NetSuite but not in Amex statement",personal:false,note:""});}
+  }
+  // Unmatched NS Plat refunds
+  for(const item of(nsRefundPool[nsPlatAcct]||[])){
+    if(!item.used){uid++;push({id:uid,source:"NetSuite Only",account:"Platinum Amex",nsAccount:nsPlatAcct,
+      date:item.date,description:item.memo,cardholder:item.name,amount:fmtAmt(item.amount),amountRaw:item.amount,
+      reference:item.docNum,category:"",status:"EXTRA_NS",nsId:item.internalId,nsMemo:item.memo,nsRefTruncated:item.refTruncated||false,
+      issue:"Refund in NetSuite but no matching credit on Amex statement",personal:false,note:""});}
+  }
+
+  // ── CENTURION ──
+  for(const r of cent){
+    uid++;
+    const isPersonal=STATE.personalSuffixes.has(r.acctSuffix);
+    const isNeg=r.amount<0;
+    const nsAcct=Object.prototype.hasOwnProperty.call(centLookup,r.acctSuffix)?centLookup[r.acctSuffix]:(nsCentBySuffix[r.acctSuffix]||"");
+    const isMapped=Object.prototype.hasOwnProperty.call(centLookup,r.acctSuffix);
+    const baseRow={id:uid,source:r.source,account:`Centurion -${r.acctSuffix}`,nsAccount:nsAcct,
+      date:r.date,dateTs:r.dateTs,description:r.description,cardholder:r.cardholder,
+      amount:fmtAmt(r.amount),amountRaw:r.amount,reference:r.reference,
+      category:r.category,status:"",nsId:"",nsMemo:"",issue:"",
+      personal:isPersonal,note:isPersonal?"Personal charge – no NS entry expected":""};
+    if(isPersonal){baseRow.status="PERSONAL";}
+    else if(isNeg){
+      if(!nsAcct){baseRow.status="NO_NS_ACCOUNT";baseRow.issue=isMapped?`Card -${r.acctSuffix} mapped as unmapped`:`No NS account found for suffix -${r.acctSuffix}`;}
+      else{ push(handleNegative(baseRow,nsAcct,nsPool,nsRefundPool,3)); continue; }
+    } else if(!nsAcct){
+      baseRow.status="NO_NS_ACCOUNT";baseRow.issue=isMapped?`Card -${r.acctSuffix} mapped as unmapped`:`No NS account found for suffix -${r.acctSuffix}`;
+    } else {
+      // 1. Reference match (authoritative)
+      const mRef = findByRef(nsByRef, r.reference);
+      if(mRef){
+        const days=daysDiff(mRef.dateTs,r.dateTs);
+        applyMatch(baseRow,mRef,days,false);
+      } else {
+        // 2. Fallback: amount + date
+        const[m,days]=findMatch(nsPool,nsAcct,r.dateTs,r.amount,3);
+        if(m){baseRow.status=days===0?"MATCHED":"DATE_MISMATCH";baseRow.nsId=m.internalId;baseRow.nsMemo=m.memo;baseRow.nsRefTruncated=m.refTruncated||false;baseRow.nsAmount=fmtAmt(m.amount);baseRow.nsDate=m.date;
+          if(days>0) baseRow.issue=`Date off by ${days} day(s). NS: ${m.date}`;}
+        else{baseRow.status="MISSING_NS";baseRow.issue="In Amex but not found in NetSuite";}
+      }
+    }
+    push(baseRow);
+  }
+  // Unmatched NS Centurion
+  const centNsAccts=[...new Set([...Object.keys(nsPool),...Object.keys(nsRefundPool)].filter(k=>k.includes("Centurion")))];
+  for(const acct of centNsAccts){
+    for(const item of(nsPool[acct]||[])){
+      if(!item.used){uid++;push({id:uid,source:"NetSuite Only",account:`Centurion -${getAcctSuffix(acct)}`,nsAccount:acct,
+        date:item.date,description:item.memo,cardholder:item.name,amount:fmtAmt(item.amount),amountRaw:item.amount,
+        reference:item.docNum,category:"",status:"EXTRA_NS",nsId:item.internalId,nsMemo:item.memo,nsRefTruncated:item.refTruncated||false,
+        issue:"In NetSuite but not in Amex statement",personal:false,note:""});}
+    }
+    for(const item of(nsRefundPool[acct]||[])){
+      if(!item.used){uid++;push({id:uid,source:"NetSuite Only",account:`Centurion -${getAcctSuffix(acct)}`,nsAccount:acct,
+        date:item.date,description:item.memo,cardholder:item.name,amount:fmtAmt(item.amount),amountRaw:item.amount,
+        reference:item.docNum,category:"",status:"EXTRA_NS",nsId:item.internalId,nsMemo:item.memo,nsRefTruncated:item.refTruncated||false,
+        issue:"Refund in NetSuite but no matching credit on Amex statement",personal:false,note:""});}
+    }
+  }
+
+  // ── UMPQUA ──
+  for(const r of ump){
+    uid++;
+    const isNeg=r.amount<0;
+    const nsSuffix=Object.prototype.hasOwnProperty.call(umpLookup,r.acctLast4)?umpLookup[r.acctLast4]:undefined;
+    const nsAcct=(nsSuffix!=null&&nsSuffix!=="")?( nsUmpMap[nsSuffix]||""):"";
+    const baseRow={id:uid,source:r.source,account:`Umpqua ...${r.acctLast4}`,nsAccount:nsAcct,
+      date:r.date,dateTs:r.dateTs,postDate:r.postDate,description:r.description,cardholder:r.cardholder,
+      amount:fmtAmt(r.amount),amountRaw:r.amount,reference:r.reference,
+      category:r.category,status:"",nsId:"",nsMemo:"",issue:"",personal:false,note:""};
+    if(nsSuffix===undefined){baseRow.status="NO_NS_ACCOUNT";baseRow.issue=`Card ...${r.acctLast4} not in mapping table`;}
+    else if(nsSuffix===null||nsSuffix===""){baseRow.status="NO_NS_ACCOUNT";baseRow.issue=`Card ...${r.acctLast4} mapped as unmapped`;}
+    else if(!nsAcct){baseRow.status="NO_NS_ACCOUNT";baseRow.issue=`NS suffix ${nsSuffix} not found in NetSuite data`;}
+    else if(isNeg){
+      push(handleNegative(baseRow,nsAcct,nsPool,nsRefundPool,4)); continue;
+    } else {
+      // 1. Reference match — Umpqua refs need "Ref-" stripped; NS refs need "-N" stripped
+      //    Both normalizations are handled inside findByRef/normalizeNSRef
+      const mRef = findByRef(nsByRef, r.reference);
+      if(mRef){
+        const days=daysDiff(mRef.dateTs,r.dateTs);
+        applyMatch(baseRow,mRef,days,false);
+      } else {
+        // 2. Fallback: amount + post date proximity
+        const[m,days]=findMatch(nsPool,nsAcct,r.dateTs,r.amount,4);
+        if(m){baseRow.status=days===0?"MATCHED":"DATE_MISMATCH";baseRow.nsId=m.internalId;baseRow.nsMemo=m.memo;baseRow.nsRefTruncated=m.refTruncated||false;baseRow.nsAmount=fmtAmt(m.amount);baseRow.nsDate=m.date;
+          if(days>0) baseRow.issue=`Date off by ${days} day(s). NS: ${m.date}`;}
+        else{baseRow.status="MISSING_NS";baseRow.issue="In bank statement but not found in NetSuite";}
+      }
+    }
+    push(baseRow);
+  }
+  // Unmatched NS Umpqua
+  const umpNsAccts=[...new Set([...Object.keys(nsPool),...Object.keys(nsRefundPool)].filter(k=>k.includes("Umpqua")))];
+  for(const acct of umpNsAccts){
+    for(const item of(nsPool[acct]||[])){
+      if(!item.used){uid++;push({id:uid,source:"NetSuite Only",account:`Umpqua ...${getAcctSuffix(acct)}`,nsAccount:acct,
+        date:item.date,description:item.memo,cardholder:item.name,amount:fmtAmt(item.amount),amountRaw:item.amount,
+        reference:item.docNum,category:"",status:"EXTRA_NS",nsId:item.internalId,nsMemo:item.memo,nsRefTruncated:item.refTruncated||false,
+        issue:"In NetSuite but not in bank statement",personal:false,note:""});}
+    }
+    for(const item of(nsRefundPool[acct]||[])){
+      if(!item.used){uid++;push({id:uid,source:"NetSuite Only",account:`Umpqua ...${getAcctSuffix(acct)}`,nsAccount:acct,
+        date:item.date,description:item.memo,cardholder:item.name,amount:fmtAmt(item.amount),amountRaw:item.amount,
+        reference:item.docNum,category:"",status:"EXTRA_NS",nsId:item.internalId,nsMemo:item.memo,nsRefTruncated:item.refTruncated||false,
+        issue:"Refund in NetSuite but no matching credit on bank statement",personal:false,note:""});}
+    }
+  }
+  return result;
+}
+
+function runReconciliation(){
+  const btn=document.getElementById("runBtn");
+  btn.disabled=true; btn.textContent="⏳ Reconciling...";
+  setTimeout(()=>{
+    try{
+      STATE.results=reconcile();
+      STATE.notes={};STATE.personalOverrides={};STATE.confirmedMatches=new Set();
+      STATE.paymentOverrides=new Set();
+      STATE.hiddenDashAccounts=new Set();
+      STATE._dashInitialized=false;
+      populateFilters();
+      renderSummaryCards();
+      renderTable();
+      renderDashboard();
+      const rTab=document.getElementById("resultsTabBtn");
+      rTab.textContent=`📊 Results (${STATE.results.length})`;
+      document.getElementById("exportBtn").style.display="";
+      document.getElementById("exportXlsxBtn").style.display="";
+      // Export Personals — show only if personal rows exist
+      const personalCount = STATE.results.filter(r=>r.status==="PERSONAL").length;
+      document.getElementById("exportPersonalsBtn").style.display = personalCount > 0 ? "" : "none";
+      // Only show truncated refs button if any exist
+      const hasTruncated = STATE.results.some(r=>r.nsRefTruncated);
+      const truncBtn = document.getElementById("exportTruncBtn");
+      truncBtn.style.display = hasTruncated ? "" : "none";
+      if(hasTruncated){
+        const cnt = STATE.results.filter(r=>r.nsRefTruncated).length;
+        truncBtn.textContent = `⚠️ Export ${cnt} Truncated Ref${cnt>1?"s":""}`;
+      }
+      switchTab("results");
+    }catch(e){alert("Reconciliation error: "+e.message);}
+    btn.disabled=false; btn.textContent="🔁 Run Reconciliation";
+  },50);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RESULTS / TABLE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getEnriched(){
+  return STATE.results.map(r=>{
+    const noteOverride = STATE.notes[r.id] ?? r.note;
+    const personalOverride = STATE.personalOverrides[r.id];
+    const isPersonal = personalOverride !== undefined ? personalOverride : r.personal;
+    const isPaymentOverride = STATE.paymentOverrides.has(r.id);
+
+    let status = STATE.confirmedMatches.has(r.id) && r.status === "DATE_MISMATCH"
+      ? "MATCHED" : r.status;
+
+    if (isPaymentOverride && status === "UNMATCHED_CREDIT") status = "PAYMENT";
+    if (isPersonal && status !== "PERSONAL") status = "PERSONAL";
+    if (!isPersonal && r.status === "PERSONAL" && personalOverride === false) status = "MISSING_NS";
+
+    const issue = STATE.confirmedMatches.has(r.id) && r.status === "DATE_MISMATCH"
+      ? `Confirmed match (original: ${r.issue})`
+      : (noteOverride ? "" : r.issue);
+
+    return { ...r, note: noteOverride, personal: isPersonal, status, issue };
+  });
+}
+
+function populateFilters(){
+  const enriched=getEnriched();
+  const statSel=document.getElementById("filterStatus");
+  const acctSel=document.getElementById("filterAccount");
+  const srcSel=document.getElementById("filterSource");
+  // Status
+  statSel.innerHTML=`<option value="ALL">All Statuses</option>`+
+    Object.entries(STATUS_CFG).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("");
+  // Account
+  const accts=[...new Set(enriched.map(r=>r.account))].sort();
+  acctSel.innerHTML=`<option value="ALL">All Accounts</option>`+accts.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join("");
+  // Source
+  const srcs=[...new Set(enriched.map(r=>r.source))];
+  srcSel.innerHTML=`<option value="ALL">All Sources</option>`+srcs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join("");
+}
+
+function getFiltered(){
+  const enriched=getEnriched();
+  const q=document.getElementById("searchInput").value.toLowerCase().trim();
+  const fStatus=document.getElementById("filterStatus").value;
+  const fAcct=document.getElementById("filterAccount").value;
+  const fSrc=document.getElementById("filterSource").value;
+  let rows=enriched;
+  if(fStatus!=="ALL") rows=rows.filter(r=>r.status===fStatus);
+  if(fAcct!=="ALL") rows=rows.filter(r=>r.account===fAcct);
+  if(fSrc!=="ALL") rows=rows.filter(r=>r.source===fSrc);
+  if(q) rows=rows.filter(r=>
+    r.description.toLowerCase().includes(q)||r.cardholder.toLowerCase().includes(q)||
+    r.account.toLowerCase().includes(q)||r.amount.includes(q)||(r.note||"").toLowerCase().includes(q));
+
+  const col=STATE.sortCol, asc=STATE.sortAsc;
+  rows=[...rows].sort((a,b)=>{
+    let va=a[col]??"", vb=b[col]??"";
+    if(col==="amountRaw"){va=a.amountRaw??0;vb=b.amountRaw??0;}
+    const cmp=typeof va==="number"?va-vb:String(va).localeCompare(String(vb));
+    return asc?cmp:-cmp;
+  });
+  return rows;
+}
+
+function renderSummaryCards(){
+  const enriched=getEnriched();
+  const counts={},totals={};
+  for(const r of enriched){
+    counts[r.status]=(counts[r.status]||0)+1;
+    totals[r.status]=(totals[r.status]||0)+(r.amountRaw||0);
+  }
+  const fStatus=document.getElementById("filterStatus").value;
+  const el=document.getElementById("summaryCards");
+  el.innerHTML=Object.entries(STATUS_CFG).map(([key,cfg])=>{
+    const cnt=counts[key]||0; if(!cnt) return "";
+    const active=fStatus===key;
+    return`<div class="stat-card" style="border-color:${cfg.color};background:${active?cfg.color:"white"};color:${active?"white":cfg.color}"
+      onclick="toggleStatusFilter('${key}')">
+      <div class="stat-num">${cnt}</div>
+      <div class="stat-label">${cfg.label}</div>
+      ${key!=="PERSONAL"&&key!=="PAYMENT"?`<div class="stat-amt">$${Math.abs(totals[key]||0).toLocaleString("en-US",{maximumFractionDigits:0})}</div>`:""}
+    </div>`;
+  }).join("");
+}
+
+function toggleStatusFilter(key){
+  const sel=document.getElementById("filterStatus");
+  sel.value=sel.value===key?"ALL":key;
+  renderTable();
+  renderSummaryCards();
+}
+
+function sortBy(col){
+  if(STATE.sortCol===col) STATE.sortAsc=!STATE.sortAsc;
+  else{STATE.sortCol=col;STATE.sortAsc=true;}
+  // Update sort indicators
+  document.querySelectorAll("th span[id^='sort-']").forEach(el=>el.textContent="");
+  const ind=document.getElementById("sort-"+col);
+  if(ind) ind.textContent=STATE.sortAsc?" ↑":" ↓";
+  renderTable();
+}
+
+function renderTable(){
+  const rows=getFiltered();
+  document.getElementById("rowCount").innerHTML=`Showing <b>${rows.length}</b> of <b>${STATE.results.length}</b>`;
+  const tbody=document.getElementById("tableBody");
+  if(!rows.length){tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:32px;color:#9ca3af">No transactions match filters</td></tr>`;return;}
+
+  const exp=STATE.expandedId;
+  tbody.innerHTML=rows.map(row=>{
+    const cfg=STATUS_CFG[row.status]||{label:row.status,color:"#374151",bg:"#f9fafb",dot:"#6b7280"};
+    const isExp=exp===row.id;
+    const faded=row.status==="PERSONAL"||row.status==="PAYMENT";
+    const isPersonal=STATE.personalOverrides[row.id]!==undefined?STATE.personalOverrides[row.id]:row.personal;
+    const note=STATE.notes[row.id]??row.note;
+    const amtNeg=(row.amountRaw||0)<0;
+    const amtStr=`${amtNeg?"-":""}$${Math.abs(row.amountRaw||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+    const issueDisplay=note?`<span class="note-text">📝 ${esc(note)}</span>`
+      :`<span>${row.nsRefTruncated?`<span title="NetSuite Document Number is truncated (scientific notation) – needs correction" style="display:inline-flex;align-items:center;gap:3px;background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;color:#92400e;margin-right:4px">⚠️ REF TRUNCATED</span>`:""}${row.issue?`<span class="issue-text">${esc(row.issue)}</span>`:""}</span>`;
+    const badge=`<span class="badge-status" style="background:${cfg.bg};color:${cfg.color}"><span class="badge-dot" style="background:${cfg.dot}"></span>${cfg.label}</span>`;
+
+    const mainRow=`<tr class="${isExp?"expanded":""} ${faded?"faded":""}" style="background:${isExp?"#eff6ff":""}" onclick="toggleExpand(${row.id})">
+      <td style="white-space:nowrap">${esc(row.date)}</td>
+      <td><span class="source-tag">${esc(row.source)}</span></td>
+      <td class="td-ellipsis" title="${esc(row.account)}">${esc(row.account)}</td>
+      <td class="td-ellipsis" title="${esc(row.description)}">${esc(row.description)}</td>
+      <td class="td-ellipsis" style="color:#6b7280" title="${esc(row.cardholder)}">${esc(row.cardholder)}</td>
+      <td class="amt-col ${amtNeg?"credit":""}">${amtStr}</td>
+      <td>${badge}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${issueDisplay}</td>
+      <td style="white-space:nowrap">
+        <button class="action-btn" onclick="event.stopPropagation();openNoteModal(${row.id})" title="Add/edit note">📝</button>
+        <button class="action-btn ${isPersonal?"personal-on":""}" onclick="event.stopPropagation();togglePersonalRow(${row.id})" title="${isPersonal?"Mark as business":"Mark as personal"}">
+          ${isPersonal?"👤 Personal":"👤"}
+        </button>
+        ${row.status==="DATE_MISMATCH"?`<button class="action-btn" onclick="event.stopPropagation();confirmMatch(${row.id})" title="Confirm this is a true match despite the date difference" style="border-color:#16a34a;color:#16a34a">✓ Confirm</button>`:""}
+        ${row.status==="UNMATCHED_CREDIT"?`<button class="action-btn" onclick="event.stopPropagation();addToPayments(${row.id})" title="Mark as a CC payment" style="border-color:#0369a1;color:#0369a1">💳 Payment</button>`:""}
+      </td>
+    </tr>`;
+
+    const nsAmtLine = row.nsAmount
+      ? `<div class="detail-item"><b>NS Amount</b><span style="font-weight:600;color:${(row.amountRaw||0)<0?"#16a34a":"#dc2626"}">${row.nsAmount}</span>${row.nsDate&&row.nsDate!==row.date?`<span style="color:#6b7280;font-size:11px;margin-left:6px">NS date: ${esc(row.nsDate)}</span>`:""}</div>` : "";
+
+    const detailRow=isExp?`<tr class="detail-row"><td colspan="9">
+      <div class="detail-grid">
+        <div class="detail-item"><b>NS Account</b><span>${esc(row.nsAccount||"—")}</span></div>
+        <div class="detail-item"><b>NS Internal ID</b><span>${esc(row.nsId||"—")}</span></div>
+        <div class="detail-item"><b>NS Doc Number</b><span>${row.nsRefTruncated?`<span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:3px;font-weight:700">${esc(row.nsId?"(truncated) "+row.reference:"—")}</span> → Correct: <b>${esc(row.reference||"—")}</b>`:esc(row.reference||"—")}</span></div>
+        ${nsAmtLine}
+        <div class="detail-item"><b>NS Memo</b><span>${esc(row.nsMemo||"—")}</span></div>
+        ${row.postDate?`<div class="detail-item"><b>Post Date</b><span style="color:#0369a1">${esc(row.postDate)}</span></div>`:""}
+        <div class="detail-item"><b>Reference</b><span>${esc(row.reference||"—")}</span></div>
+        <div class="detail-item"><b>Category</b><span>${esc(row.category||"—")}</span></div>
+        ${note?`<div class="detail-item"><b>Note</b><span style="color:#1d4ed8">${esc(note)}</span></div>`:""}
+      </div>
+    </td></tr>`:"";
+
+    return mainRow+detailRow;
+  }).join("");
+}
+
+function toggleExpand(id){
+  STATE.expandedId=STATE.expandedId===id?null:id;
+  renderTable();
+}
+function togglePersonalRow(id){
+  const cur=STATE.personalOverrides[id]!==undefined?STATE.personalOverrides[id]:STATE.results.find(r=>r.id===id)?.personal;
+  STATE.personalOverrides[id]=!cur;
+  renderTable(); renderSummaryCards();
+  if(STATE.activeTab==="dashboard") renderDashboard();
+}
+
+function confirmMatch(id){
+  STATE.confirmedMatches.add(id);
+  renderTable(); renderSummaryCards();
+}
+
+function addToPayments(id){
+  STATE.paymentOverrides.add(id);
+  renderTable(); renderSummaryCards();
+  if(STATE.activeTab==="dashboard") renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NOTE MODAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+function openNoteModal(id){
+  STATE.editingId=id;
+  const r=STATE.results.find(r=>r.id===id);
+  document.getElementById("noteTextarea").value=STATE.notes[id]??(r?.note??"");
+  document.getElementById("noteModal").classList.remove("hidden");
+}
+function closeNoteModal(){document.getElementById("noteModal").classList.add("hidden");STATE.editingId=null;}
+function saveNote(){
+  if(STATE.editingId!=null){
+    STATE.notes[STATE.editingId]=document.getElementById("noteTextarea").value;
+  }
+  closeNoteModal();
+  renderTable();
+}
+document.getElementById("noteModal").addEventListener("click",function(e){if(e.target===this)closeNoteModal();});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CSV EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+
+function downloadCSV(){
+  const enriched=getEnriched();
+  const headers=["ID","Source","Account","NS Account","Date","Description","Cardholder",
+    "Stmt Amount","NS Amount","NS Date","Status","NS Internal ID","NS Memo","Issue","Personal","Note","Reference","Category"];
+  const escCSV=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const lines=[headers.join(","),...enriched.map(r=>
+    [r.id,r.source,r.account,r.nsAccount,r.date,r.description,r.cardholder,
+     r.amount,r.nsAmount||"",r.nsDate||"",r.status,r.nsId,r.nsMemo,r.issue,r.personal?"Yes":"",r.note,r.reference,r.category
+    ].map(escCSV).join(","))];
+  const csv=lines.join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url;
+  a.download=`CC_Reconciliation_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function downloadPersonalsCSV(){
+  const enriched=getEnriched().filter(r=>r.status==="PERSONAL");
+  if(!enriched.length){alert("No personal transactions found.");return;}
+  const headers=["ID","Source","Account","NS Account","Date","Description","Cardholder",
+    "Stmt Amount","Status","NS Internal ID","NS Memo","Issue","Note","Reference","Category"];
+  const escCSV=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const lines=[headers.join(","),...enriched.map(r=>
+    [r.id,r.source,r.account,r.nsAccount,r.date,r.description,r.cardholder,
+     r.amount,r.status,r.nsId,r.nsMemo,r.issue,r.note,r.reference,r.category
+    ].map(escCSV).join(","))];
+  const csv=lines.join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url;
+  a.download=`CC_Reconciliation_Personals_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function switchTab(id){
+  STATE.activeTab=id;
+  document.querySelectorAll(".content").forEach(el=>el.classList.add("hidden"));
+  document.getElementById("tab-"+id).classList.remove("hidden");
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.tab===id);
+  });
+  if(id==="dashboard") renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIG PERSISTENCE
+// ═══════════════════════════════════════════════════════════════════════════
+
+const STORAGE_KEY = "cc_recon_config_v1";
+
+function getConfigSnapshot() {
+  return {
+    centMap: STATE.centMap.map(r => ({...r})),
+    umpMap:  STATE.umpMap.map(r => ({...r})),
+    personalSuffixes: [...STATE.personalSuffixes],
+    savedAt: new Date().toISOString(),
+  };
+}
+
+function applyConfig(cfg) {
+  if (!cfg) return;
+  if (Array.isArray(cfg.centMap))        STATE.centMap = cfg.centMap;
+  if (Array.isArray(cfg.umpMap))         STATE.umpMap  = cfg.umpMap;
+  if (Array.isArray(cfg.personalSuffixes)) STATE.personalSuffixes = new Set(cfg.personalSuffixes);
+  renderCentMap(); renderUmpMap(); renderPersonalSection();
+  updateUnmappedAlerts(); renderConfigSummary();
+}
+
+function autoSave() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getConfigSnapshot()));
+    const ind = document.getElementById("autoSaveIndicator");
+    ind.style.display = "";
+    clearTimeout(autoSave._t);
+    autoSave._t = setTimeout(() => { ind.style.display = "none"; }, 2000);
+  } catch(e) { /* storage unavailable */ }
+}
+
+function autoLoad() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const cfg = JSON.parse(raw);
+      applyConfig(cfg);
+      const ind = document.getElementById("autoSaveIndicator");
+      const d = cfg.savedAt ? new Date(cfg.savedAt).toLocaleDateString() : "";
+      ind.textContent = `✓ Config restored${d ? " from " + d : ""}`;
+      ind.style.display = "";
+      setTimeout(() => { ind.style.display = "none"; }, 3500);
+    }
+  } catch(e) { /* nothing saved or parse error */ }
+}
+
+function saveConfig() {
+  const cfg = getConfigSnapshot();
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url;
+  a.download = `cc_recon_config_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function loadConfig(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const cfg = JSON.parse(e.target.result);
+      applyConfig(cfg);
+      autoSave(); // also push to localStorage
+      const ind = document.getElementById("autoSaveIndicator");
+      ind.textContent = "✓ Config loaded from file";
+      ind.style.display = "";
+      setTimeout(() => { ind.textContent = "✓ Auto-saved"; ind.style.display = "none"; }, 2500);
+    } catch(err) { alert("Could not read config file: " + err.message); }
+    input.value = ""; // reset so same file can be reloaded
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Account color palette (cycles for many accounts)
+const ACCT_COLORS = [
+  "#1d4ed8","#0891b2","#16a34a","#7c3aed","#d97706","#dc2626",
+  "#0369a1","#059669","#9333ea","#b45309","#be185d","#0e7490",
+];
+
+function buildAccountStats(enriched, startDate, endDate) {
+  const accounts = {};
+
+  const inPeriod = (dateStr) => {
+    if (!startDate && !endDate) return true;
+    if (!dateStr) return false;
+    if (startDate && dateStr < startDate) return false;
+    if (endDate && dateStr > endDate) return false;
+    return true;
+  };
+
+  for (const r of enriched) {
+    const acct = r.nsAccount || r.account;
+    if (!accounts[acct]) accounts[acct] = {
+      label: r.account, nsAccount: r.nsAccount || "",
+      cardholder: "",
+      // Statement (bank) side
+      stmtCharges: 0, stmtCredits: 0, stmtPayments: 0,
+      // NetSuite side
+      nsCharges: 0, nsCredits: 0, nsPayments: 0,
+      // Personal
+      personalCount: 0, personalAmt: 0,
+      // Issue tallies
+      matchedCount: 0, mismatchCount: 0, missingCount: 0, extraCount: 0,
+      unconfirmedMismatches: 0, unmatchedCredits: 0, noNsAcct: 0,
+      allRows: [],
+    };
+    const a = accounts[acct];
+    a.allRows.push(r);
+
+    // Cardholder from first bank-side row
+    if (!a.cardholder && r.source !== "NetSuite Only" && r.cardholder)
+      a.cardholder = r.cardholder;
+
+    if (!inPeriod(r.date)) continue;
+    const amt = r.amountRaw || 0;
+    const isBank = r.source !== "NetSuite Only";
+    const isNSOnly = r.source === "NetSuite Only";
+
+    // ── Personal ──
+    if (r.status === "PERSONAL") {
+      a.personalCount++;
+      a.personalAmt += Math.abs(amt);
+      continue;
+    }
+
+    // ── Payments ──
+    if (r.status === "PAYMENT") {
+      if (isBank) a.stmtPayments += Math.abs(amt);
+      // NS-side payment tracking not needed (payments come from bank statements)
+      continue;
+    }
+
+    // ── Statement (bank) side ──
+    if (isBank) {
+      if (["MATCHED","REFUND_MATCHED","DATE_MISMATCH"].includes(r.status)) {
+        if (amt >= 0) a.stmtCharges += amt;
+        else a.stmtCredits += Math.abs(amt);
+      }
+      if (r.status === "MISSING_NS" && amt >= 0) a.stmtCharges += amt;
+      if (r.status === "MISSING_NS" && amt < 0) a.stmtCredits += Math.abs(amt);
+      if (r.status === "UNMATCHED_CREDIT") a.stmtCredits += Math.abs(amt);
+    }
+
+    // ── NetSuite side ──
+    // NS-only rows are entries in NS with no bank match
+    // Matched/Date_mismatch rows: the NS amount is the counterpart (same amount, matched)
+    if (isNSOnly) {
+      if (amt >= 0) a.nsCharges += amt;
+      else a.nsCredits += Math.abs(amt);
+    } else if (["MATCHED","REFUND_MATCHED","DATE_MISMATCH"].includes(r.status)) {
+      // For matched rows the NS value equals the statement value (same transaction)
+      if (amt >= 0) a.nsCharges += amt;
+      else a.nsCredits += Math.abs(amt);
+    }
+
+    // ── Issue tallies ──
+    if (r.status === "MATCHED" || r.status === "REFUND_MATCHED") a.matchedCount++;
+    else if (r.status === "DATE_MISMATCH") { a.mismatchCount++; a.unconfirmedMismatches++; }
+    else if (r.status === "MISSING_NS") a.missingCount++;
+    else if (r.status === "EXTRA_NS") a.extraCount++;
+    else if (r.status === "UNMATCHED_CREDIT") a.unmatchedCredits++;
+    else if (r.status === "NO_NS_ACCOUNT") a.noNsAcct++;
+  }
+
+  return Object.entries(accounts)
+    .map(([key, a]) => {
+      // Convenience aliases so existing code keeps working
+      a.charges  = a.stmtCharges;
+      a.credits  = a.stmtCredits;
+      a.payments = a.stmtPayments;
+      a.hasActivity = a.stmtCharges > 0 || a.stmtCredits > 0 || a.stmtPayments > 0 ||
+        a.nsCharges > 0 || a.nsCredits > 0 ||
+        a.matchedCount > 0 || a.missingCount > 0 || a.extraCount > 0 ||
+        a.unmatchedCredits > 0 || a.unconfirmedMismatches > 0;
+      return [key, a];
+    })
+    .sort(([,a],[,b]) => a.label.localeCompare(b.label));
+}
+
+function toggleDashAccount(key) {
+  if (STATE.hiddenDashAccounts.has(key)) STATE.hiddenDashAccounts.delete(key);
+  else STATE.hiddenDashAccounts.add(key);
+  renderDashboard();
+}
+
+function renderDashboard() {
+  if (!STATE.results.length) return;
+  const enriched = getEnriched();
+
+  // Auto-detect period from data
+  const dates = enriched.map(r=>r.date).filter(Boolean).sort();
+  const autoStart = dates[0] || "";
+  const autoEnd   = dates[dates.length-1] || "";
+
+  const startEl = document.getElementById("dashStart");
+  const endEl   = document.getElementById("dashEnd");
+  if (!startEl.value && autoStart) startEl.value = autoStart;
+  if (!endEl.value && autoEnd)     endEl.value = autoEnd;
+
+  const startDate = startEl.value || autoStart;
+  const endDate   = endEl.value   || autoEnd;
+
+  const fmt = d => d ? new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "";
+  document.getElementById("dashPeriodLabel").textContent =
+    startDate || endDate ? `${fmt(startDate)} – ${fmt(endDate)}` : "All dates";
+
+  const allAcctStats = buildAccountStats(enriched, startDate, endDate);
+
+  // On first render after a fresh reconciliation, auto-hide inactive accounts.
+  // We detect "first render" by a dedicated flag rather than inspecting the set.
+  if (!STATE._dashInitialized) {
+    STATE._dashInitialized = true;
+    allAcctStats.forEach(([key, a]) => {
+      if (!a.hasActivity) STATE.hiddenDashAccounts.add(key);
+    });
+  }
+
+  const inactiveKeys  = allAcctStats.filter(([,a]) => !a.hasActivity).map(([key]) => key);
+  const hiddenCount   = STATE.hiddenDashAccounts.size;
+  const inactiveCount = inactiveKeys.length;
+  const visibleStats  = allAcctStats.filter(([key]) => !STATE.hiddenDashAccounts.has(key));
+
+  // KPI summary — always use all accounts with activity for totals regardless of hide state
+  const activeStats = allAcctStats.filter(([,a]) => a.hasActivity);
+  let totalCharges=0, totalCredits=0, totalPayments=0, totalIssues=0;
+  for (const [,a] of activeStats) {
+    totalCharges  += a.charges;
+    totalCredits  += a.credits;
+    totalPayments += a.payments;
+    totalIssues   += a.missingCount + a.extraCount + a.unmatchedCredits + a.noNsAcct;
+  }
+  const fmtD = v => "$"+Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  document.getElementById("dashKpis").innerHTML = [
+    {label:"Total Charges",  val: fmtD(totalCharges),  col:"#1e293b"},
+    {label:"Total Credits",  val: fmtD(totalCredits),  col:"#16a34a"},
+    {label:"Total Payments", val: fmtD(totalPayments), col:"#0369a1"},
+    {label:"Net Activity",   val: (totalCharges-totalCredits-totalPayments<0?"-":"")+fmtD(Math.abs(totalCharges-totalCredits-totalPayments)),
+      col: totalCharges-totalCredits-totalPayments<0?"#dc2626":"#16a34a"},
+    {label:"Active Accounts",val: activeStats.length,  col:"#374151"},
+    {label:"Open Issues",    val: totalIssues,          col: totalIssues>0?"#d97706":"#16a34a"},
+  ].map(k=>`<div class="dash-kpi">
+    <div class="dash-kpi-val" style="color:${k.col}">${k.val}</div>
+    <div class="dash-kpi-label">${k.label}</div>
+  </div>`).join("");
+
+  // Control bar: show when anything is hidden OR inactive accounts exist
+  const controlParts = [];
+  if (hiddenCount > 0) {
+    controlParts.push(`<button onclick="showAllDashAccounts()"
+      style="border:1px solid #1d4ed8;border-radius:6px;padding:4px 12px;background:white;
+      font-size:11px;font-weight:600;cursor:pointer;color:#1d4ed8">
+      👁 Show all ${hiddenCount} hidden account${hiddenCount>1?"s":""}
+    </button>`);
+  }
+  if (inactiveCount > 0 && hiddenCount < inactiveCount) {
+    controlParts.push(`<button onclick="hideInactiveDashAccounts()"
+      style="border:1px solid #e5e7eb;border-radius:6px;padding:4px 12px;background:white;
+      font-size:11px;font-weight:600;cursor:pointer;color:#6b7280">
+      Hide ${inactiveCount} inactive account${inactiveCount>1?"s":""}
+    </button>`);
+  }
+  if (controlParts.length > 0) {
+    controlParts.unshift(`<span style="font-size:12px;color:#6b7280">
+      ${hiddenCount > 0 ? `${hiddenCount} account${hiddenCount>1?"s":""} hidden` : `${inactiveCount} account${inactiveCount>1?"s":""} with no activity`}
+    </span>`);
+  }
+  const controlBar = controlParts.length > 0
+    ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">${controlParts.join("")}</div>`
+    : "";
+
+  // Per-account cards
+  const cardsHTML = visibleStats.map(([key, a]) => {
+    const color = ACCT_COLORS[allAcctStats.findIndex(([k])=>k===key) % ACCT_COLORS.length];
+    const issues = a.missingCount + a.extraCount + a.unmatchedCredits + a.noNsAcct + a.unconfirmedMismatches;
+    const issueBar = issues > 0
+      ? `<div class="dash-issues">⚠️ ${issues} item${issues>1?"s":""} need attention &nbsp;
+          ${a.missingCount?`<span>${a.missingCount} missing NS</span>`:""}
+          ${a.extraCount?`<span>${a.extraCount} extra NS</span>`:""}
+          ${a.unconfirmedMismatches?`<span>${a.unconfirmedMismatches} date mismatch</span>`:""}
+          ${a.unmatchedCredits?`<span>${a.unmatchedCredits} unmatched credit</span>`:""}
+          ${a.noNsAcct?`<span>${a.noNsAcct} no NS acct</span>`:""}
+        </div>` : "";
+
+    const inactiveBanner = !a.hasActivity
+      ? `<div style="background:#f1f5f9;padding:6px 16px;font-size:11px;color:#9ca3af;text-align:center">No activity this period</div>`
+      : "";
+
+    // Variance helpers — positive variance means NS > Stmt (over-imported), negative means under
+    const varCharges  = a.nsCharges  - a.stmtCharges;
+    const varCredits  = a.nsCredits  - a.stmtCredits;
+    const varNet      = (a.nsCharges - a.nsCredits) - (a.stmtCharges - a.stmtCredits);
+
+    const fmtVar = (v, invertGood=false) => {
+      if (Math.abs(v) < 0.005) return `<span class="dash-var-zero">$0.00</span>`;
+      const good = invertGood ? v < 0 : v === 0;
+      const cls = Math.abs(v) < 0.005 ? "dash-var-zero" : (v > 0 ? "dash-var-bad" : "dash-var-good");
+      return `<span class="${cls}">${v>0?"+":"-"}${fmtD(Math.abs(v))}</span>`;
+    };
+    const fmtC = (v, cls="") => `<span class="${cls}">${fmtD(v)}</span>`;
+
+    const stmtNet = a.stmtCharges - a.stmtCredits;
+    const nsNet   = a.nsCharges   - a.nsCredits;
+
+    return `<div class="dash-card" style="opacity:${a.hasActivity?1:.75}">
+      <div class="dash-card-header" style="background:${color}">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13px">${esc(a.label)}</div>
+          ${a.cardholder ? `<div style="font-weight:500;font-size:11px;opacity:.85;margin-top:2px">${esc(a.cardholder)}</div>` : ""}
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;flex-shrink:0">
+          <span style="opacity:.8;font-size:11px;font-weight:400;white-space:nowrap">${a.matchedCount} matched</span>
+          <button onclick="toggleDashAccount('${esc(key)}')" title="Hide this account"
+            style="background:rgba(255,255,255,.2);border:none;border-radius:4px;color:white;
+            cursor:pointer;font-size:11px;padding:1px 6px;font-weight:600;line-height:1.5">✕</button>
+        </div>
+      </div>
+      ${inactiveBanner}
+      <div class="dash-compare-head">
+        <span>Line Item</span><span>Statement</span><span>NetSuite</span><span>Variance</span>
+      </div>
+      <div class="dash-compare-row">
+        <span style="color:#374151">Charges (debits)</span>
+        ${fmtC(a.stmtCharges,"dash-val neg")}
+        ${fmtC(a.nsCharges,"dash-val neg")}
+        ${fmtVar(varCharges)}
+      </div>
+      <div class="dash-compare-row">
+        <span style="color:#374151">Credits / Refunds</span>
+        ${fmtC(a.stmtCredits,"dash-val pos")}
+        ${fmtC(a.nsCredits,"dash-val pos")}
+        ${fmtVar(varCredits,true)}
+      </div>
+      <div class="dash-compare-row">
+        <span style="color:#374151">CC Payments</span>
+        <span style="color:#0369a1;font-family:monospace;font-size:11px">${fmtD(a.stmtPayments)}</span>
+        <span style="color:#9ca3af;font-size:11px">—</span>
+        <span class="dash-var-zero">—</span>
+      </div>
+      <div class="dash-compare-row total-row">
+        <span>Net Charges</span>
+        <span class="${stmtNet<0?"dash-val pos":"dash-val neg"}">${stmtNet<0?"-":""}${fmtD(Math.abs(stmtNet))}</span>
+        <span class="${nsNet<0?"dash-val pos":"dash-val neg"}">${nsNet<0?"-":""}${fmtD(Math.abs(nsNet))}</span>
+        ${fmtVar(varNet)}
+      </div>
+      ${a.personalCount > 0 ? `
+      <div class="dash-section-divider">Personal</div>
+      <div class="dash-compare-row personal-row">
+        <span>${a.personalCount} personal charge${a.personalCount>1?"s":""}</span>
+        <span style="font-family:monospace;font-size:11px;color:#6b7280">${fmtD(a.personalAmt)}</span>
+        <span style="color:#9ca3af;font-size:11px">excluded</span>
+        <span class="dash-var-zero">—</span>
+      </div>` : ""}
+      ${issueBar}
+    </div>`;
+  }).join("") || `<div style="color:#9ca3af;font-size:13px;grid-column:1/-1;text-align:center;padding:32px">
+    All accounts are hidden. Click "Show all hidden accounts" above.
+  </div>`;
+
+  document.getElementById("dashGrid").innerHTML = controlBar + `<div class="dash-grid">${cardsHTML}</div>`;
+}
+
+function showAllDashAccounts() {
+  STATE.hiddenDashAccounts.clear();
+  renderDashboard();
+}
+
+function hideInactiveDashAccounts() {
+  const enriched = getEnriched();
+  const startDate = document.getElementById("dashStart").value;
+  const endDate   = document.getElementById("dashEnd").value;
+  buildAccountStats(enriched, startDate, endDate)
+    .filter(([,a]) => !a.hasActivity)
+    .forEach(([key]) => STATE.hiddenDashAccounts.add(key));
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// XLSX DASHBOARD EXPORT  (uses SheetJS loaded from CDN)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function downloadDashboardXLSX() {
+  if (typeof XLSX === "undefined") {
+    alert("SheetJS library not loaded. Please check your internet connection.");
+    return;
+  }
+  const enriched = getEnriched();
+  const startDate = document.getElementById("dashStart").value;
+  const endDate   = document.getElementById("dashEnd").value;
+  const acctStats = buildAccountStats(enriched, startDate, endDate);
+  const wb = XLSX.utils.book_new();
+
+  // ── Summary sheet ──
+  const summaryData = [
+    ["Credit Card Reconciliation Dashboard"],
+    [`Period: ${startDate||"—"} to ${endDate||"—"}`],
+    [`Generated: ${new Date().toLocaleString()}`],
+    [],
+    ["Account","NS Account","Cardholder",
+     "Stmt Charges","NS Charges","Var Charges",
+     "Stmt Credits","NS Credits","Var Credits",
+     "Stmt Net","NS Net","Net Variance",
+     "CC Payments",
+     "Personal Txns","Personal Amt",
+     "Matched","Date Mismatches","Missing NS","Extra NS","Unmatched Credits","Open Issues"],
+  ];
+  let totStmtC=0,totNsC=0,totStmtR=0,totNsR=0,totPay=0,totPersAmt=0;
+  for (const [,a] of acctStats) {
+    const issues = a.missingCount+a.extraCount+a.unmatchedCredits+a.noNsAcct+a.unconfirmedMismatches;
+    summaryData.push([
+      a.label, a.nsAccount, a.cardholder,
+      a.stmtCharges, a.nsCharges, a.nsCharges-a.stmtCharges,
+      a.stmtCredits, a.nsCredits, a.nsCredits-a.stmtCredits,
+      a.stmtCharges-a.stmtCredits, a.nsCharges-a.nsCredits,
+      (a.nsCharges-a.nsCredits)-(a.stmtCharges-a.stmtCredits),
+      a.stmtPayments,
+      a.personalCount, a.personalAmt,
+      a.matchedCount, a.unconfirmedMismatches, a.missingCount, a.extraCount, a.unmatchedCredits, issues,
+    ]);
+    totStmtC+=a.stmtCharges; totNsC+=a.nsCharges;
+    totStmtR+=a.stmtCredits; totNsR+=a.nsCredits;
+    totPay+=a.stmtPayments; totPersAmt+=a.personalAmt;
+  }
+  summaryData.push([]);
+  summaryData.push(["TOTAL","","",
+    totStmtC,totNsC,totNsC-totStmtC,
+    totStmtR,totNsR,totNsR-totStmtR,
+    totStmtC-totStmtR,totNsC-totNsR,(totNsC-totNsR)-(totStmtC-totStmtR),
+    totPay,"",totPersAmt,"","","","","",""]);
+
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+  wsSummary["!cols"] = [
+    {wch:32},{wch:48},{wch:20},
+    {wch:14},{wch:14},{wch:14},
+    {wch:14},{wch:14},{wch:14},
+    {wch:12},{wch:12},{wch:14},
+    {wch:12},{wch:12},{wch:14},
+    {wch:10},{wch:14},{wch:12},{wch:10},{wch:16},{wch:12},
+  ];
+  XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
+
+  // ── Per-account sheets ──
+  for (const [,a] of acctStats) {
+    const sheetName = a.label.replace(/[:\\\/\?\*\[\]]/g,"").slice(0,31);
+    const rows = [
+      [a.label],
+      [`NS Account: ${a.nsAccount}`],
+      [`Period: ${startDate||"all"} to ${endDate||"all"}`],
+      [],
+      ["Date","Source","Description","Cardholder","Amount","Status","Issue","NS Internal ID","NS Memo","Reference","Note"],
+    ];
+    // Sort by date
+    const sorted = [...a.allRows].sort((x,y)=>(x.date||"").localeCompare(y.date||""));
+    for (const r of sorted) {
+      rows.push([
+        r.date, r.source, r.description, r.cardholder,
+        r.amountRaw, r.status, r.issue||"", r.nsId, r.nsMemo, r.reference, r.note||""
+      ]);
+    }
+    rows.push([]);
+    rows.push(["","","","","Charges:",a.charges]);
+    rows.push(["","","","","Credits:",a.credits]);
+    rows.push(["","","","","Payments:",a.payments]);
+    rows.push(["","","","","Net (excl payments):",a.charges-a.credits]);
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{wch:12},{wch:14},{wch:36},{wch:20},{wch:12},{wch:16},{wch:40},{wch:14},{wch:36},{wch:20},{wch:30}];
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  }
+
+  // ── Exceptions sheet (all non-matched rows) ──
+  const excRows = [
+    ["All Exceptions — Items Needing Attention"],
+    [],
+    ["Date","Account","Source","Description","Cardholder","Stmt Amount","NS Amount","Status","Issue","Note"],
+  ];
+  for (const r of enriched.filter(r=>!["MATCHED","REFUND_MATCHED","PAYMENT","PERSONAL"].includes(r.status))) {
+    excRows.push([r.date,r.account,r.source,r.description,r.cardholder,r.amountRaw,r.nsAmount||"",r.status,r.issue||"",r.note||""]);
+  }
+  const wsExc = XLSX.utils.aoa_to_sheet(excRows);
+  wsExc["!cols"]=[{wch:12},{wch:28},{wch:14},{wch:36},{wch:20},{wch:12},{wch:12},{wch:16},{wch:40},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, wsExc, "⚠️ Exceptions");
+
+  // ── All Transactions sheet ──
+  const allRows = [
+    ["Date","Account","Source","Description","Cardholder","Stmt Amount","NS Amount","NS Date","Status","NS Account","NS Internal ID","NS Memo","Issue","Note","Reference"],
+  ];
+  for (const r of enriched) {
+    allRows.push([r.date,r.account,r.source,r.description,r.cardholder,r.amountRaw,r.nsAmount||"",r.nsDate||"",r.status,r.nsAccount,r.nsId,r.nsMemo,r.issue||"",r.note||"",r.reference]);
+  }
+  const wsAll = XLSX.utils.aoa_to_sheet(allRows);
+  wsAll["!cols"]=[{wch:12},{wch:28},{wch:14},{wch:36},{wch:20},{wch:12},{wch:12},{wch:12},{wch:16},{wch:50},{wch:14},{wch:36},{wch:40},{wch:30},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsAll, "All Transactions");
+
+  const dateTag = (startDate||new Date().toISOString().slice(0,7)).slice(0,7).replace("-","_");
+  XLSX.writeFile(wb, `CC_Recon_Dashboard_${dateTag}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TRUNCATED REFERENCE EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+
+function downloadTruncatedRefsCSV() {
+  const enriched = getEnriched();
+  const rows = enriched.filter(r => r.nsRefTruncated);
+  if (!rows.length) { alert("No truncated references found."); return; }
+
+  const escCSV = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const headers = [
+    "NS Internal ID","Truncated Doc Number (current in NS)","Correct Full Reference (from Statement)",
+    "Date","Vendor / Description","NS Memo","Amount","NS Account","Status"
+  ];
+
+  // For matched rows: bank side has the correct Amex reference, NS side has the truncated one
+  // For EXTRA_NS rows: only NS side exists, reference field holds the truncated doc number
+  const dataRows = rows.map(r => {
+    const truncatedDocNum = r.source === "NetSuite Only"
+      ? r.reference   // EXTRA_NS: reference IS the NS doc number (truncated)
+      : r.nsId ? `(see Internal ID ${r.nsId})` : "—";
+    const correctRef = r.source !== "NetSuite Only"
+      ? (isSciNotation(r.reference) ? "⚠️ ALSO TRUNCATED IN SOURCE – check Amex portal" : r.reference)
+      : "No statement match – retrieve from Amex portal";
+    return [r.nsId, truncatedDocNum, correctRef, r.date, r.description, r.nsMemo, r.amount, r.nsAccount, r.status];
+  });
+
+  const lines = [
+    `"CC Reconciliation – Truncated NS Reference Numbers"`,
+    `"Generated: ${new Date().toLocaleString()}"`,
+    `"Action required: In NetSuite, update the Document Number field for each Internal ID below."`,
+    `"The correct full reference number is the 18-digit Amex transaction reference."`,
+    "",
+    headers.map(escCSV).join(","),
+    ...dataRows.map(r => r.map(escCSV).join(","))
+  ];
+
+  const blob = new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url;
+  a.download = `NS_Truncated_References_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+renderCentMap();
+renderUmpMap();
+renderPersonalSection();
+renderConfigSummary();
+autoLoad(); // restore from localStorage if available
+</script>
+
+<script>const TOOL_KEY='cc-recon'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

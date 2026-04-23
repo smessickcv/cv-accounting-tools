@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Payroll JE Generator — 10X HVAC | Cardone Ventures</title>
+  <style>
+    :root{--cv-red:#cc0000;--cv-red-dim:rgba(204,0,0,.12);--cv-red-border:rgba(204,0,0,.25)}
+    [data-theme="dark"] {--bg:#0a0a0a;--surf:#111;--surf2:#1a1a1a;--border:#252525;--text:#f0f0f0;--muted:#777;--green:#4ade80;--yellow:#facc15;--blue:#60a5fa}
+    [data-theme="light"]{--bg:#f2f2f2;--surf:#fff; --surf2:#ebebeb;--border:#d8d8d8;--text:#111;   --muted:#666;--green:#16a34a;--yellow:#ca8a04;--blue:#2563eb}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+    header{background:var(--surf);border-bottom:2px solid var(--cv-red);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    .logo{display:flex;align-items:center;gap:12px}
+    .logo-mark{width:34px;height:34px;background:var(--cv-red);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#fff}
+    .logo-text{font-size:15px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+    .logo-sub{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:1px}
+    .btn-sm{background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:5px 12px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer}
+    .btn-sm:hover{border-color:var(--cv-red)}
+    main{max-width:820px;margin:0 auto;padding:36px 28px 60px}
+    h1{font-size:22px;font-weight:800;margin-bottom:6px}
+    h1 span{color:var(--cv-red)}
+    .subtitle{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.5}
+    .card{background:var(--surf);border:1px solid var(--border);border-radius:6px;margin-bottom:16px;overflow:hidden}
+    .card-hdr{background:var(--surf2);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:10px}
+    .step-badge{background:var(--cv-red);color:#fff;font-size:10px;font-weight:800;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .step-badge.opt{background:var(--surf2);color:var(--muted);border:1px solid var(--border)}
+    .card-hdr-text{font-size:13px;font-weight:700}
+    .card-hdr-sub{font-size:11px;color:var(--muted);margin-left:auto}
+    .card-body{padding:16px}
+    .drop-zone{border:2px dashed var(--border);border-radius:5px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+    .drop-zone:hover,.drop-zone.dragover{border-color:var(--cv-red);background:var(--cv-red-dim)}
+    .drop-zone input[type=file]{display:none}
+    .dz-label{font-size:13px;color:var(--muted)}
+    .dz-label strong{color:var(--text)}
+    .file-chosen{font-size:12px;color:var(--green);margin-top:8px;font-weight:600}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+    .field-row.single{grid-template-columns:1fr}
+    label{display:block;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px}
+    input[type=number],input[type=text]{width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:4px;font-size:13px;outline:none}
+    input[type=number]:focus,input[type=text]:focus{border-color:var(--cv-red)}
+    .field-hint{font-size:11px;color:var(--muted);margin-top:4px}
+    .btn-primary{background:var(--cv-red);border:none;color:#fff;padding:12px 28px;border-radius:5px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-top:4px;letter-spacing:.02em}
+    .btn-primary:hover{background:#a80000}
+    .btn-primary:disabled{background:#555;cursor:not-allowed}
+    .btn-dl{background:var(--green);border:none;color:#000;padding:11px 24px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;display:none;width:100%;margin-top:8px}
+    .btn-dl:hover{opacity:.9}
+    .status-box{background:var(--surf2);border:1px solid var(--border);border-radius:5px;padding:12px 14px;font-size:12px;line-height:1.7;font-family:monospace;min-height:48px;white-space:pre-wrap;color:var(--muted)}
+    .status-box .ok{color:var(--green)}
+    .status-box .warn{color:var(--yellow)}
+    .status-box .err{color:var(--cv-red)}
+    .summary-box{background:var(--surf2);border:1px solid var(--border);border-radius:5px;padding:14px;font-size:12px;font-family:monospace;line-height:1.6;white-space:pre;overflow-x:auto;display:none;margin-top:8px;color:var(--text)}
+    .pyodide-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
+    progress{width:100%;height:6px;margin-top:8px;border-radius:3px;appearance:none}
+    progress::-webkit-progress-bar{background:var(--border);border-radius:3px}
+    progress::-webkit-progress-value{background:var(--cv-red);border-radius:3px}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-mark">CV</div>
+    <div>
+      <div class="logo-text">Cardone Ventures</div>
+      <div class="logo-sub">Payroll JE Generator — 10X HVAC / Gundlach's</div>
+    </div>
+  </div>
+  <button class="btn-sm" onclick="toggleTheme()" id="theme-btn">☀ Light</button>
+</header>
+
+<main>
+  <h1>Payroll JE <span>Generator</span></h1>
+  <p class="subtitle">
+    Upload the Vensure Payroll Check Journal Report and enter invoice totals to generate a
+    QBO-importable journal entry CSV. Replaces the local Python script — runs entirely in your browser.
+  </p>
+
+  <!-- Step 1: HR Report -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="step-badge">1</div>
+      <div><div class="card-hdr-text">Payroll Check Journal Report</div></div>
+      <span class="card-hdr-sub">Required · .xlsx from Vensure/Trion</span>
+    </div>
+    <div class="card-body">
+      <div class="drop-zone" id="dz-hr" onclick="document.getElementById('inp-hr').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleDrop(event,'hr')">
+        <input type="file" id="inp-hr" accept=".xlsx" onchange="handleFile(this,'hr')"/>
+        <div class="dz-label"><strong>Click to browse</strong> or drag &amp; drop<br/>
+          HR Check Journal Report .xlsx (Vensure "Payroll Check Journal Report")</div>
+        <div class="file-chosen" id="hr-name" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Invoice amounts -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="step-badge">2</div>
+      <div><div class="card-hdr-text">Vensure / PRISM Invoice Amounts</div></div>
+      <span class="card-hdr-sub">Enter from invoice PDFs</span>
+    </div>
+    <div class="card-body">
+      <div class="field-row single">
+        <div>
+          <label>Total Vensure / PRISM Invoice Amount ($)</label>
+          <input type="number" id="inp-prism" placeholder="e.g. 84321.50" step="0.01" min="0"/>
+          <div class="field-hint">Sum of all PRISM invoice PDFs for the month. This becomes the Payroll Liabilities CR.</div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <label>Cigna DR Amount ($) <span style="font-weight:400;text-transform:none">— from CV invoice</span></label>
+          <input type="number" id="inp-cigna" placeholder="Leave blank to use HR estimate" step="0.01" min="0"/>
+          <div class="field-hint">From the CV Cigna invoice (recommended). Blank = use HR report estimate with warning.</div>
+        </div>
+        <div>
+          <label>Guardian DR Amount ($) <span style="font-weight:400;text-transform:none">— from CV invoice</span></label>
+          <input type="number" id="inp-guardian" placeholder="Leave blank if $0" step="0.01" min="0"/>
+          <div class="field-hint">From CV Guardian invoice. Blank = $0.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Optional employees override -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="step-badge opt">3</div>
+      <div><div class="card-hdr-text">Employee Cost Center Overrides</div></div>
+      <span class="card-hdr-sub">Optional · employees.csv</span>
+    </div>
+    <div class="card-body">
+      <div class="drop-zone" id="dz-emp" onclick="document.getElementById('inp-emp').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleDrop(event,'emp')">
+        <input type="file" id="inp-emp" accept=".csv" onchange="handleFile(this,'emp')"/>
+        <div class="dz-label"><strong>Click to browse</strong> or drag &amp; drop<br/>
+          employees.csv — two columns: <code>EmployeeName,CostCenter</code></div>
+        <div class="file-chosen" id="emp-name" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: Generate -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="step-badge">4</div>
+      <div><div class="card-hdr-text">Generate Journal Entry</div></div>
+    </div>
+    <div class="card-body">
+      <div class="status-box" id="status">Ready. Upload the Payroll Check Journal Report to begin.</div>
+      <progress id="prog" value="0" max="100" style="display:none"/>
+      <button class="btn-primary" id="btn-run" onclick="runProcess()" disabled>
+        ▶ Generate JE
+      </button>
+      <button class="btn-dl" id="btn-dl" onclick="downloadCSV()">⬇ Download JE CSV (QBO Import)</button>
+      <pre class="summary-box" id="summary-box"></pre>
+      <p class="pyodide-note">First run downloads ~30 MB (Python via Pyodide). All processing is local — no data leaves your browser.</p>
+    </div>
+  </div>
+</main>
+
+<script type="text/x-python" id="py-code">
+import io, csv, re, base64
+from collections import defaultdict
+import pandas as pd
+
+EMPLOYEE_COST_CENTER = {
+    "ABOYTES ERNESTO":          "HVAC Direct-R",
+    "ALVAREZ JARED D":          "HVAC Direct-R",
+    "ARAMBULA JOAB P":          "HVAC Direct-R",
+    "BURNS BRENT S":            "HVAC Sales",
+    "CASTANEDA MATTHEU E":      "HVAC Direct-R",
+    "CRISANTOS JESUS J":        "HVAC Direct-R",
+    "CRUZ HECTOR":              "HVAC Direct-R",
+    "CRUZ THOMAS L":            "HVAC Direct-R",
+    "ELKINS ALEXANDER THOMAS":  "HVAC Direct-R",
+    "GONZALEZ II ANTHONY S":    "Plumbing Direct",
+    "GONZALEZ JAVIER A":        "HVAC Direct-R",
+    "HAMON GERALD W":           "HVAC Direct-R",
+    "HERNANDEZ TRINITY R":      "Admin/Managers",
+    "JENKINS STEPHEN M":        "HVAC Sales",
+    "JUAREZ PHILLIP JOAQUIN":   "HVAC Direct-R",
+    "KIRKLAND MICHAEL J":       "Plumbing Direct",
+    "LOHAN MALIA J":            "Admin/Managers",
+    "LOPEZ JOSHUA D":           "HVAC Direct-R",
+    "LUNA ADRIAN A":            "HVAC Direct-R",
+    "MARINEZ CHRISTOPHER A":    "HVAC Direct-R",
+    "MAXWELL ANNE M":           "Admin/Managers",
+    "MAYER MICHAEL":            "HVAC Direct-R",
+    "MCCLANAHAN KALEB":         "Plumbing Direct",
+    "MILNER DANIEL L":          "Admin/Managers",
+    "O'TOOLE DANIEL T":         "HVAC Direct-R",
+    "PADILLA FABIAN":           "HVAC Direct-C",
+    "PARMELEE TERESA R":        "Admin/Managers",
+    "PEREZ STEVE R":            "HVAC Direct-R",
+    "PHILLIPS-HORNE JOSHUA J":  "HVAC Direct-R",
+    "PORTERFIELD TREVOR L":     "HVAC Direct-R",
+    "RASAVONG JR PHAT":         "HVAC Direct-R",
+    "RODRIGUEZ JACOB":          "HVAC Direct-R",
+    "RODRIGUEZ MARGARITA S":    "Admin/Managers",
+    "RODRIGUEZ OSCAR":          "HVAC Direct-R",
+    "ROGERS JONAH ORLAND":      "HVAC Direct-R",
+    "ROYAL BAILEY DANIEL":      "HVAC Direct-R",
+    "SANCHEZ JERRY A":          "HVAC Direct-R",
+    "SEARLS LUIS":              "HVAC Direct-R",
+    "SMITH BRANDON M":          "Admin/Managers",
+    "TORRES JOSE ENRIQUE":      "HVAC Direct-C",
+    "VASQUEZ ISMAEL R":         "HVAC Direct-R",
+    "WOOD MARTY L":             "HVAC Direct-R",
+    "ALVEAR EDDIE":             "HVAC Direct-R",
+    "LISH MEGAN J":             "Admin/Managers",
+    "FRANCOIS HENRY L":         "HVAC Direct-R",
+}
+
+COST_CENTER_ACCOUNT = {
+    "HVAC Direct-C":   "51200 HVAC-C Direct Labor",
+    "HVAC Direct-R":   "52200 HVAC-R Direct Labor",
+    "Plumbing Direct": "52200 Plumbing Direct Labor",
+    "Admin/Managers":  "61020 Administrative Staff & Managers",
+    "HVAC Sales":      "52400 HVAC Commissions Residential",
+}
+
+WAGE_ACCOUNT_ORDER = [
+    "61020 Administrative Staff & Managers",
+    "51200 HVAC-C Direct Labor",
+    "52200 HVAC-R Direct Labor",
+    "52200 Plumbing Direct Labor",
+    "52400 HVAC Commissions Residential",
+]
+
+CONTRIBUTION_ACCOUNT = {
+    "MEDICARE - EMPLOYER":           "Employer Payroll Taxes",
+    "OASDI - EMPLOYER":              "Employer Payroll Taxes",
+    "FEDERAL UNEMPLOYMENT":          "Employer Payroll Taxes",
+    "CA SUTA":                       "Employer Payroll Taxes",
+    "CA EMPLOYMENT TRAINING TAX":    "Employer Payroll Taxes",
+    "CIGNA OAP HSA 3300 80/50":      "Health Insurance v",
+    "CIGNA OAP HSA 3200 80/50":      "Health Insurance v",
+    "CIGNA OAP HSA 2850 80/50":      "Health Insurance v",
+    "200537 CIGNA OAP HSA 3300 80/50": "Health Insurance v",
+    "CIGNA OAP 1000 80/50":          "Health Insurance v",
+    "CIGNA OAP 500 100/50":          "Health Insurance v",
+    "200537 CIGNA OAP 1000 80/50":   "Health Insurance v",
+    "200537 CIGNA OAP 500 100/50":   "Health Insurance v",
+    "TRION GUARDIAN BASIC LIFE 50K":                         "Health Insurance",
+    "TRION GUARDIAN DENTAL HIGH":                            "Health Insurance",
+    "TRION GUARDIAN DENTAL MID":                             "Health Insurance",
+    "TRION GUARDIAN ER PD LTD 10K":                         "Health Insurance",
+    "TRION GUARDIAN ER PD STD 1K":                          "Health Insurance",
+    "TRION GUARDIAN EMPLOYER PAID LONG TERM DISABILITY":     "Health Insurance",
+    "TRION GUARDIAN EMPLOYER PAID SHORT TERM DISABILITY 1K": "Health Insurance",
+    "TRION GUARDIAN VISION DAVIS NETWORK":                   "Health Insurance",
+    "TRION GUARDIAN VISION VSP NETWORK":                     "Health Insurance",
+    "TRION GUARDIAN VISION AVESIS NETWORK":                  "Health Insurance",
+    "TRION GUARDIAN ACCIDENT LOW OPTION":                    "Health Insurance",
+    "TRION GUARDIAN ACCIDENT HIGH OPTION":                   "Health Insurance",
+    "TRION GUARDIAN HOSPITAL INDEMNITY LOW OPTION":          "Health Insurance",
+    "TRION GUARDIAN HOSPITAL INDEMNITY HIGH OPTION":         "Health Insurance",
+    "TRION GUARDIAN VOLUNTARY TERM LIFE":                    "Health Insurance",
+    "TRION GUARDIAN CRITICAL ILLNESS":                       "Health Insurance",
+    "Critical Illnes":                                       "Health Insurance",
+    "METLIFE BASIC LIFE 50K":                                "Health Insurance",
+    "METLIFE DENTAL HIGH":                                   "Health Insurance",
+    "METLIFE DENTAL MID":                                    "Health Insurance",
+    "METLIFE LTD ER PAID":                                   "Health Insurance",
+    "METLIFE STD ER PAID":                                   "Health Insurance",
+    "METLIFE VISION":                                        "Health Insurance",
+    "HEALTH SAVINGS ACCOUNT":                                "Health Insurance",
+    "W/C CA 5183":  "Worker's Compensation Insurance",
+    "W/C CA 5538":  "Worker's Compensation Insurance",
+    "W/C CA 5542":  "Worker's Compensation Insurance",
+    "W/C CA 8742":  "Worker's Compensation Insurance",
+    "W/C CA 8810":  "Worker's Compensation Insurance",
+    "EPLI":         "Business Insurance",
+    "ADMIN FEE":              "Payroll Services",
+    "ADD'L PAYROLL FEE NC":   "Payroll Services",
+    "ADDITIONAL PAYROLL RUN": "Payroll Services",
+    "MISCELLANEOUS CREDIT PW":"Payroll Services",
+    "NET PAYROLL":            "Payroll Services",
+    "BACKGROUND CHECK":       "Payroll Services",
+    "RETIREMENT":             "Retirement",
+    "MISCELLANEOUS CREDIT":   "Accrued Payroll",
+    "CLIENT MEDICAL":         "_CLIENT_MEDICAL",
+    "CLIENT 401K":            "_CLIENT_401K",
+}
+
+def _is_metadata(val):
+    if not val or val == "nan": return True
+    prefixes = ("Pay Method","Chk/Deposit","Check Number","Check Date","Period Start",
+                "Period End","WkComp Class","Employee ID","Net Pay","GRAND TOTALS",
+                "Break Total","Deduction Total","Contribution Total","MAIN","LOCATION","Details")
+    return any(val.startswith(p) for p in prefixes) or val.strip() == ""
+
+def parse_hr_report(file_obj, employee_lookup):
+    df = pd.read_excel(file_obj, header=None)
+    wages = defaultdict(float)
+    contributions = defaultdict(float)
+    employee_401k = 0.0
+    employee_health = 0.0
+    unknown_emps = []
+    month_year = (None, None)
+    period_desc = ""
+
+    for _, row in df.iterrows():
+        val = str(row[2]) if pd.notna(row[2]) else ""
+        if "Pay Dates from" in val:
+            m = re.search(r"(\d{2}/\d{2}/\d{4}) to (\d{2}/\d{2}/\d{4})", val)
+            if m:
+                period_desc = f"{m.group(1)} to {m.group(2)}"
+                parts = m.group(2).split("/")
+                month_year = (int(parts[0]), int(parts[2]))
+            break
+
+    block_starts = df.index[df[0].notna()].tolist()
+    for i, start in enumerate(block_starts):
+        end = block_starts[i+1] if i+1 < len(block_starts) else len(df)
+        block = df.iloc[start:end]
+        first_col3 = str(block.iloc[0][3]).strip() if pd.notna(block.iloc[0][3]) else ""
+        if "GRAND TOTALS" in first_col3 or "Break Total" in first_col3: continue
+
+        emp_name = None
+        for _, brow in block.iterrows():
+            val = str(brow[3]).strip() if pd.notna(brow[3]) else ""
+            if not _is_metadata(val): emp_name = val; break
+        if not emp_name: continue
+        if emp_name not in employee_lookup and emp_name not in unknown_emps:
+            unknown_emps.append(emp_name)
+
+        pay_total_found = False
+        for _, brow in block.iterrows():
+            col4 = str(brow[4]).strip() if pd.notna(brow[4]) else ""
+            if col4 == "Pay Total:":
+                amt = brow[7]
+                if pd.notna(amt): wages[emp_name] += float(amt)
+                pay_total_found = True; break
+        if not pay_total_found:
+            for _, brow in block.iterrows():
+                col4 = str(brow[4]).strip() if pd.notna(brow[4]) else ""
+                if col4 and col4 not in {"Pay Total:", ""}:
+                    try: wages[emp_name] += float(brow[7]) if pd.notna(brow[7]) else 0
+                    except (ValueError, TypeError): pass
+
+        for _, brow in block.iterrows():
+            desc = str(brow[10]).strip() if pd.notna(brow[10]) else ""
+            amt  = brow[11] if pd.notna(brow[11]) else 0
+            if desc and desc not in ("nan","Contribution Total:","Contribution Description"):
+                try: contributions[desc] += float(amt)
+                except (ValueError, TypeError): pass
+
+        for _, brow in block.iterrows():
+            desc = str(brow[8]).strip() if pd.notna(brow[8]) else ""
+            amt  = brow[9] if pd.notna(brow[9]) else 0
+            if not desc or desc in ("nan","Deduction Total:","Deduction Description"): continue
+            try:
+                famt = float(amt)
+                if desc in ("401K","401k ROTH","401K ROTH"): employee_401k += famt
+                elif desc == "MEDICAL": employee_health += famt
+            except (ValueError, TypeError): pass
+
+    return wages, contributions, employee_401k, employee_health, month_year, period_desc, unknown_emps
+
+def build_je(wages, contributions, employee_401k, employee_health,
+             prism_total, employee_lookup, cigna_override=None, guardian_override=None):
+    warnings = []
+    wages_by_acct = defaultdict(float)
+    for emp, amt in sorted(wages.items()):
+        cc = employee_lookup.get(emp)
+        if cc:
+            acct = COST_CENTER_ACCOUNT.get(cc)
+            if acct: wages_by_acct[acct] += amt
+            else: warnings.append(f"Unknown cost center account for: {cc} (employee: {emp})")
+        else:
+            warnings.append(f"Employee not in lookup -- unclassified wages ${amt:,.2f}: {emp}")
+
+    acct_totals = defaultdict(float)
+    for desc, amt in contributions.items():
+        je_acct = CONTRIBUTION_ACCOUNT.get(desc)
+        if je_acct: acct_totals[je_acct] += amt
+        elif amt != 0: warnings.append(f"Unmapped contribution '{desc}' = ${amt:,.2f}")
+
+    client_medical_contra = acct_totals.pop("_CLIENT_MEDICAL", 0.0)
+    client_401k_contra    = acct_totals.pop("_CLIENT_401K", 0.0)
+    trion_employer        = acct_totals.pop("Health Insurance", 0.0)
+    health_ins_cr = abs(client_medical_contra) - trion_employer
+    if health_ins_cr < 0:
+        warnings.append("Health Insurance CR is negative — check Trion contributions vs employee deductions.")
+        health_ins_cr = 0.0
+
+    hr_cigna = acct_totals.pop("Health Insurance v", 0.0)
+    cigna_dr    = cigna_override    if cigna_override    is not None else hr_cigna
+    guardian_dr = guardian_override if guardian_override is not None else 0.0
+    if cigna_override is None:
+        warnings.append(f"Cigna amount not provided — using HR-report estimate ${hr_cigna:,.2f}.")
+
+    retirement_amt = acct_totals.pop("Retirement", 0.0)
+    retirement_401k_liability = abs(client_401k_contra) + retirement_amt
+
+    je = [
+        {"account":"Employer Payroll Taxes","dr":acct_totals.get("Employer Payroll Taxes",0),"cr":0,"note":"FICA-ER, FUTA, SUTA, CA ETT"},
+        {"account":"Health Insurance - Cigna","dr":cigna_dr,"cr":0,"note":"From CV Cigna invoice (manual)"},
+        {"account":"Health Insurance - Guardian","dr":guardian_dr,"cr":0,"note":"From CV Guardian invoice (manual)"},
+    ]
+    for acct in WAGE_ACCOUNT_ORDER:
+        amt = wages_by_acct.get(acct, 0.0)
+        if amt: je.append({"account":acct,"dr":amt,"cr":0,"note":""})
+    je += [
+        {"account":"Worker's Compensation Insurance","dr":acct_totals.get("Worker's Compensation Insurance",0),"cr":0,"note":""},
+        {"account":"Business Insurance","dr":acct_totals.get("Business Insurance",0),"cr":0,"note":"EPLI"},
+        {"account":"Payroll Services","dr":acct_totals.get("Payroll Services",0),"cr":0,"note":"Admin fee"},
+    ]
+    accrued = acct_totals.get("Accrued Payroll", 0.0)
+    je.append({"account":"Accrued Payroll","dr":accrued if accrued>0 else 0,"cr":accrued if accrued<0 else 0,"note":""})
+    je += [
+        {"account":"Retirement","dr":retirement_amt,"cr":0,"note":"Employer retirement contribution"},
+        {"account":"Health Insurance","dr":0,"cr":health_ins_cr,"note":"Employee medical deductions net of Trion employer premiums"},
+        {"account":"Payroll Liabilities (balance sheet)","dr":0,"cr":prism_total,"note":"Sum of Vensure/PRISM invoices = cash out"},
+        {"account":"401K Liability (balance sheet)","dr":0,"cr":retirement_401k_liability,"note":"|CLIENT 401K| + Retirement employer contribution"},
+        {"account":"Due to CV","dr":0,"cr":cigna_dr+guardian_dr,"note":"Intercompany — CV pays Cigna/Guardian"},
+    ]
+    je = [ln for ln in je if ln["dr"]!=0 or ln["cr"]!=0 or ln["account"]=="Accrued Payroll"]
+    total_dr = sum(ln["dr"] for ln in je)
+    total_cr = sum(ln["cr"] for ln in je)
+    imbalance = round(total_dr - total_cr, 2)
+    return je, imbalance, warnings
+
+def build_csv_string(je_lines, month_year, period_desc):
+    month, year = month_year
+    date_str = f"{month:02d}/01/{year}" if month and year else "??/??"
+    je_no = f"PAYROLL-{year}-{month:02d}" if month and year else "PAYROLL"
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["JournalEntryNo","JournalEntryDate","Memo","AccountName","Debit","Credit","Description"])
+    memo = f"Payroll JE {period_desc}"
+    for ln in je_lines:
+        w.writerow([je_no, date_str, memo, ln["account"],
+                    f"{ln['dr']:.2f}" if ln["dr"] else "",
+                    f"{ln['cr']:.2f}" if ln["cr"] else "",
+                    ln["note"]])
+    return buf.getvalue()
+
+def build_summary_string(je_lines, imbalance, warnings, wages, unknown_emps, period_desc):
+    total_dr = sum(ln["dr"] for ln in je_lines)
+    total_cr = sum(ln["cr"] for ln in je_lines)
+    lines = ["="*65, "  PAYROLL JOURNAL ENTRY SUMMARY", f"  Period: {period_desc}", "="*65, "",
+             f"  {'Account':<45} {'DR':>12}  {'CR':>12}",
+             f"  {'-'*45} {'-'*12}  {'-'*12}"]
+    for ln in je_lines:
+        dr_str = f"{ln['dr']:>12,.2f}" if ln["dr"] else " "*13
+        cr_str = f"{ln['cr']:>12,.2f}" if ln["cr"] else " "*13
+        lines.append(f"  {ln['account']:<45} {dr_str}  {cr_str}")
+    lines += [f"  {'-'*45} {'-'*12}  {'-'*12}",
+              f"  {'TOTAL':<45} {total_dr:>12,.2f}  {total_cr:>12,.2f}", ""]
+    lines.append("  [OK] JE BALANCED" if abs(imbalance) < 0.02
+                 else f"  [!!] IMBALANCE: ${imbalance:,.2f}")
+    lines += ["", "-"*65, "  WAGES BY EMPLOYEE", "-"*65]
+    for emp in sorted(wages): lines.append(f"  {emp:<40} ${wages[emp]:>10,.2f}")
+    lines.append(f"  {'TOTAL':<40} ${sum(wages.values()):>10,.2f}")
+    if unknown_emps:
+        lines += ["", "-"*65, "  [!] EMPLOYEES NOT IN LOOKUP — add to EMPLOYEE_COST_CENTER", "-"*65]
+        lines += [f"  {emp}" for emp in unknown_emps]
+    if warnings:
+        lines += ["", "-"*65, "  WARNINGS", "-"*65]
+        lines += [f"  [!] {w}" for w in warnings]
+    return "\n".join(lines)
+
+# ── Entry point — globals set from JS ──
+try:
+    # Decode and parse employee overrides CSV if provided
+    _emp_lookup = dict(EMPLOYEE_COST_CENTER)
+    if emp_csv_str:
+        import csv as _csv2
+        for _row in _csv2.DictReader(io.StringIO(emp_csv_str)):
+            _n = _row.get("EmployeeName","").strip().upper()
+            _c = _row.get("CostCenter","").strip()
+            if _n and _c: _emp_lookup[_n] = _c
+
+    # Parse HR report
+    _xlsx_data = base64.b64decode(xlsx_b64)
+    wages, contributions, employee_401k, employee_health, month_year, period_desc, unknown_emps = \
+        parse_hr_report(io.BytesIO(_xlsx_data), _emp_lookup)
+
+    # Build JE
+    _prism = float(prism_total_str) if prism_total_str else 0.0
+    _cigna = float(cigna_str) if cigna_str else None
+    _guard = float(guardian_str) if guardian_str else None
+    je_lines, imbalance, warnings = build_je(
+        wages, contributions, employee_401k, employee_health,
+        _prism, _emp_lookup, cigna_override=_cigna, guardian_override=_guard)
+
+    result_csv     = build_csv_string(je_lines, month_year, period_desc)
+    result_summary = build_summary_string(je_lines, imbalance, warnings, wages, unknown_emps, period_desc)
+    result_balanced = abs(imbalance) < 0.02
+    result_period   = period_desc
+    result_month_year = f"{month_year[0]:02d}/{month_year[1]}" if month_year[0] else "unknown"
+    result_error    = None
+except Exception as _e:
+    result_csv = result_summary = result_period = result_month_year = ""
+    result_balanced = False
+    result_error = str(_e)
+</script>
+
+<script>
+let pyodide = null;
+let resultCSV = null, resultPeriod = null;
+let hrFile = null, empFile = null;
+
+function log(msg, cls) {
+  const box = document.getElementById('status');
+  const ready = 'Ready. Upload the Payroll Check Journal Report to begin.';
+  const span = cls ? `<span class="${cls}">${msg}</span>` : msg;
+  box.innerHTML = (box.innerHTML === ready ? '' : box.innerHTML + '\n') + span;
+}
+function setProgress(v) {
+  const p = document.getElementById('prog');
+  p.style.display = v >= 0 ? 'block' : 'none';
+  p.value = v;
+}
+
+function handleFile(input, which) {
+  const file = input.files[0]; if (!file) return;
+  if (which === 'hr') {
+    hrFile = file;
+    const el = document.getElementById('hr-name');
+    el.textContent = '✓ ' + file.name; el.style.display = 'block';
+    document.getElementById('btn-run').disabled = false;
+  } else if (which === 'emp') {
+    empFile = file;
+    const el = document.getElementById('emp-name');
+    el.textContent = '✓ ' + file.name; el.style.display = 'block';
+  }
+}
+
+function handleDrop(e, which) {
+  e.preventDefault();
+  document.getElementById('dz-' + which).classList.remove('dragover');
+  const file = e.dataTransfer.files[0]; if (!file) return;
+  handleFile({files:[file]}, which);
+}
+
+async function runProcess() {
+  document.getElementById('status').innerHTML = '';
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('btn-dl').style.display = 'none';
+  document.getElementById('summary-box').style.display = 'none';
+  resultCSV = null;
+
+  try {
+    if (!pyodide) {
+      log('Loading Python (Pyodide) — one-time ~30 MB download…');
+      setProgress(10);
+      pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
+      log('Installing pandas…');
+      setProgress(40);
+      await pyodide.loadPackage(['pandas']);
+      log('Packages ready.', 'ok');
+      setProgress(60);
+    }
+
+    // Read HR report as base64
+    log('Reading payroll report…');
+    const hrBuf = await hrFile.arrayBuffer();
+    const hrB64 = btoa(String.fromCharCode(...new Uint8Array(hrBuf)));
+    pyodide.globals.set('xlsx_b64', hrB64);
+
+    // Employee CSV
+    const empCsv = empFile ? await empFile.text() : '';
+    pyodide.globals.set('emp_csv_str', empCsv);
+
+    // Numeric inputs
+    pyodide.globals.set('prism_total_str', document.getElementById('inp-prism').value.trim());
+    pyodide.globals.set('cigna_str',    document.getElementById('inp-cigna').value.trim());
+    pyodide.globals.set('guardian_str', document.getElementById('inp-guardian').value.trim());
+
+    log('Running Python…');
+    setProgress(80);
+    await pyodide.runPythonAsync(document.getElementById('py-code').textContent);
+
+    const err = pyodide.globals.get('result_error');
+    if (err) throw new Error(err);
+
+    resultCSV   = pyodide.globals.get('result_csv');
+    resultPeriod = pyodide.globals.get('result_period');
+    const summary  = pyodide.globals.get('result_summary');
+    const balanced = pyodide.globals.get('result_balanced');
+    const monthYear = pyodide.globals.get('result_month_year');
+
+    setProgress(100);
+    log(`Done!  Period: ${resultPeriod}`, 'ok');
+    log(balanced ? 'JE is balanced ✓' : '⚠ JE IMBALANCE — review summary below', balanced ? 'ok' : 'warn');
+
+    document.getElementById('btn-dl').style.display = 'block';
+    const summaryEl = document.getElementById('summary-box');
+    summaryEl.textContent = summary;
+    summaryEl.style.display = 'block';
+  } catch (e) {
+    log('Error: ' + e.message, 'err');
+  } finally {
+    document.getElementById('btn-run').disabled = false;
+    setProgress(-1);
+  }
+}
+
+function downloadCSV() {
+  if (!resultCSV) return;
+  const blob = new Blob([resultCSV], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const tag = (resultPeriod || 'payroll').replace(/[/ ]/g,'_');
+  a.download = `payroll_je_${tag}.csv`;
+  a.click();
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const dark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', dark ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = dark ? '🌙 Dark' : '☀ Light';
+  localStorage.setItem('cv-theme', dark ? 'light' : 'dark');
+}
+
+(function init() {
+  const saved = localStorage.getItem('cv-theme');
+  if (saved) {
+    document.documentElement.setAttribute('data-theme', saved);
+    document.getElementById('theme-btn').textContent = saved === 'light' ? '🌙 Dark' : '☀ Light';
+  }
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>const TOOL_KEY='payroll-je-generator'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

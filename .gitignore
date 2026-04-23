@@ -1,0 +1,15 @@
+# Binary / data files — not needed on GitHub Pages
+*.pdf
+*.xlsx
+*.xls
+*.csv
+*.py
+*.url
+
+# Windows system files
+desktop.ini
+Thumbs.db
+
+# Older / superseded tool versions (kept locally, not published)
+CC_Reconciliation_Tool_6.html
+loan-interest-calculator_15.html

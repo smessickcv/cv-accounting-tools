@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC Statement Reconciliation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#f1f5f9;color:#1e293b;font-size:14px}
+header{background:#1d4ed8;color:#fff;padding:14px 24px;display:flex;align-items:center;gap:12px}
+header h1{font-size:18px;font-weight:700}
+header .subtitle{font-size:12px;opacity:.75;margin-left:auto}
+.tabs{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 24px;display:flex;gap:0}
+.tab-btn{padding:12px 20px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:#64748b;border-bottom:2px solid transparent;transition:all .15s}
+.tab-btn.active{color:#1d4ed8;border-bottom-color:#1d4ed8}
+.tab-btn:disabled{opacity:.4;cursor:not-allowed}
+.container{max-width:1400px;margin:0 auto;padding:20px 24px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin-bottom:16px}
+.card h2{font-size:14px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px}
+.step-row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.step-badge{width:28px;height:28px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.step-badge.done{background:#059669}
+.step-badge.disabled{background:#cbd5e1}
+.step-content{flex:1;min-width:280px}
+.step-content h3{font-size:14px;font-weight:600;margin-bottom:6px}
+.step-content p{font-size:12px;color:#64748b;margin-bottom:10px}
+.drop-zone{border:2px dashed #cbd5e1;border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:all .15s;background:#f8fafc}
+.drop-zone:hover,.drop-zone.drag-over{border-color:#1d4ed8;background:#eff6ff}
+.drop-zone.loaded{border-color:#059669;background:#f0fdf4}
+.drop-zone.disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
+.drop-zone svg{width:28px;height:28px;color:#94a3b8;margin-bottom:8px}
+.drop-zone .dz-title{font-size:13px;font-weight:500;color:#475569}
+.drop-zone .dz-sub{font-size:11px;color:#94a3b8;margin-top:4px}
+.detection-card{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 16px;margin-top:12px;display:none}
+.detection-card.visible{display:block}
+.detection-card.warn{background:#fffbeb;border-color:#fde68a}
+.detection-card.error{background:#fef2f2;border-color:#fecaca}
+.detection-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:10px}
+.det-item label{font-size:11px;color:#64748b;display:block;margin-bottom:2px}
+.det-item span{font-size:13px;font-weight:600;color:#1e293b}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+.badge-blue{background:#dbeafe;color:#1d4ed8}
+.badge-green{background:#d1fae5;color:#059669}
+.badge-amber{background:#fef3c7;color:#92400e}
+.badge-red{background:#fee2e2;color:#dc2626}
+.badge-purple{background:#ede9fe;color:#7c3aed}
+.badge-gray{background:#f1f5f9;color:#475569}
+.btn{padding:8px 18px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.btn-primary{background:#1d4ed8;color:#fff}
+.btn-primary:hover{background:#1e40af}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-secondary{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}
+.btn-secondary:hover{background:#e2e8f0}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.summary-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;cursor:pointer;transition:all .15s}
+.summary-card:hover{border-color:#94a3b8}
+.summary-card.active{border-color:#1d4ed8;box-shadow:0 0 0 3px #dbeafe}
+.summary-card .sc-num{font-size:28px;font-weight:700;line-height:1}
+.summary-card .sc-label{font-size:11px;color:#64748b;margin-top:4px}
+.summary-card .sc-amt{font-size:12px;font-weight:600;color:#475569;margin-top:2px}
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.filter-btn{padding:5px 14px;border-radius:20px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:12px;font-weight:500;color:#64748b;transition:all .15s}
+.filter-btn.active{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid #e2e8f0}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#f8fafc;padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid #e2e8f0}
+td{padding:9px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.match-tier{font-size:10px;color:#94a3b8}
+.cardholder-group{background:#f8fafc;padding:6px 12px;font-size:11px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0}
+.export-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.hint{font-size:11px;color:#64748b;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;margin-top:8px}
+.hint strong{color:#1d4ed8}
+.progress{display:none;align-items:center;gap:10px;padding:10px 0}
+.progress.visible{display:flex}
+.spinner{width:18px;height:18px;border:2px solid #e2e8f0;border-top-color:#1d4ed8;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress-text{font-size:12px;color:#475569}
+#resultsTab{display:none}
+.amt-pos{color:#059669;font-weight:600}
+.amt-neg{color:#dc2626;font-weight:600}
+.next-stmt{color:#7c3aed;font-size:10px;display:block}
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+  <h1>CC Statement Reconciliation</h1>
+  <span class="subtitle">Statement-Level Matching &bull; Standalone Tool</span>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('upload')">Upload &amp; Run</button>
+  <button class="tab-btn" id="resultsTabBtn" onclick="showTab('results')" disabled>Results</button>
+</div>
+
+<div class="container">
+
+  <!-- UPLOAD TAB -->
+  <div id="uploadTab">
+
+    <div class="card">
+      <h2>Step 1 — Upload Credit Card Statement PDF</h2>
+      <div class="step-row">
+        <div class="step-badge" id="badge1">1</div>
+        <div class="step-content">
+          <h3>Statement PDF</h3>
+          <p>Supports: Amex Centurion, Umpqua 10XHPRO 6720, Umpqua 10XRADSPEND 1173, Umpqua Corp 2960, Umpqua Mills 5983</p>
+          <div class="drop-zone" id="pdfDropZone" onclick="document.getElementById('pdfInput').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+            <div class="dz-title">Drop PDF here or click to browse</div>
+            <div class="dz-sub">PDF statement · or Amex Activity CSV (for Centurion with ref #s)</div>
+          </div>
+          <input type="file" id="pdfInput" accept=".pdf,.csv" style="display:none">
+          <div class="progress" id="pdfProgress">
+            <div class="spinner"></div>
+            <span class="progress-text">Extracting text from PDF…</span>
+          </div>
+          <div class="detection-card" id="detectionCard">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <strong id="detType" style="font-size:13px"></strong>
+              <span id="detBadge" class="badge badge-blue"></span>
+            </div>
+            <div class="detection-grid" id="detectionGrid"></div>
+            <div id="detWarn" class="hint" style="margin-top:10px;display:none"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="step2Card" style="opacity:.45;pointer-events:none">
+      <h2>Step 2 — Upload NetSuite Export</h2>
+      <div class="step-row">
+        <div class="step-badge disabled" id="badge2">2</div>
+        <div class="step-content">
+          <h3>NetSuite CC Transactions Export</h3>
+          <p id="nsHint">Upload your NetSuite Credit Card Transactions export (XLS, XLSX, or CSV).</p>
+          <div class="drop-zone disabled" id="nsDropZone" onclick="document.getElementById('nsInput').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 002-2v-4M17 9l-5-5-5 5M12 4v12"/></svg>
+            <div class="dz-title">Drop NS export here or click to browse</div>
+            <div class="dz-sub">XLS · XLSX · CSV</div>
+          </div>
+          <input type="file" id="nsInput" accept=".xls,.xlsx,.csv" style="display:none">
+          <div class="progress" id="nsProgress">
+            <div class="spinner"></div>
+            <span class="progress-text">Parsing NetSuite data…</span>
+          </div>
+          <div class="detection-card" id="nsCard">
+            <div id="nsCardContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+      <button class="btn btn-primary" id="runBtn" disabled onclick="runReconciliation()">Run Reconciliation</button>
+      <div class="progress" id="runProgress">
+        <div class="spinner"></div>
+        <span class="progress-text">Reconciling…</span>
+      </div>
+    </div>
+
+  </div><!-- /uploadTab -->
+
+  <!-- RESULTS TAB -->
+  <div id="resultsTab">
+
+    <div class="summary-grid" id="summaryGrid"></div>
+
+    <div class="card" style="padding:14px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div class="filter-bar" id="filterBar"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" id="groupToggle" onclick="toggleGrouping()" style="display:none">Group by Cardholder</button>
+          <button class="btn btn-secondary" onclick="exportCSV()">Export CSV</button>
+          <button class="btn btn-secondary" onclick="exportXLSX()">Export XLSX</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table id="resultsTable">
+        <thead><tr id="tblHead"></tr></thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+
+  </div><!-- /resultsTab -->
+
+</div><!-- /container -->
+
+<script>
+// ── PDF.js worker ──────────────────────────────────────────────────────────
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ── App state ──────────────────────────────────────────────────────────────
+const app = {
+  stmtData: null,
+  nsData: null,
+  results: null,
+  groupByCardholder: false,
+  activeFilter: 'all'
+};
+
+// ── Statement type config ──────────────────────────────────────────────────
+const STMT_TYPES = {
+  centurion:    { name: 'Amex Centurion',          badge: 'badge-blue',   ns_acct_hint: 'Centurion' },
+  umpqua_6720:  { name: 'Umpqua 10XHPRO 6720',     badge: 'badge-green',  ns_acct_hint: '6720' },
+  umpqua_1173:  { name: 'Umpqua 10XRADSPEND 1173', badge: 'badge-amber',  ns_acct_hint: '1173' },
+  umpqua_2960:  { name: 'Umpqua Corp 2960',         badge: 'badge-purple', ns_acct_hint: '2960' },
+  umpqua_5983:  { name: 'Umpqua Mills 5983',        badge: 'badge-red',    ns_acct_hint: '5983' },
+};
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function fmt(d) {
+  if (!d) return '—';
+  return (d.getMonth()+1).toString().padStart(2,'0') + '/' +
+         d.getDate().toString().padStart(2,'0') + '/' + d.getFullYear();
+}
+
+function fmtAmt(n) {
+  if (n == null || isNaN(n)) return '—';
+  return (n < 0 ? '-' : '') + '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+}
+
+function parseDate(s) {
+  if (!s) return null;
+  s = String(s).trim();
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    let y = m[3].length === 2 ? '20' + m[3] : m[3];
+    return new Date(+y, +m[1]-1, +m[2]);
+  }
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+  return null;
+}
+
+function assignYear(md, refDate) {
+  // md = "MM/DD", refDate = closing Date
+  const [mo, dy] = md.split('/').map(Number);
+  const cy = refDate.getFullYear();
+  const cm = refDate.getMonth() + 1;
+  return mo > cm + 1 ? new Date(cy-1, mo-1, dy) : new Date(cy, mo-1, dy);
+}
+
+function daysDiff(a, b) {
+  if (!a || !b) return 9999;
+  return Math.abs((a - b) / 86400000);
+}
+
+function normalizeRef(r) {
+  if (!r && r !== 0) return '';
+  r = String(r).trim();
+  r = r.replace(/^'+|'+$/g, '');   // strip surrounding single quotes (Amex CSV)
+  r = r.replace(/^Ref-/i, '');     // strip "Ref-" prefix (Umpqua CSV)
+  r = r.replace(/-\d+$/, '');      // strip trailing -N suffix (NS doc numbers like "12345-0")
+  return r.trim();
+}
+
+// ── PDF text extraction ────────────────────────────────────────────────────
+async function extractPdfLines(file) {
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  const allLines = [];
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+
+    // Group items by rounded Y coordinate
+    const byY = new Map();
+    for (const item of content.items) {
+      if (!item.str) continue;
+      const y = Math.round(item.transform[5] / 3) * 3;
+      if (!byY.has(y)) byY.set(y, []);
+      byY.get(y).push(item);
+    }
+
+    // Sort rows top-to-bottom, items in each row left-to-right
+    const rows = [...byY.entries()].sort(([ya], [yb]) => yb - ya);
+    for (const [, items] of rows) {
+      items.sort((a, b) => a.transform[4] - b.transform[4]);
+      const line = items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
+      if (line) allLines.push(line);
+    }
+  }
+  return allLines;
+}
+
+// ── Statement type detection ──────────────────────────────────────────────
+function detectType(lines) {
+  const text = lines.join(' ');
+  if (/american\s+express|centurion|amex/i.test(text)) return 'centurion';
+  if (/columbia\s+bank|umpqua\s+bank/i.test(text)) {
+    if (/####[\s-]####[\s-]####[\s-]6720|\b6720\b/.test(text)) return 'umpqua_6720';
+    if (/####[\s-]####[\s-]####[\s-]1173|\b1173\b/.test(text)) return 'umpqua_1173';
+    if (/####[\s-]####[\s-]####[\s-]2960|\b2960\b/.test(text)) return 'umpqua_2960';
+    if (/####[\s-]####[\s-]####[\s-]5983|\b5983\b/.test(text)) return 'umpqua_5983';
+    return 'umpqua_unknown';
+  }
+  return 'unknown';
+}
+
+// ── UMPQUA PDF PARSER ──────────────────────────────────────────────────────
+function parseUmpqua(lines, stmtType) {
+  const text = lines.join('\n');
+  const result = {
+    type: stmtType,
+    closingDate: null,
+    openingDate: null,
+    billingDays: 32,
+    accountName: '',
+    transactions: []
+  };
+
+  // Closing date from "Billing Cycle MM/DD/YYYY"
+  const bcm = text.match(/Billing\s+Cycle\s+(\d{2}\/\d{2}\/\d{4})/i);
+  if (bcm) result.closingDate = parseDate(bcm[1]);
+
+  // Days in billing cycle
+  const dcm = text.match(/Days\s+In\s+Billing\s+Cycle\s+(\d+)/i);
+  if (dcm) result.billingDays = parseInt(dcm[1]);
+
+  if (result.closingDate && result.billingDays) {
+    const open = new Date(result.closingDate);
+    open.setDate(open.getDate() - result.billingDays + 1);
+    result.openingDate = open;
+  }
+
+  // Account name from first line matching known patterns
+  const nm = text.match(/(VIRTUAL ACCT \w+[\w\s]*|BL ACCT [\w\s]+)/);
+  if (nm) result.accountName = nm[1].trim();
+
+  // ── Transaction parsing ──
+  // Umpqua table cols: Trans Date | Post Date | Plan Name | Reference Number | Description | Amount
+  // Pattern: MM/DD  MM/DD  PPLN01  [15-25 digit ref]  [description]  $amount[-]
+  // Payments have no ref or a short ref like "5745271"
+
+  const SKIP = /^(Trans Date|Post Date|Plan Name|Reference|Description|Amount|Billing|Days In|Previous|Purchases|Cash|Balance|Special|Credits|Payments|Other|Finance|NEW BALANCE|Credit Summary|Total Credit|Available|Amount Over|Amount Past|Disputed|Payment Summary|MINIMUM|PAYMENT DUE|NOTE:|Grace|Cardholder Account|TOTAL CORPORATE|Corporate Activity|Finance Charge Summary|Plan Description|FCM|Average Daily|Periodic Rate|Corresponding APR|Effective APR|Ending Balance|PURCHASE|CASH|APR|FCM =|Variable Rate|PLEASE DETACH|COLUMBIA BANK|PO BOX|SEATTLE|Call us|Lost or|Go to|Write us|MAKE CHECK|AMOUNT OF|Closing Date|New Balance|Total Minimum|Payment Due Date)/i;
+
+  for (const line of lines) {
+    if (SKIP.test(line.trim())) continue;
+
+    // Full transaction with long ref
+    let m = line.match(/^(\d{2}\/\d{2})\s+(\d{2}\/\d{2})\s+\w+\s+(\d{12,25})\s+(.+?)\s+\$([\d,]+\.\d{2})([-]?)$/);
+    if (m) {
+      const [, td, , ref, desc, amt, cr] = m;
+      const date = result.closingDate ? assignYear(td, result.closingDate) : null;
+      result.transactions.push({
+        date, dateStr: td, ref: normalizeRef(ref), rawRef: ref,
+        description: desc.trim(),
+        amount: parseFloat(amt.replace(/,/g,'')) * (cr === '-' ? -1 : 1),
+        type: cr === '-' ? 'payment' : 'charge',
+        cardholder: null
+      });
+      continue;
+    }
+
+    // Payment / short-ref line (internet payment etc.)
+    m = line.match(/^(\d{2}\/\d{2})\s+(\d{2}\/\d{2})\s+(\d{4,11})\s+(.+?)\s+\$([\d,]+\.\d{2})([-]?)$/);
+    if (m) {
+      const [, td, , ref, desc, amt, cr] = m;
+      const date = result.closingDate ? assignYear(td, result.closingDate) : null;
+      result.transactions.push({
+        date, dateStr: td, ref: normalizeRef(ref), rawRef: ref,
+        description: desc.trim(),
+        amount: parseFloat(amt.replace(/,/g,'')) * (cr === '-' ? -1 : 1),
+        type: cr === '-' ? 'payment' : 'charge',
+        cardholder: null
+      });
+      continue;
+    }
+
+    // International transaction fee or fee line (no ref, attaches to previous)
+    m = line.match(/^(\d{2}\/\d{2})\s+(\d{2}\/\d{2})\s+\w+\s+(INTERNATIONAL TRANS FEE|FOREIGN TRANS FEE|TRANS FEE)\s+\$([\d,]+\.\d{2})$/i);
+    if (m) {
+      const [, td, , desc, amt] = m;
+      const date = result.closingDate ? assignYear(td, result.closingDate) : null;
+      result.transactions.push({
+        date, dateStr: td, ref: '', rawRef: '',
+        description: desc.trim(), amount: parseFloat(amt.replace(/,/g,'')),
+        type: 'fee', cardholder: null
+      });
+    }
+  }
+
+  // For Corp 2960 - detect per-cardholder sections
+  if (stmtType === 'umpqua_2960') {
+    parseUmpquaCardholders(lines, result);
+  }
+
+  return result;
+}
+
+function parseUmpquaCardholders(lines, result) {
+  // 2960 has "Cardholder Account Detail" sections with cardholder name + card number header
+  let currentCH = null;
+  const chPattern = /^([A-Z][A-Z\s'-]{3,35})\s*$/;
+  const cardNumLine = /^#{4}\s*#{4}\s*#{4}\s*\d{4}/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].trim();
+    if (cardNumLine.test(l)) continue;
+
+    // Detect cardholder name: ALL CAPS line, no digits (except maybe suffix)
+    if (chPattern.test(l) && !/\d{5,}/.test(l) &&
+        !/^(VIRTUAL|BL ACCT|CARDONE|PPLN|CPLN|PURCHASE|CASH|Total|Trans|Post|Plan|Ref|Desc|Amt)/i.test(l) &&
+        l.length < 40) {
+      currentCH = l;
+    }
+
+    // Re-tag transactions with cardholder info
+    if (currentCH && result.transactions.length > 0) {
+      const txn = result.transactions[result.transactions.length - 1];
+      if (!txn.cardholder) txn.cardholder = currentCH;
+    }
+  }
+}
+
+// ── CENTURION PDF PARSER ───────────────────────────────────────────────────
+// Actual Amex Centurion PDF format (observed via PDF.js extraction):
+//   - Closing date: "Closing Date MM/DD/YY" on page header
+//   - New Charges section groups transactions by cardholder
+//   - Cardholder section header: "CARDHOLDER NAME" line + "Card Ending X-XXXXX" line
+//   - Transaction Pattern A (all on one line):
+//       "MM/DD/YY[*] MERCHANT CITY ST $AMOUNT [⧫]"
+//   - Transaction Pattern A-foreign:
+//       "MM/DD/YY[*] MERCHANT CITY ST FOREIGN_AMT $USD_AMT [⧫]"
+//   - Transaction Pattern B (amount split to next line):
+//       "MM/DD/YY[*] MERCHANT CITY ST"  →  "$AMOUNT [⧫]"
+//   - Transaction Pattern C (merchant first, date+amount next line):
+//       "MERCHANT CITY ST [⧫]"  →  "MM/DD/YY[*] $AMOUNT [⧫]"
+//   - NOTE: 18-digit reference numbers do NOT appear in the PDF.
+//     Use the Amex Activity CSV export for ref-number-based matching.
+function parseCenturion(lines) {
+  const text = lines.join('\n');
+  const result = {
+    type: 'centurion',
+    closingDate: null,
+    openingDate: null,
+    accountName: 'Business Centurion Card',
+    transactions: [],
+    cardholders: []
+  };
+
+  // Closing date
+  const dateM = text.match(/Closing\s+Date\s+(\d{2}\/\d{2}\/\d{2,4})/i);
+  if (dateM) result.closingDate = parseDate(dateM[1]);
+  if (result.closingDate) {
+    const open = new Date(result.closingDate);
+    open.setDate(open.getDate() - 30);
+    result.openingDate = open;
+  }
+
+  const addTxn = (dateStr, desc, amount, cardholder, type) => {
+    if (!dateStr || amount == null || isNaN(amount)) return;
+    const d = parseDate(dateStr);
+    if (!d) return;
+    result.transactions.push({
+      date: d, dateStr, ref: '', rawRef: '',
+      description: desc.replace(/\s*[⧫♦]\s*$/, '').trim(),
+      amount, type: type || (amount < 0 ? 'payment' : 'charge'),
+      cardholder
+    });
+    if (cardholder && !result.cardholders.includes(cardholder)) {
+      result.cardholders.push(cardholder);
+    }
+  };
+
+  // Lines that are definitely not transactions or cardholder names
+  const SKIP = /^(Detail|Summary|Pay In Full|Pay Over Time|Total New|Total Payments|Payments and Credits|Payments Amount|New Charges|Continued on|Foreign$|Spend Amount$|Account Ending|Business Centurion|CARDONE VENTURES$|Closing Date|Customer Care|Website|International Collect|Lost or Stolen|Large Print|Hearing Impaired|Online chat|Membership Rewards|Minimum Payment|Payment Due|Account Summary|Previous Balance|New Balance|Late Payment|If you make|you will pay|Only the|See page|Please refer|For information|Days in Billing|Payment Coupon|Do not staple|Enter 15 digit|Make check payable|AMERICAN EXPRESS|See reverse|PO BOX 6|CITY OF INDUSTRY|Amount Enclosed|on how to update|How We Calculate|How to Avoid|Foreign Currency|Pay Your Bill|Deduct your|Change of Address|Visit americanexpress|Via mobile|Voice automated|For name|Please do not add|For information on how|www\.|Arrival Date|Departure Date|From:|To:|Ticket Number|Passenger Name|Document Type|LODGING|RESTAURANT|TAXICAB|Date of Departure|Additional Info|From: To:|From: Carrier:|Carrier:|Class:|Document Type:)/i;
+
+  // Date pattern: MM/DD/YY with optional asterisk
+  const DATE_PAT = /^\d{2}\/\d{2}\/\d{2}\*?/;
+  // Amount pattern: optional minus + $ + digits
+  const AMT_PAT  = /-?\$(\d[\d,.]*)\s*[⧫♦]?\s*$/;
+  // Full amount-only line: "$X.XX" or "-$X.XX" possibly with ⧫
+  const AMT_LINE = /^-?\$([\d,.]+)\s*[⧫♦]?\s*$/;
+  // Date+amount only line: "MM/DD/YY $X.XX"
+  const DATE_AMT_LINE = /^(\d{2}\/\d{2}\/\d{2})\*?\s+-?\$([\d,.]+)\s*[⧫♦]?\s*$/;
+
+  let currentCH = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    if (SKIP.test(line)) continue;
+
+    // ── Cardholder section header: "Card Ending X-XXXXX" ──
+    if (/^Card Ending\s+\d+-\d{4,5}/i.test(line)) {
+      // The cardholder name is the nearest preceding non-skip, non-empty line
+      for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
+        const prev = lines[j].trim();
+        if (prev && !SKIP.test(prev) && !/^Card Ending/i.test(prev) &&
+            !/^\d{2}\/\d{2}\/\d{2}/.test(prev) && prev.length > 2 && prev.length < 55) {
+          currentCH = prev;
+          break;
+        }
+      }
+      continue;
+    }
+
+    // ── Pattern A: full transaction on one line ──
+    // "MM/DD/YY[*] MERCHANT ... $AMOUNT [⧫]"
+    // Also handles foreign: "MM/DD/YY MERCHANT ... FOREIGN_NUM $USD_AMT"
+    if (DATE_PAT.test(line)) {
+      const amtM = line.match(AMT_PAT);
+      if (amtM) {
+        // Has amount on same line
+        const dateM2 = line.match(/^(\d{2}\/\d{2}\/\d{2})\*?\s+(.*?)\s+-?\$[\d,.]+\s*[⧫♦]?\s*$/);
+        if (dateM2) {
+          const [, d, desc] = dateM2;
+          const neg = line.includes('-$');
+          const amt = parseFloat(amtM[1].replace(/,/g,'')) * (neg ? -1 : 1);
+          // Strip trailing foreign-amount from desc (e.g. "... GB 8,004.05")
+          const cleanDesc = desc.replace(/\s+[\d,]+\.\d{2}\s*$/, '').trim();
+          addTxn(d, cleanDesc, amt, currentCH);
+          continue;
+        }
+      }
+
+      // ── Pattern B: date line, amount on next line ──
+      if (i + 1 < lines.length) {
+        const next = lines[i + 1].trim();
+        if (AMT_LINE.test(next)) {
+          const dateM2 = line.match(/^(\d{2}\/\d{2}\/\d{2})\*?\s+(.+)$/);
+          const amtM2 = next.match(/^-?\$([\d,.]+)/);
+          if (dateM2 && amtM2) {
+            const neg = next.startsWith('-');
+            addTxn(dateM2[1], dateM2[2], parseFloat(amtM2[1].replace(/,/g,'')) * (neg ? -1 : 1), currentCH);
+            i++;
+            continue;
+          }
+        }
+      }
+    }
+
+    // ── Pattern C: merchant first, "MM/DD/YY $AMOUNT" on next line ──
+    if (!DATE_PAT.test(line) && !AMT_LINE.test(line) && i + 1 < lines.length) {
+      const next = lines[i + 1].trim();
+      const daM = next.match(DATE_AMT_LINE);
+      if (daM) {
+        const desc = line.replace(/\s+[\d,]+\.\d{2}\s*[⧫♦]?\s*$/, '').trim(); // strip foreign amt
+        const neg = next.includes('-$');
+        addTxn(daM[1], desc, parseFloat(daM[2].replace(/,/g,'')) * (neg ? -1 : 1), currentCH);
+        i++;
+        continue;
+      }
+    }
+  }
+
+  return result;
+}
+
+// ── AMEX ACTIVITY CSV PARSER ───────────────────────────────────────────────
+// Parses the Amex "Activity" CSV download which contains reference numbers.
+// Two formats supported:
+//   1. Simple activity export: starts directly with header row "Date,Receipt,..."
+//   2. "Transaction Details" export: has metadata rows before the header
+function parseAmexActivityCSV(text) {
+  const rawLines = text.split(/\r?\n/);
+  let hdrIdx = -1;
+  for (let i = 0; i < rawLines.length; i++) {
+    if (/^Date[,\t]/i.test(rawLines[i]) && /Reference/i.test(rawLines[i])) {
+      hdrIdx = i; break;
+    }
+  }
+  if (hdrIdx === -1) return null;
+
+  const headers = csvLine(rawLines[hdrIdx]).map(h => h.toLowerCase().trim());
+  const col = (name) => headers.findIndex(h => h.includes(name));
+  const iDate = col('date'), iDesc = col('description'), iMember = col('card member');
+  const iAmt = col('amount'), iRef = col('reference');
+  if (iDate === -1 || iAmt === -1) return null;
+
+  const result = {
+    type: 'centurion', source: 'csv',
+    closingDate: null, openingDate: null,
+    accountName: 'Business Centurion Card',
+    transactions: [], cardholders: []
+  };
+
+  for (let i = hdrIdx + 1; i < rawLines.length; i++) {
+    const line = rawLines[i].trim();
+    if (!line) continue;
+    const cols = csvLine(line);
+    if (cols.length < 3) continue;
+
+    const date = parseDate(cols[iDate]);
+    if (!date) continue;
+    const amount = parseFloat(cols[iAmt]);
+    if (isNaN(amount)) continue;
+
+    const ref   = normalizeRef(cols[iRef] || '');
+    const desc  = (cols[iDesc] || '').trim();
+    const member = (cols[iMember] || '').trim();
+
+    if (!result.closingDate || date > result.closingDate) result.closingDate = date;
+
+    result.transactions.push({
+      date, dateStr: fmt(date), ref, rawRef: cols[iRef] || '',
+      description: desc, amount: Math.abs(amount),
+      type: amount < 0 ? 'payment' : 'charge',
+      cardholder: member
+    });
+    if (member && !result.cardholders.includes(member)) result.cardholders.push(member);
+  }
+
+  if (result.closingDate) {
+    const open = new Date(result.closingDate);
+    open.setDate(open.getDate() - 30);
+    result.openingDate = open;
+  }
+  return result.transactions.length ? result : null;
+}
+
+function csvLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+// ── NS FILE PARSER ─────────────────────────────────────────────────────────
+async function parseNSFile(file) {
+  const ab = await file.arrayBuffer();
+  let wb;
+  try {
+    wb = XLSX.read(ab, { type: 'array', cellDates: true });
+  } catch(e) {
+    throw new Error('Could not parse NS file: ' + e.message);
+  }
+
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  if (!rows.length) throw new Error('NS file appears empty.');
+
+  // Find header row (first row containing "Date" and "Amount")
+  let hdrIdx = 0;
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
+    const r = rows[i].map(c => String(c).toLowerCase());
+    if (r.some(c => c === 'date') && r.some(c => c.includes('amount'))) {
+      hdrIdx = i; break;
+    }
+  }
+
+  const headers = rows[hdrIdx].map(c => String(c).toLowerCase().trim());
+  const col = (name) => headers.findIndex(h => h.includes(name));
+
+  // Map columns
+  const idxDate   = col('date');
+  const idxDocNum = col('document number');   // reference / transaction ref
+  const idxTxnNum = col('transaction number'); // NS internal (CARDCHRG...)
+  const idxName   = col('name');
+  const idxAcct   = col('account');
+  const idxMemo   = col('memo');
+  const idxAmt    = col('amount') > -1 ? (() => {
+    // If two "amount" cols, pick the last (plain Amount vs Amount Foreign Currency)
+    const all = headers.reduce((a,h,i) => h.includes('amount') ? [...a,i] : a, []);
+    return all[all.length - 1];
+  })() : -1;
+
+  const transactions = [];
+
+  for (let i = hdrIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || !r[idxDate]) continue;
+
+    // Parse date — may be JS Date, ISO string, or Excel serial
+    let d = null;
+    const dv = r[idxDate];
+    if (dv instanceof Date) d = dv;
+    else if (typeof dv === 'string' && dv.includes('T')) d = parseDate(dv.split('T')[0].replace(/-/g, '/').replace(/(\d{4})\/(\d{2})\/(\d{2})/, '$2/$3/$1'));
+    else if (typeof dv === 'string') d = parseDate(dv);
+    else if (typeof dv === 'number') d = new Date(Math.round((dv - 25569) * 86400 * 1000));
+
+    const rawRef = idxDocNum > -1 ? r[idxDocNum] : '';
+    const amount = idxAmt > -1 ? parseFloat(String(r[idxAmt]).replace(/[$,]/g,'')) : 0;
+    const account = idxAcct > -1 ? String(r[idxAcct]) : '';
+    const name = idxName > -1 ? String(r[idxName]) : '';
+    const memo = idxMemo > -1 ? String(r[idxMemo]) : '';
+    const txnNum = idxTxnNum > -1 ? String(r[idxTxnNum]) : '';
+
+    if (!d || isNaN(d.getTime())) continue;
+    if (isNaN(amount)) continue;
+
+    transactions.push({
+      date: d,
+      ref: normalizeRef(rawRef),
+      rawRef: String(rawRef),
+      nsDocNum: txnNum,
+      name,
+      account,
+      memo,
+      amount: Math.abs(amount) // NS stores as positive
+    });
+  }
+
+  return { transactions, rowCount: transactions.length };
+}
+
+// ── RECONCILIATION ENGINE ──────────────────────────────────────────────────
+function reconcile(stmtData, nsData) {
+  const stmtCharges = stmtData.transactions.filter(t => t.type === 'charge' || t.type === 'fee');
+  const closingDate = stmtData.closingDate;
+  const openingDate = stmtData.openingDate;
+
+  // Split NS into: within window, next statement, previous
+  const nsWithin = [];
+  const nsNext = [];
+  const nsPrev = [];
+
+  for (const n of nsData.transactions) {
+    if (closingDate && n.date > closingDate) nsNext.push(n);
+    else if (openingDate && n.date < openingDate) nsPrev.push(n);
+    else nsWithin.push(n);
+  }
+
+  const matched = [];
+  const stmtUnmatched = [];
+  const nsUnmatched = [];
+
+  const nsUsed = new Set();
+  const stmtUsed = new Set();
+
+  // ── Tier 1: Exact reference number match ──
+  for (let si = 0; si < stmtCharges.length; si++) {
+    const s = stmtCharges[si];
+    if (!s.ref) continue;
+    for (let ni = 0; ni < nsWithin.length; ni++) {
+      if (nsUsed.has(ni)) continue;
+      const n = nsWithin[ni];
+      if (n.ref && n.ref === s.ref) {
+        matched.push({ stmt: s, ns: n, tier: 1, tierLabel: 'Ref #' });
+        stmtUsed.add(si);
+        nsUsed.add(ni);
+        break;
+      }
+    }
+  }
+
+  // ── Tier 2: Amount + date proximity (±5 days) ──
+  for (let si = 0; si < stmtCharges.length; si++) {
+    if (stmtUsed.has(si)) continue;
+    const s = stmtCharges[si];
+    let bestNi = -1, bestDays = 999;
+    for (let ni = 0; ni < nsWithin.length; ni++) {
+      if (nsUsed.has(ni)) continue;
+      const n = nsWithin[ni];
+      const samePenny = Math.abs(n.amount - Math.abs(s.amount)) < 0.005;
+      if (!samePenny) continue;
+      const days = daysDiff(s.date, n.date);
+      if (days <= 5 && days < bestDays) { bestDays = days; bestNi = ni; }
+    }
+    if (bestNi > -1) {
+      matched.push({ stmt: s, ns: nsWithin[bestNi], tier: 2, tierLabel: 'Amt+Date' });
+      stmtUsed.add(si);
+      nsUsed.add(bestNi);
+    }
+  }
+
+  // ── Tier 3: Amount only (low confidence) ──
+  for (let si = 0; si < stmtCharges.length; si++) {
+    if (stmtUsed.has(si)) continue;
+    const s = stmtCharges[si];
+    let bestNi = -1;
+    for (let ni = 0; ni < nsWithin.length; ni++) {
+      if (nsUsed.has(ni)) continue;
+      const n = nsWithin[ni];
+      if (Math.abs(n.amount - Math.abs(s.amount)) < 0.005) { bestNi = ni; break; }
+    }
+    if (bestNi > -1) {
+      matched.push({ stmt: s, ns: nsWithin[bestNi], tier: 3, tierLabel: 'Amt only' });
+      stmtUsed.add(si);
+      nsUsed.add(bestNi);
+    }
+  }
+
+  // ── Collect unmatched ──
+  for (let si = 0; si < stmtCharges.length; si++) {
+    if (!stmtUsed.has(si)) stmtUnmatched.push(stmtCharges[si]);
+  }
+  for (let ni = 0; ni < nsWithin.length; ni++) {
+    if (!nsUsed.has(ni)) nsUnmatched.push(nsWithin[ni]);
+  }
+
+  const payments = stmtData.transactions.filter(t => t.type === 'payment');
+
+  return { matched, stmtUnmatched, nsUnmatched, nsNext, nsPrev, payments,
+           stmtTotal: stmtCharges.reduce((s,t) => s + Math.abs(t.amount), 0),
+           matchedTotal: matched.reduce((s,r) => s + Math.abs(r.stmt.amount), 0) };
+}
+
+// ── UI: TAB SWITCHING ──────────────────────────────────────────────────────
+function showTab(name) {
+  document.getElementById('uploadTab').style.display = name === 'upload' ? 'block' : 'none';
+  document.getElementById('resultsTab').style.display = name === 'results' ? 'block' : 'none';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.tab-btn[onclick*="${name}"]`).classList.add('active');
+}
+
+// ── UI: RENDER DETECTION CARD ──────────────────────────────────────────────
+function renderDetection(stmtData) {
+  const tc = STMT_TYPES[stmtData.type] || { name: 'Unknown', badge: 'badge-gray' };
+  const dc = document.getElementById('detectionCard');
+  document.getElementById('detType').textContent = tc.name;
+  document.getElementById('detBadge').className = 'badge ' + tc.badge;
+  document.getElementById('detBadge').textContent = stmtData.type;
+
+  const grid = document.getElementById('detectionGrid');
+  const numCharges = stmtData.transactions.filter(t => t.type === 'charge' || t.type === 'fee').length;
+  const numPayments = stmtData.transactions.filter(t => t.type === 'payment').length;
+  const cardholderCount = stmtData.type === 'centurion'
+    ? (stmtData.cardholders ? stmtData.cardholders.length : '?')
+    : '—';
+
+  grid.innerHTML = `
+    <div class="det-item"><label>Closing Date</label><span>${fmt(stmtData.closingDate) || '⚠ Not found'}</span></div>
+    <div class="det-item"><label>Opening Date (est.)</label><span>${fmt(stmtData.openingDate) || '—'}</span></div>
+    <div class="det-item"><label>Charges Found</label><span>${numCharges}</span></div>
+    <div class="det-item"><label>Payments Found</label><span>${numPayments}</span></div>
+    ${stmtData.type === 'centurion' ? `<div class="det-item"><label>Cardholders</label><span>${cardholderCount}</span></div>` : ''}
+  `;
+
+  const warn = document.getElementById('detWarn');
+  if (numCharges === 0) {
+    warn.style.display = '';
+    warn.innerHTML = '⚠ <strong>No transactions detected.</strong> The PDF text layer may not be readable. Try exporting the PDF as text from Acrobat, or ensure you\'re uploading a text-based (not scanned) PDF.';
+    dc.className = 'detection-card visible warn';
+  } else if (!stmtData.closingDate) {
+    warn.style.display = '';
+    warn.innerHTML = '⚠ <strong>Closing date not detected.</strong> Date filtering may not work correctly. Please verify your NS export covers the correct period.';
+    dc.className = 'detection-card visible warn';
+  } else {
+    warn.style.display = 'none';
+    dc.className = 'detection-card visible';
+  }
+
+  // Update NS hint with date range guidance
+  if (stmtData.closingDate) {
+    const openFmt = fmt(stmtData.openingDate) || '(start of cycle)';
+    const closeFmt = fmt(stmtData.closingDate);
+    document.getElementById('nsHint').innerHTML =
+      `Pull NetSuite <em>Credit Card Transactions Posted for Recon</em> export for <strong>${openFmt} – ${closeFmt}</strong> (or a slightly wider window). Upload the XLS, XLSX, or CSV file below.`;
+  }
+}
+
+// ── UI: RENDER RESULTS ─────────────────────────────────────────────────────
+function renderResults(results) {
+  const { matched, stmtUnmatched, nsUnmatched, nsNext, nsPrev, payments } = results;
+
+  // Summary cards
+  const summaryGrid = document.getElementById('summaryGrid');
+  const totalStmt = results.stmtTotal;
+  const totalMatched = results.matchedTotal;
+  const totMissing = stmtUnmatched.reduce((s,t) => s + Math.abs(t.amount), 0);
+  const totExtra = nsUnmatched.reduce((s,t) => s + t.amount, 0);
+  const totNext = nsNext.reduce((s,t) => s + t.amount, 0);
+
+  summaryGrid.innerHTML = `
+    <div class="summary-card active" onclick="setFilter('all')" id="sc-all">
+      <div class="sc-num" style="color:#1d4ed8">${matched.length + stmtUnmatched.length + nsUnmatched.length + nsNext.length}</div>
+      <div class="sc-label">Total Transactions</div>
+      <div class="sc-amt">${fmtAmt(totalStmt)} stmt</div>
+    </div>
+    <div class="summary-card" onclick="setFilter('matched')" id="sc-matched">
+      <div class="sc-num" style="color:#059669">${matched.length}</div>
+      <div class="sc-label">Matched</div>
+      <div class="sc-amt">${fmtAmt(totalMatched)}</div>
+    </div>
+    <div class="summary-card" onclick="setFilter('missing')" id="sc-missing">
+      <div class="sc-num" style="color:#dc2626">${stmtUnmatched.length}</div>
+      <div class="sc-label">Missing from NS</div>
+      <div class="sc-amt">${fmtAmt(totMissing)}</div>
+    </div>
+    <div class="summary-card" onclick="setFilter('extra')" id="sc-extra">
+      <div class="sc-num" style="color:#d97706">${nsUnmatched.length}</div>
+      <div class="sc-label">In NS, Not on Stmt</div>
+      <div class="sc-amt">${fmtAmt(totExtra)}</div>
+    </div>
+    <div class="summary-card" onclick="setFilter('next')" id="sc-next">
+      <div class="sc-num" style="color:#7c3aed">${nsNext.length}</div>
+      <div class="sc-label">Next Statement (NS)</div>
+      <div class="sc-amt">${fmtAmt(totNext)}</div>
+    </div>
+  `;
+
+  // Filter bar
+  const filterBar = document.getElementById('filterBar');
+  filterBar.innerHTML = [
+    ['all', 'All'],
+    ['matched', `Matched (${matched.length})`],
+    ['missing', `Missing from NS (${stmtUnmatched.length})`],
+    ['extra', `In NS, Not on Stmt (${nsUnmatched.length})`],
+    ['next', `Next Statement (${nsNext.length})`],
+    ['payments', `Payments (${payments.length})`]
+  ].map(([key, label]) =>
+    `<button class="filter-btn ${key === 'all' ? 'active' : ''}" onclick="setFilter('${key}')">${label}</button>`
+  ).join('');
+
+  // Show grouping toggle for Centurion
+  const isCenter = app.stmtData && app.stmtData.type === 'centurion';
+  document.getElementById('groupToggle').style.display = isCenter ? '' : 'none';
+
+  renderTable();
+}
+
+function setFilter(f) {
+  app.activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    if (b.getAttribute('onclick').includes(`'${f}'`)) b.classList.add('active');
+  });
+  document.querySelectorAll('.summary-card').forEach(c => c.classList.remove('active'));
+  const sc = document.getElementById('sc-' + f);
+  if (sc) sc.classList.add('active');
+  renderTable();
+}
+
+function toggleGrouping() {
+  app.groupByCardholder = !app.groupByCardholder;
+  document.getElementById('groupToggle').textContent =
+    app.groupByCardholder ? 'Ungroup' : 'Group by Cardholder';
+  renderTable();
+}
+
+function renderTable() {
+  const results = app.results;
+  const { matched, stmtUnmatched, nsUnmatched, nsNext, nsPrev, payments } = results;
+  const f = app.activeFilter;
+
+  // Build row list
+  let rows = [];
+  if (f === 'all' || f === 'matched') {
+    for (const r of matched) rows.push({ category: 'matched', ...r });
+  }
+  if (f === 'all' || f === 'missing') {
+    for (const t of stmtUnmatched) rows.push({ category: 'missing', stmt: t, ns: null });
+  }
+  if (f === 'all' || f === 'extra') {
+    for (const t of nsUnmatched) rows.push({ category: 'extra', stmt: null, ns: t });
+  }
+  if (f === 'all' || f === 'next') {
+    for (const t of nsNext) rows.push({ category: 'next', stmt: null, ns: t });
+  }
+  if (f === 'payments') {
+    for (const t of payments) rows.push({ category: 'payment', stmt: t, ns: null });
+  }
+
+  // Sort by date
+  rows.sort((a, b) => {
+    const da = a.stmt ? a.stmt.date : (a.ns ? a.ns.date : null);
+    const db = b.stmt ? b.stmt.date : (b.ns ? b.ns.date : null);
+    if (!da) return 1; if (!db) return -1;
+    return da - db;
+  });
+
+  // Headers
+  const thead = document.getElementById('tblHead');
+  thead.innerHTML = `
+    <th>Status</th>
+    <th>Stmt Date</th>
+    <th>NS Date</th>
+    <th>Description / Name</th>
+    <th>Cardholder</th>
+    <th>Stmt Ref #</th>
+    <th>NS Ref #</th>
+    <th>Stmt Amount</th>
+    <th>NS Amount</th>
+    <th>Match Tier</th>
+    <th>NS Account</th>
+  `;
+
+  const tbody = document.getElementById('tblBody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:32px">No transactions in this category.</td></tr>';
+    return;
+  }
+
+  // Group by cardholder if toggled
+  if (app.groupByCardholder && app.stmtData && app.stmtData.type === 'centurion') {
+    const grouped = {};
+    for (const r of rows) {
+      const ch = (r.stmt ? r.stmt.cardholder : null) || (r.ns ? null : null) || 'Unknown';
+      if (!grouped[ch]) grouped[ch] = [];
+      grouped[ch].push(r);
+    }
+    let html = '';
+    for (const [ch, chRows] of Object.entries(grouped)) {
+      html += `<tr><td colspan="11" class="cardholder-group">👤 ${ch}</td></tr>`;
+      html += chRows.map(r => buildRow(r)).join('');
+    }
+    tbody.innerHTML = html;
+  } else {
+    tbody.innerHTML = rows.map(r => buildRow(r)).join('');
+  }
+}
+
+function buildRow(r) {
+  const { category, stmt, ns, tier, tierLabel } = r;
+  const statusMap = {
+    matched: `<span class="badge badge-green">Matched</span>`,
+    missing: `<span class="badge badge-red">Missing NS</span>`,
+    extra:   `<span class="badge badge-amber">Extra NS</span>`,
+    next:    `<span class="badge badge-purple">Next Stmt</span>`,
+    payment: `<span class="badge badge-gray">Payment</span>`,
+  };
+
+  const stmtDate = stmt ? fmt(stmt.date) : '—';
+  const nsDate   = ns ? fmt(ns.date) : '—';
+  const desc     = stmt ? stmt.description : (ns ? ns.name : '—');
+  const ch       = stmt ? (stmt.cardholder || '—') : '—';
+  const stmtRef  = stmt ? (stmt.rawRef || '—') : '—';
+  const nsRef    = ns ? (ns.rawRef || '—') : '—';
+  const stmtAmt  = stmt ? `<span class="${stmt.amount < 0 ? 'amt-neg' : 'amt-pos'}">${fmtAmt(Math.abs(stmt.amount))}</span>` : '—';
+  const nsAmt    = ns ? `<span class="amt-pos">${fmtAmt(ns.amount)}</span>` : '—';
+  const matchT   = tier ? `<span class="match-tier">T${tier}: ${tierLabel}</span>` : '—';
+  const acct     = ns ? ns.account.replace(/^\d+\s+Credit Cards\s+:\s+/i, '') : '—';
+
+  return `<tr>
+    <td>${statusMap[category] || ''}</td>
+    <td>${stmtDate}</td>
+    <td>${nsDate}</td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${desc}">${desc}</td>
+    <td>${ch}</td>
+    <td style="font-family:monospace;font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis" title="${stmtRef}">${stmtRef}</td>
+    <td style="font-family:monospace;font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis" title="${nsRef}">${nsRef}</td>
+    <td>${stmtAmt}</td>
+    <td>${nsAmt}</td>
+    <td>${matchT}</td>
+    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;font-size:11px" title="${acct}">${acct}</td>
+  </tr>`;
+}
+
+// ── EXPORT ─────────────────────────────────────────────────────────────────
+function buildExportRows() {
+  const { matched, stmtUnmatched, nsUnmatched, nsNext, payments } = app.results;
+  const rows = [['Status','Match Tier','Stmt Date','NS Date','Description','Cardholder','Stmt Ref #','NS Ref #','Stmt Amount','NS Amount','NS Account','NS Doc #']];
+
+  const add = (status, tier, stmt, ns) => rows.push([
+    status, tier || '',
+    stmt ? fmt(stmt.date) : '', ns ? fmt(ns.date) : '',
+    stmt ? stmt.description : (ns ? ns.name : ''),
+    stmt ? (stmt.cardholder || '') : '',
+    stmt ? (stmt.rawRef || '') : '', ns ? (ns.rawRef || '') : '',
+    stmt ? Math.abs(stmt.amount).toFixed(2) : '', ns ? ns.amount.toFixed(2) : '',
+    ns ? ns.account : '', ns ? ns.nsDocNum : ''
+  ]);
+
+  for (const r of matched)        add('Matched',      `T${r.tier}:${r.tierLabel}`, r.stmt, r.ns);
+  for (const t of stmtUnmatched)  add('Missing NS',   '', t, null);
+  for (const t of nsUnmatched)    add('Extra NS',      '', null, t);
+  for (const t of nsNext)         add('Next Stmt',    '', null, t);
+  for (const t of payments)       add('Payment',       '', t, null);
+  return rows;
+}
+
+function exportCSV() {
+  const rows = buildExportRows();
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `recon_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+function exportXLSX() {
+  const rows = buildExportRows();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Reconciliation');
+  XLSX.writeFile(wb, `recon_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ── RUN RECONCILIATION ─────────────────────────────────────────────────────
+async function runReconciliation() {
+  if (!app.stmtData || !app.nsData) return;
+  document.getElementById('runProgress').classList.add('visible');
+  document.getElementById('runBtn').disabled = true;
+
+  await new Promise(r => setTimeout(r, 50)); // yield to repaint
+  try {
+    app.results = reconcile(app.stmtData, app.nsData);
+    renderResults(app.results);
+    document.getElementById('resultsTabBtn').disabled = false;
+    showTab('results');
+  } catch(e) {
+    alert('Reconciliation error: ' + e.message);
+  }
+  document.getElementById('runProgress').classList.remove('visible');
+  document.getElementById('runBtn').disabled = false;
+}
+
+// ── FILE UPLOAD HANDLERS ───────────────────────────────────────────────────
+async function handlePDFUpload(file) {
+  if (!file) return;
+  const ext = file.name.toLowerCase().split('.').pop();
+  const dz = document.getElementById('pdfDropZone');
+  const prog = document.getElementById('pdfProgress');
+  dz.querySelector('.dz-title').textContent = file.name;
+  prog.classList.add('visible');
+  document.getElementById('detectionCard').className = 'detection-card';
+
+  try {
+    let stmtData;
+
+    // ── CSV path: try Amex Activity CSV first ──
+    if (ext === 'csv') {
+      const text = await file.text();
+      stmtData = parseAmexActivityCSV(text);
+      if (!stmtData) {
+        alert('CSV not recognised as an Amex Activity export.\nExpected columns: Date, Description, Card Member, Amount, Reference.');
+        prog.classList.remove('visible'); return;
+      }
+    } else {
+      // ── PDF path ──
+      const lines = await extractPdfLines(file);
+      const type = detectType(lines);
+      if (type === 'centurion') {
+        stmtData = parseCenturion(lines);
+      } else if (type.startsWith('umpqua')) {
+        stmtData = parseUmpqua(lines, type);
+      } else {
+        stmtData = { type: 'unknown', closingDate: null, openingDate: null, transactions: [] };
+      }
+    }
+
+    app.stmtData = stmtData;
+    renderDetection(stmtData);
+    dz.className = 'drop-zone loaded';
+
+    // Enable step 2
+    const step2 = document.getElementById('step2Card');
+    step2.style.opacity = '1';
+    step2.style.pointerEvents = '';
+    document.getElementById('badge2').className = 'step-badge';
+    document.getElementById('nsDropZone').className = 'drop-zone';
+    document.getElementById('badge1').className = 'step-badge done';
+
+  } catch(e) {
+    alert('PDF parse error: ' + e.message);
+    dz.className = 'drop-zone';
+  }
+  prog.classList.remove('visible');
+}
+
+async function handleNSUpload(file) {
+  if (!file) return;
+  const dz = document.getElementById('nsDropZone');
+  const prog = document.getElementById('nsProgress');
+  dz.querySelector('.dz-title').textContent = file.name;
+  prog.classList.add('visible');
+
+  try {
+    app.nsData = await parseNSFile(file);
+    dz.className = 'drop-zone loaded';
+    document.getElementById('badge2').className = 'step-badge done';
+
+    const nc = document.getElementById('nsCard');
+    nc.className = 'detection-card visible';
+    document.getElementById('nsCardContent').innerHTML = `
+      <strong style="font-size:13px">NetSuite Data Loaded</strong>
+      <div class="detection-grid" style="margin-top:10px">
+        <div class="det-item"><label>Transactions</label><span>${app.nsData.rowCount}</span></div>
+        <div class="det-item"><label>File</label><span>${file.name}</span></div>
+      </div>`;
+
+    document.getElementById('runBtn').disabled = false;
+
+  } catch(e) {
+    alert('NS file parse error: ' + e.message);
+    dz.className = 'drop-zone';
+  }
+  prog.classList.remove('visible');
+}
+
+// ── DRAG & DROP SETUP ──────────────────────────────────────────────────────
+function setupDrop(zoneId, inputId, handler) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+
+  input.addEventListener('change', e => { if (e.target.files[0]) handler(e.target.files[0]); });
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) handler(f);
+  });
+}
+
+setupDrop('pdfDropZone', 'pdfInput', handlePDFUpload);
+setupDrop('nsDropZone',  'nsInput',  handleNSUpload);
+
+// Initial tab state
+showTab('upload');
+</script>
+
+<script>const TOOL_KEY='cc-statement-recon'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

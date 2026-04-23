@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NetSuite Export Processor | Cardone Ventures</title>
+  <style>
+    :root{--cv-red:#cc0000;--cv-red-dim:rgba(204,0,0,.12);--cv-red-border:rgba(204,0,0,.25)}
+    [data-theme="dark"] {--bg:#0a0a0a;--surf:#111;--surf2:#1a1a1a;--border:#252525;--text:#f0f0f0;--muted:#777;--green:#4ade80;--yellow:#facc15;--blue:#60a5fa}
+    [data-theme="light"]{--bg:#f2f2f2;--surf:#fff; --surf2:#ebebeb;--border:#d8d8d8;--text:#111;   --muted:#666;--green:#16a34a;--yellow:#ca8a04;--blue:#2563eb}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+    header{background:var(--surf);border-bottom:2px solid var(--cv-red);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    .logo{display:flex;align-items:center;gap:12px}
+    .logo-mark{width:34px;height:34px;background:var(--cv-red);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#fff}
+    .logo-text{font-size:15px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+    .logo-sub{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:1px}
+    .btn-sm{background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:5px 12px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer}
+    .btn-sm:hover{border-color:var(--cv-red)}
+    main{max-width:820px;margin:0 auto;padding:36px 28px 60px}
+    h1{font-size:22px;font-weight:800;margin-bottom:6px}
+    h1 span{color:var(--cv-red)}
+    .subtitle{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.5}
+    .card{background:var(--surf);border:1px solid var(--border);border-radius:6px;margin-bottom:16px;overflow:hidden}
+    .card-hdr{background:var(--surf2);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:10px}
+    .step-badge{background:var(--cv-red);color:#fff;font-size:10px;font-weight:800;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .step-badge.opt{background:var(--surf2);color:var(--muted);border:1px solid var(--border)}
+    .card-hdr-text{font-size:13px;font-weight:700}
+    .card-hdr-sub{font-size:11px;color:var(--muted);margin-left:auto}
+    .card-body{padding:16px}
+    .drop-zone{border:2px dashed var(--border);border-radius:5px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+    .drop-zone:hover,.drop-zone.dragover{border-color:var(--cv-red);background:var(--cv-red-dim)}
+    .drop-zone input[type=file]{display:none}
+    .drop-zone-label{font-size:13px;color:var(--muted)}
+    .drop-zone-label strong{color:var(--text)}
+    .file-chosen{font-size:12px;color:var(--green);margin-top:8px;font-weight:600}
+    .btn-primary{background:var(--cv-red);border:none;color:#fff;padding:12px 28px;border-radius:5px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-top:8px;letter-spacing:.02em}
+    .btn-primary:hover{background:#a80000}
+    .btn-primary:disabled{background:#555;cursor:not-allowed}
+    .btn-dl{background:var(--green);border:none;color:#000;padding:11px 24px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;display:none;width:100%;margin-top:8px}
+    .btn-dl:hover{opacity:.9}
+    .status-box{background:var(--surf2);border:1px solid var(--border);border-radius:5px;padding:12px 14px;font-size:12px;line-height:1.7;font-family:monospace;min-height:56px;white-space:pre-wrap;color:var(--muted)}
+    .status-box .ok{color:var(--green)}
+    .status-box .warn{color:var(--yellow)}
+    .status-box .err{color:var(--cv-red)}
+    .pyodide-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
+    .pyodide-note a{color:var(--blue)}
+    progress{width:100%;height:6px;margin-top:8px;border-radius:3px;appearance:none}
+    progress::-webkit-progress-bar{background:var(--border);border-radius:3px}
+    progress::-webkit-progress-value{background:var(--cv-red);border-radius:3px}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-mark">CV</div>
+    <div>
+      <div class="logo-text">Cardone Ventures</div>
+      <div class="logo-sub">NetSuite Export Processor</div>
+    </div>
+  </div>
+  <button class="btn-sm" onclick="toggleTheme()" id="theme-btn">☀ Light</button>
+</header>
+
+<main>
+  <h1>NetSuite Export <span>Processor</span></h1>
+  <p class="subtitle">
+    Upload the NetSuite "MEC – Subsidiary Due To/Froms" XLS export. This tool parses transactions and
+    account balances and builds <strong>Due_ToFrom_Master.xlsx</strong> — the same output as running the Python script locally.
+    Runs entirely in your browser via Python (Pyodide).
+  </p>
+
+  <!-- Step 1: Required file -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="step-badge">1</div>
+      <div>
+        <div class="card-hdr-text">NetSuite XLS Export</div>
+      </div>
+      <span class="card-hdr-sub">Required</span>
+    </div>
+    <div class="card-body">
+      <div class="drop-zone" id="dz-xls" onclick="document.getElementById('inp-xls').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleDrop(event,'xls')">
+        <input type="file" id="inp-xls" accept=".xls,.xml" onchange="handleFile(this,'xls')"/>
+        <div class="drop-zone-label"><strong>Click to browse</strong> or drag &amp; drop<br/>
+          MEC – Subsidiary Due To/Froms .xls export from NetSuite</div>
+        <div class="file-chosen" id="xls-name" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Optional existing master -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="step-badge opt">2</div>
+      <div>
+        <div class="card-hdr-text">Existing Due_ToFrom_Master.xlsx</div>
+      </div>
+      <span class="card-hdr-sub">Optional — preserves prior months</span>
+    </div>
+    <div class="card-body">
+      <div class="drop-zone" id="dz-master" onclick="document.getElementById('inp-master').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleDrop(event,'master')">
+        <input type="file" id="inp-master" accept=".xlsx" onchange="handleFile(this,'master')"/>
+        <div class="drop-zone-label"><strong>Click to browse</strong> or drag &amp; drop<br/>
+          Upload to keep prior months' data. Omit to start fresh.</div>
+        <div class="file-chosen" id="master-name" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Process -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="step-badge">3</div>
+      <div><div class="card-hdr-text">Process &amp; Download</div></div>
+    </div>
+    <div class="card-body">
+      <div class="status-box" id="status">Ready. Upload the NetSuite XLS export to begin.</div>
+      <progress id="prog" value="0" max="100" style="display:none"></progress>
+      <button class="btn-primary" id="btn-run" onclick="runProcess()" disabled>
+        ▶ Process Export
+      </button>
+      <button class="btn-dl" id="btn-dl" onclick="downloadResult()">
+        ⬇ Download Due_ToFrom_Master.xlsx
+      </button>
+      <p class="pyodide-note">
+        First run downloads ~30 MB of Python (Pyodide + pandas + openpyxl). Subsequent runs on the same
+        browser session are instant. All processing happens locally — no data is uploaded anywhere.
+      </p>
+    </div>
+  </div>
+</main>
+
+<!-- Embedded Python (not executed by browser — read by Pyodide) -->
+<script type="text/x-python" id="py-code">
+import io, re, base64
+import xml.etree.ElementTree as ET
+import pandas as pd
+from openpyxl import load_workbook, Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side as XLSide
+from openpyxl.utils import get_column_letter
+
+MIRROR_PAIRS = [
+    {"label": "10X HVAC",              "cv": ["15108"],        "sub": ["25001","15152"], "entity": "10X HVAC, LLC",                                "kind": "shared"},
+    {"label": "10X Buy/Sell",          "cv": ["15109","22209"],"sub": ["25001","15152"], "entity": "10X Buy/Sell, LLC",                            "kind": "shared"},
+    {"label": "10X BA Franchising",    "cv": ["15113"],        "sub": ["25001","15152"], "entity": "10X Business Advisor Franchising, LLC",        "kind": "shared"},
+    {"label": "Gundlachs",             "cv": ["15114"],        "sub": ["25001","15152"], "entity": "Gundlach Heating, Cooling, Plumbing & Electrical","kind": "shared"},
+    {"label": "5225 N Scottsdale",     "cv": ["15116"],        "sub": ["25001","15152"], "entity": "5225 N Scottsdale, LLC",                       "kind": "shared"},
+    {"label": "10X Global Staffing",   "cv": ["15121"],        "sub": ["25001","15152"], "entity": "10X Global Staffing, LLC",                     "kind": "shared"},
+    {"label": "10X Roofing (Due To)",  "cv": ["15129"],        "sub": ["25001","15152"], "entity": "10X Roofing Management, LLC",                  "kind": "shared"},
+    {"label": "10X HomeServe",         "cv": ["15138"],        "sub": ["25001","15152"], "entity": "10X HomeServe, LLC",                           "kind": "shared"},
+    {"label": "10X Coverage",          "cv": ["15143"],        "sub": ["25001","15152"], "entity": "10X Group Plan, LLC",                          "kind": "shared"},
+    {"label": "CardoMax",              "cv": ["15145"],        "sub": ["25001","15152"], "entity": "CardoMax, LLC",                                "kind": "shared"},
+    {"label": "10X Farms & Ranch",     "cv": ["15146"],        "sub": ["25001","15152"], "entity": "10X Farms & Ranch, LLC",                       "kind": "shared"},
+    {"label": "15111 N Pima",          "cv": ["15147"],        "sub": ["25001","15152"], "entity": "15111 N Pima Road, LLC",                       "kind": "shared"},
+    {"label": "HRE",                   "cv": ["15150"],        "sub": ["25001","15152"], "entity": "Heather Rae Essentials LLC",                   "kind": "shared"},
+    {"label": "10X Roofing (N/R<>N/P)","cv": ["15164"],       "sub": ["23203"],         "entity": "10X Roofing Management, LLC",                  "kind": "dedicated"},
+    {"label": "HRE (Prom N/R<>N/P)",   "cv": ["15204"],       "sub": ["23206"],         "entity": "Heather Rae Essentials LLC",                   "kind": "dedicated"},
+    {"label": "CardoMax (Prom N/R<>N/P)","cv": ["15205"],     "sub": ["23207"],         "entity": "CardoMax, LLC",                                "kind": "dedicated"},
+]
+CV_ACCT_ENTITY = {acct: p["entity"] for p in MIRROR_PAIRS for acct in p["cv"]}
+
+def _clean_ns(content):
+    content = re.sub(r' xmlns[^"]*"[^"]*"', '', content)
+    content = re.sub(r'<(\w+:)', '<', content)
+    content = re.sub(r'</(\w+:)', '</', content)
+    content = re.sub(r' \w+:', ' ', content)
+    return content
+
+def _parse_row(row):
+    cells = row.findall('.//Cell')
+    vals = {}
+    cur = 0
+    for c in cells:
+        idx = c.get('Index')
+        if idx: cur = int(idx) - 1
+        data = c.find('Data')
+        vals[cur] = data.text if data is not None else None
+        cur += 1
+    max_col = max(vals.keys()) if vals else -1
+    return [vals.get(j) for j in range(max_col + 1)]
+
+def _safe_float(val):
+    try: return round(float(val), 2) if val is not None else None
+    except (ValueError, TypeError): return None
+
+def _parse_date(val):
+    if not val: return None
+    return val.split('T')[0] if 'T' in val else val
+
+def parse_export(content_str):
+    content = _clean_ns(content_str)
+    root = ET.fromstring(content)
+    sheet = root.findall('.//Worksheet')[0]
+    all_rows = sheet.findall('.//Row')
+    report_month = None
+    for i, row in enumerate(all_rows[:6]):
+        r = _parse_row(row)
+        if i == 3 and r and r[0]: report_month = r[0].strip()
+    if not report_month: raise ValueError("Could not detect report month from file header.")
+    transactions, acct_balances = [], []
+    current_acct_num = current_acct_name = None
+    current_acct_beg_bal = 0.0
+    SKIP_STARTS = ('ASSETS','LIABILITIES','Current Assets','Current Liabilities',
+                   'Other Current Asset','Other Current Liab','Total','Equity',
+                   'Retained','Net Income','Options:','Financial Row')
+    for row in all_rows[7:]:
+        r = _parse_row(row)
+        if not r or not any(v for v in r): continue
+        first = r[0]
+        if first is not None and (len(r) < 2 or r[1] is None):
+            if first.startswith('Total - '):
+                end_bal  = _safe_float(r[6] if len(r) > 6 else None)
+                activity = _safe_float(r[5] if len(r) > 5 else None)
+                if current_acct_num:
+                    acct_balances.append({'Month':report_month,'Acct_Num':current_acct_num,
+                        'Acct_Name':current_acct_name,'Beg_Balance':current_acct_beg_bal,
+                        'Activity':activity,'End_Balance':end_bal})
+            elif not any(first.startswith(s) for s in SKIP_STARTS):
+                m = re.match(r'^(\d{5})\s*-\s*(.+)$', first.strip())
+                if m:
+                    current_acct_num  = m.group(1)
+                    current_acct_name = first.strip()
+                    current_acct_beg_bal = _safe_float(r[6] if len(r) > 6 else None) or 0.0
+            continue
+        if first is None and len(r) > 1 and r[1] is not None:
+            def g(i): return r[i] if len(r) > i else None
+            raw_sub = g(11)
+            side = "CV" if raw_sub == "Cardone Ventures, LLC" else "Sub"
+            subsidiary = CV_ACCT_ENTITY.get(current_acct_num, raw_sub) if side == "CV" else raw_sub
+            transactions.append({'Month':report_month,'Date':_parse_date(g(2)),'Side':side,
+                'Subsidiary':subsidiary,'Acct_Num':current_acct_num,'Acct_Name':current_acct_name,
+                'Type':g(1),'Doc_Number':g(3),'Name':g(4),'Amount':_safe_float(g(5)),
+                'Balance':_safe_float(g(6)),'Description':g(7),'Memo':g(8)})
+    return report_month, pd.DataFrame(transactions), pd.DataFrame(acct_balances)
+
+HEADER_FILL = PatternFill("solid", fgColor="1F3864")
+HEADER_FONT = Font(name="Arial", bold=True, color="FFFFFF", size=10)
+DATA_FONT   = Font(name="Arial", size=9)
+SUBHDR_FILL = PatternFill("solid", fgColor="2E75B6")
+SUBHDR_FONT = Font(name="Arial", bold=True, color="FFFFFF", size=9)
+YELLOW_FILL = PatternFill("solid", fgColor="FFFF00")
+LIGHT_BLUE  = PatternFill("solid", fgColor="DDEEFF")
+thin_side   = XLSide(border_style="thin", color="D9D9D9")
+THIN_BORDER = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+MONEY_FMT   = '#,##0.00_);(#,##0.00);"-"'
+MAX_ROWS    = 5000
+
+def _style_cell(cell, bold=False, fill=None, align="left", number_format=None, font_color="000000", font_size=9):
+    cell.font = Font(name="Arial", bold=bold, size=font_size, color=font_color)
+    if fill: cell.fill = fill
+    cell.alignment = Alignment(horizontal=align, vertical="center", wrap_text=False)
+    cell.border = THIN_BORDER
+    if number_format: cell.number_format = number_format
+
+def _header_row(ws, row_num, labels, fill=None):
+    fill = fill or HEADER_FILL
+    for col, label in enumerate(labels, 1):
+        c = ws.cell(row=row_num, column=col, value=label)
+        c.font = HEADER_FONT; c.fill = fill
+        c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        c.border = THIN_BORDER
+    ws.row_dimensions[row_num].height = 30
+
+def _autofit(ws, min_w=8, max_w=50):
+    for col in ws.columns:
+        col_ltr = get_column_letter(col[0].column)
+        max_len = max((len(str(cell.value or "")) for cell in col), default=0)
+        ws.column_dimensions[col_ltr].width = min(max(max_len + 2, min_w), max_w)
+
+def write_master(report_month, df_trans, df_bal, existing_b64=None):
+    if existing_b64:
+        wb = load_workbook(io.BytesIO(base64.b64decode(existing_b64)))
+    else:
+        wb = Workbook(); wb.remove(wb.active)
+
+    def get_or_create(name):
+        return wb[name] if name in wb.sheetnames else wb.create_sheet(name)
+
+    TAB_TRANS = "Transactions"; TAB_BAL = "Account Balances"
+    TAB_RECON = "Recon Summary"; TAB_GUIDE = "Import Formulas"
+
+    # Tab 1 — Transactions
+    ws = get_or_create(TAB_TRANS)
+    TRANS_HDR = ["Month","Date","Side","Subsidiary","Acct_Num","Acct_Name",
+                 "Type","Doc_Number","Name","Amount","Balance","Description","Memo"]
+    MONEY_T = {10, 11}
+    existing = list(ws.iter_rows(values_only=True))
+    kept = ([existing[0]] + [r for r in existing[1:] if r and r[0] != report_month]
+            if existing and existing[0] and existing[0][0] == "Month"
+            else [tuple(TRANS_HDR)])
+    ws.delete_rows(1, ws.max_row + 1)
+    ws.append(tuple(TRANS_HDR)); _header_row(ws, 1, TRANS_HDR)
+    for r_data in kept[1:]:
+        ws.append(r_data); rn = ws.max_row
+        for col in range(1, len(TRANS_HDR)+1):
+            _style_cell(ws.cell(rn, col), number_format=MONEY_FMT if col in MONEY_T else None)
+    for _, row in df_trans.iterrows():
+        ws.append(tuple(row[c] for c in TRANS_HDR)); rn = ws.max_row
+        for col in range(1, len(TRANS_HDR)+1):
+            _style_cell(ws.cell(rn, col), number_format=MONEY_FMT if col in MONEY_T else None)
+    ws.freeze_panes = "A2"; ws.auto_filter.ref = ws.dimensions; _autofit(ws)
+    ws.column_dimensions['L'].width = 45; ws.column_dimensions['M'].width = 45
+
+    # Tab 2 — Account Balances
+    ws2 = get_or_create(TAB_BAL)
+    BAL_HDR = ["Month","Acct_Num","Acct_Name","Beg_Balance","Activity","End_Balance"]
+    MONEY_B = {4, 5, 6}
+    existing_b = list(ws2.iter_rows(values_only=True))
+    kept_b = ([existing_b[0]] + [r for r in existing_b[1:] if r and r[0] != report_month]
+              if existing_b and existing_b[0] and existing_b[0][0] == "Month"
+              else [tuple(BAL_HDR)])
+    ws2.delete_rows(1, ws2.max_row + 1)
+    ws2.append(tuple(BAL_HDR)); _header_row(ws2, 1, BAL_HDR)
+    for r_data in kept_b[1:]:
+        ws2.append(r_data); rn = ws2.max_row
+        for col in range(1, len(BAL_HDR)+1):
+            _style_cell(ws2.cell(rn, col), number_format=MONEY_FMT if col in MONEY_B else None)
+    for _, row in df_bal.iterrows():
+        ws2.append(tuple(row[c] for c in BAL_HDR)); rn = ws2.max_row
+        for col in range(1, len(BAL_HDR)+1):
+            _style_cell(ws2.cell(rn, col), number_format=MONEY_FMT if col in MONEY_B else None)
+    ws2.freeze_panes = "A2"; ws2.auto_filter.ref = ws2.dimensions; _autofit(ws2)
+
+    # Tab 3 — Recon Summary
+    ws3 = get_or_create(TAB_RECON)
+    RECON_HDR = ["Month","Relationship","Subsidiary","CV Acct(s)","CV End Balance",
+                 "Sub Acct(s)","Sub Prior End Bal","Sub Activity","Sub End Balance","Variance (CV+Sub)"]
+    MONEY_R = {5,7,8,9,10}
+    existing_r = list(ws3.iter_rows(values_only=True))
+    prior_g_vals = {}
+    if existing_r and existing_r[0] and existing_r[0][0] == "Month":
+        try:
+            g_idx = list(existing_r[0]).index("Sub Prior End Bal")
+            for r in existing_r[1:]:
+                if r and r[0]:
+                    prior_g_vals[(r[0], r[1])] = r[g_idx]
+        except ValueError: pass
+    ws3.delete_rows(1, ws3.max_row + 1)
+    _header_row(ws3, 1, RECON_HDR); ws3.row_dimensions[1].height = 32
+    ws3.merge_cells("A2:J2")
+    instr = ws3.cell(2, 1, "Yellow column = enter Sub ending balance from prior month. Sub End Bal = Prior + Activity. Variance should = 0.")
+    instr.font = Font(name="Arial", italic=True, size=8, color="595959")
+    instr.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    instr.fill = PatternFill("solid", fgColor="F2F2F2")
+    ws3.row_dimensions[2].height = 24
+    CL = {i: get_column_letter(i) for i in range(1, 11)}
+    def cv_end_formula(rn, cv_accts):
+        terms = [f"IFERROR(SUMPRODUCT(('Account Balances'!$A$2:$A${MAX_ROWS}={CL[1]}{rn})*('Account Balances'!$B$2:$B${MAX_ROWS}=\"{acc}\"),'Account Balances'!$F$2:$F${MAX_ROWS}),0)" for acc in cv_accts]
+        return "=" + "+".join(terms)
+    def sub_activity_formula(rn, sub_accts, entity):
+        acct_clause = "+".join(f"(Transactions!$E$2:$E${MAX_ROWS}=\"{a}\")" for a in sub_accts)
+        return (f"=SUMPRODUCT((Transactions!$A$2:$A${MAX_ROWS}={CL[1]}{rn})"
+                f"*(Transactions!$D$2:$D${MAX_ROWS}=\"{entity}\")"
+                f"*(({acct_clause})>0),Transactions!$J$2:$J${MAX_ROWS})")
+    def sub_dedicated_end_formula(rn, sub_accts):
+        terms = [f"IFERROR(SUMPRODUCT(('Account Balances'!$A$2:$A${MAX_ROWS}={CL[1]}{rn})*('Account Balances'!$B$2:$B${MAX_ROWS}=\"{acc}\"),'Account Balances'!$F$2:$F${MAX_ROWS}),0)" for acc in sub_accts]
+        return "=" + "+".join(terms)
+    data_start = 3
+    for i, pair in enumerate(MIRROR_PAIRS):
+        rn = data_start + i
+        prior_g = prior_g_vals.get((report_month, pair["label"]))
+        cv_display  = " + ".join(pair["cv"])
+        sub_display = " + ".join(pair["sub"])
+        for col_i, val, kwargs in [
+            (1, report_month, {}),
+            (2, pair["label"], {"bold": True}),
+            (3, pair["entity"], {}),
+            (4, cv_display,    {"align": "center"}),
+            (5, cv_end_formula(rn, pair["cv"]), {"number_format": MONEY_FMT, "fill": LIGHT_BLUE}),
+            (6, sub_display,   {"align": "center"}),
+        ]:
+            _style_cell(ws3.cell(rn, col_i, val), **kwargs)
+        if pair["kind"] == "shared":
+            _style_cell(ws3.cell(rn, 7, prior_g), number_format=MONEY_FMT, fill=YELLOW_FILL)
+            _style_cell(ws3.cell(rn, 8, sub_activity_formula(rn, pair["sub"], pair["entity"])), number_format=MONEY_FMT, fill=LIGHT_BLUE)
+            _style_cell(ws3.cell(rn, 9, f"={CL[7]}{rn}+{CL[8]}{rn}"), number_format=MONEY_FMT, fill=LIGHT_BLUE)
+        else:
+            for col_i in [7, 8]:
+                c = ws3.cell(rn, col_i, "N/A"); _style_cell(c, align="center")
+                c.fill = PatternFill("solid", fgColor="F2F2F2")
+            _style_cell(ws3.cell(rn, 9, sub_dedicated_end_formula(rn, pair["sub"])), number_format=MONEY_FMT, fill=LIGHT_BLUE)
+        _style_cell(ws3.cell(rn, 10, f"={CL[5]}{rn}+{CL[9]}{rn}"), number_format=MONEY_FMT)
+    ws3.freeze_panes = "A3"; _autofit(ws3)
+    ws3.column_dimensions['B'].width = 28; ws3.column_dimensions['C'].width = 38
+
+    # Tab 4 — Import Formulas (write once)
+    if TAB_GUIDE not in wb.sheetnames:
+        _write_guide(wb.create_sheet(TAB_GUIDE))
+
+    desired = [TAB_TRANS, TAB_BAL, TAB_RECON, TAB_GUIDE]
+    for target_i, name in enumerate(desired):
+        if name in wb.sheetnames:
+            cur_i = wb.sheetnames.index(name)
+            wb.move_sheet(name, offset=target_i - cur_i)
+
+    buf = io.BytesIO(); wb.save(buf)
+    return base64.b64encode(buf.getvalue()).decode()
+
+def _write_guide(ws):
+    ws.column_dimensions['A'].width = 32
+    ws.column_dimensions['B'].width = 82
+    ws.column_dimensions['C'].width = 50
+    MASTER_URL = "YOUR_GOOGLE_SHEETS_MASTER_URL"
+    def hdr(row, text, height=26):
+        ws.merge_cells(f"A{row}:C{row}")
+        c = ws.cell(row, 1, text); c.font = HEADER_FONT; c.fill = HEADER_FILL
+        c.alignment = Alignment(horizontal="left", vertical="center")
+        ws.row_dimensions[row].height = height
+    def row3(r, col1, col2, col3="", bold1=False, h=18):
+        for col_i, val, bold in [(1,col1,bold1),(2,col2,False),(3,col3,False)]:
+            c = ws.cell(r, col_i, val)
+            c.font = Font(name="Arial", bold=bold, size=9)
+            c.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            c.border = THIN_BORDER
+        ws.row_dimensions[r].height = h
+    r = 1; hdr(r, "MASTER DUE TO/FROM — GOOGLE SHEETS IMPORT GUIDE"); r += 2
+    hdr(r, "MONTHLY WORKFLOW", 20); r += 1
+    row3(r,"Step 1 – Process export","Upload the NetSuite XLS to this browser tool. Download Due_ToFrom_Master.xlsx.",bold1=True,h=36); r+=1
+    row3(r,"Step 2 – Import to Google Sheets","File > Import > Upload > Replace spreadsheet.",bold1=True,h=28); r+=1
+    row3(r,"Step 3 – Fill yellow column","In Recon Summary, fill the yellow 'Sub Prior End Bal' column with each sub's prior-month ending balance.",bold1=True,h=36); r+=2
+    hdr(r,"TRANSACTIONS TAB — COLUMN REFERENCE"); r+=1
+    cols = [("Col1=Month","Period string e.g. 'Mar 2026'"),("Col2=Date","YYYY-MM-DD"),
+            ("Col3=Side","CV or Sub"),("Col4=Subsidiary","Legal entity name"),
+            ("Col5=Acct_Num","5-digit GL account number"),("Col6=Acct_Name","Full account name"),
+            ("Col7=Type","Transaction type"),("Col8=Doc_Number","NS document number"),
+            ("Col9=Name","Vendor/customer name"),("Col10=Amount","Positive=debit, negative=credit"),
+            ("Col11=Balance","Running balance"),("Col12=Description","Description"),("Col13=Memo","Memo")]
+    for k,v in cols: row3(r,k,v,bold1=True); r+=1
+
+# Entry point — called after JS sets globals: xls_content, existing_b64
+try:
+    _existing = existing_b64 if existing_b64 else None
+    _month, _df_t, _df_b = parse_export(xls_content)
+    result_b64    = write_master(_month, _df_t, _df_b, _existing)
+    result_month  = _month
+    result_tx     = len(_df_t)
+    result_bal    = len(_df_b)
+    result_error  = None
+except Exception as _e:
+    result_b64   = None
+    result_month = None
+    result_tx    = 0
+    result_bal   = 0
+    result_error = str(_e)
+</script>
+
+<script>
+let pyodide = null;
+let resultB64 = null;
+let resultMonth = null;
+let xlsFile = null, masterFile = null;
+
+function log(msg, cls) {
+  const box = document.getElementById('status');
+  const span = cls ? `<span class="${cls}">${msg}</span>` : msg;
+  box.innerHTML = (box.innerHTML === 'Ready. Upload the NetSuite XLS export to begin.' ? '' : box.innerHTML + '\n') + span;
+}
+function setProgress(v) {
+  const p = document.getElementById('prog');
+  p.style.display = v >= 0 ? 'block' : 'none';
+  p.value = v;
+}
+
+function handleFile(input, which) {
+  const file = input.files[0];
+  if (!file) return;
+  if (which === 'xls') {
+    xlsFile = file;
+    const el = document.getElementById('xls-name');
+    el.textContent = '✓ ' + file.name + ' (' + (file.size/1024).toFixed(0) + ' KB)';
+    el.style.display = 'block';
+    document.getElementById('btn-run').disabled = false;
+  } else {
+    masterFile = file;
+    const el = document.getElementById('master-name');
+    el.textContent = '✓ ' + file.name + ' (' + (file.size/1024).toFixed(0) + ' KB)';
+    el.style.display = 'block';
+  }
+}
+
+function handleDrop(e, which) {
+  e.preventDefault();
+  document.getElementById('dz-' + which).classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const fakeInput = {files: [file]};
+  handleFile(fakeInput, which);
+}
+
+async function runProcess() {
+  document.getElementById('status').innerHTML = '';
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('btn-dl').style.display = 'none';
+  resultB64 = null;
+
+  try {
+    // Load Pyodide if needed
+    if (!pyodide) {
+      log('Loading Python (Pyodide) — one-time ~30 MB download…');
+      setProgress(10);
+      pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
+      log('Installing pandas & openpyxl…');
+      setProgress(40);
+      await pyodide.loadPackage(['pandas', 'openpyxl', 'micropip']);
+      log('Packages ready.', 'ok');
+      setProgress(70);
+    }
+
+    // Read the XLS file as text (NetSuite XLS is XML-based)
+    log('Reading XLS file…');
+    const xlsText = await xlsFile.text();
+    pyodide.globals.set('xls_content', xlsText);
+
+    // Read existing master if provided
+    if (masterFile) {
+      log('Reading existing master file…');
+      const buf = await masterFile.arrayBuffer();
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      pyodide.globals.set('existing_b64', b64);
+    } else {
+      pyodide.globals.set('existing_b64', null);
+    }
+
+    log('Running Python parser…');
+    setProgress(80);
+    const pyCode = document.getElementById('py-code').textContent;
+    await pyodide.runPythonAsync(pyCode);
+
+    const err = pyodide.globals.get('result_error');
+    if (err) throw new Error(err);
+
+    resultB64   = pyodide.globals.get('result_b64');
+    resultMonth = pyodide.globals.get('result_month');
+    const txCount  = pyodide.globals.get('result_tx');
+    const balCount = pyodide.globals.get('result_bal');
+
+    setProgress(100);
+    log(`Done! Report month: ${resultMonth}`, 'ok');
+    log(`  Transactions parsed: ${txCount}`, 'ok');
+    log(`  Account balances:    ${balCount}`, 'ok');
+    log('Remember to fill in the yellow "Sub Prior End Bal" column in Recon Summary after opening in Google Sheets.', 'warn');
+
+    document.getElementById('btn-dl').style.display = 'block';
+    document.getElementById('btn-dl').textContent = `⬇ Download Due_ToFrom_Master.xlsx`;
+  } catch (e) {
+    log('Error: ' + e.message, 'err');
+  } finally {
+    document.getElementById('btn-run').disabled = false;
+    setProgress(-1);
+  }
+}
+
+function downloadResult() {
+  if (!resultB64) return;
+  const bytes = Uint8Array.from(atob(resultB64), c => c.charCodeAt(0));
+  const blob = new Blob([bytes], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const month = resultMonth ? resultMonth.replace(/\s+/g, '_') : 'output';
+  a.download = `Due_ToFrom_Master_${month}.xlsx`;
+  a.click();
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const dark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', dark ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = dark ? '🌙 Dark' : '☀ Light';
+  localStorage.setItem('cv-theme', dark ? 'light' : 'dark');
+}
+
+(function init() {
+  const saved = localStorage.getItem('cv-theme');
+  if (saved) {
+    document.documentElement.setAttribute('data-theme', saved);
+    document.getElementById('theme-btn').textContent = saved === 'light' ? '🌙 Dark' : '☀ Light';
+  }
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>const TOOL_KEY='netsuite-processor'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

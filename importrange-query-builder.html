@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IMPORTRANGE Query Builder | Cardone Ventures</title>
+  <style>
+    :root { --cv-red:#cc0000; --cv-red-dim:rgba(204,0,0,.12); --cv-red-border:rgba(204,0,0,.25); }
+    [data-theme="dark"]  { --bg:#0a0a0a; --surf:#111; --surf2:#1a1a1a; --border:#252525; --text:#f0f0f0; --muted:#777; --card:#161616; }
+    [data-theme="light"] { --bg:#f2f2f2; --surf:#fff;  --surf2:#ebebeb; --border:#d8d8d8; --text:#111;    --muted:#666; --card:#fafafa; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+    header{background:var(--surf);border-bottom:2px solid var(--cv-red);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    .logo{display:flex;align-items:center;gap:12px}
+    .logo-mark{width:34px;height:34px;background:var(--cv-red);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#fff}
+    .logo-text{font-size:15px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+    .logo-sub{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:1px}
+    .btn-sm{background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:5px 12px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer}
+    .btn-sm:hover{border-color:var(--cv-red)}
+    main{max-width:1200px;margin:0 auto;padding:36px 28px 60px}
+    h1{font-size:22px;font-weight:800;margin-bottom:6px}
+    h1 span{color:var(--cv-red)}
+    .subtitle{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.5}
+    /* Index table */
+    .index-card{background:var(--surf);border:1px solid var(--border);border-radius:6px;margin-bottom:32px;overflow:hidden}
+    .index-hdr{background:var(--surf2);border-bottom:1px solid var(--border);padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+    table{width:100%;border-collapse:collapse}
+    th{padding:8px 14px;font-size:11px;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border)}
+    td{padding:8px 14px;font-size:12px;border-bottom:1px solid var(--border)}
+    tr:last-child td{border-bottom:none}
+    .acct-pill{display:inline-block;background:var(--surf2);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:10px;font-family:monospace;margin:1px}
+    /* Tabs */
+    .tab-bar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:0;border-bottom:2px solid var(--border)}
+    .tab-btn{background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--muted);font-size:12px;font-weight:600;padding:8px 14px;cursor:pointer;transition:color .15s,border-color .15s}
+    .tab-btn:hover{color:var(--text)}
+    .tab-btn.active{color:var(--cv-red);border-bottom-color:var(--cv-red)}
+    .tab-pane{display:none}
+    .tab-pane.active{display:block}
+    /* Formula sections */
+    .pair-section{margin-bottom:24px}
+    .pair-header{background:var(--surf2);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;padding:8px 14px;font-size:11px;font-weight:700;color:var(--cv-red);letter-spacing:.06em;text-transform:uppercase}
+    .formula-table{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:0 0 6px 6px;overflow:hidden;margin-bottom:0}
+    .formula-table th{background:var(--surf2);padding:7px 12px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)}
+    .formula-row td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;font-size:12px}
+    .formula-row:last-child td{border-bottom:none}
+    .formula-row:hover{background:var(--card)}
+    .col-purpose{width:22%;color:var(--muted);line-height:1.4}
+    .col-formula{width:54%}
+    .col-notes{width:20%;color:var(--muted);font-size:11px;line-height:1.4}
+    .col-copy{width:4%;text-align:center}
+    .formula-box{background:var(--surf2);border:1px solid var(--border);border-radius:3px;padding:6px 9px;font-family:'Courier New',monospace;font-size:11px;line-height:1.5;color:#4ade80;white-space:pre-wrap;word-break:break-all;cursor:text;user-select:all}
+    .copy-btn{background:var(--surf2);border:1px solid var(--border);color:var(--muted);font-size:10px;font-weight:600;padding:4px 8px;border-radius:3px;cursor:pointer;white-space:nowrap}
+    .copy-btn:hover{border-color:var(--cv-red);color:var(--text)}
+    .copy-btn.copied{border-color:#4ade80;color:#4ade80}
+    .spacer-row td{height:8px;background:var(--bg)}
+    /* Notes box */
+    .notes-box{background:var(--surf);border:1px solid var(--border);border-radius:6px;padding:18px 20px;margin-top:32px;font-size:12px;line-height:1.7;color:var(--muted)}
+    .notes-box strong{color:var(--text)}
+    .url-box{background:var(--surf2);border:1px solid var(--border);border-radius:3px;padding:6px 10px;font-family:monospace;font-size:11px;color:#4ade80;margin-top:8px;word-break:break-all}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-mark">CV</div>
+    <div>
+      <div class="logo-text">Cardone Ventures</div>
+      <div class="logo-sub">IMPORTRANGE Query Builder</div>
+    </div>
+  </div>
+  <button class="btn-sm" onclick="toggleTheme()" id="theme-btn">☀ Light</button>
+</header>
+
+<main>
+  <h1>IMPORTRANGE <span>Query Reference</span></h1>
+  <p class="subtitle">
+    Copy these formulas into your subsidiary Google Sheets to pull intercompany data from the
+    Due To/From master sheet. All formulas reference <strong>cell B3</strong> as the month string (e.g. "Mar 2026").
+  </p>
+
+  <div class="index-card">
+    <div class="index-hdr">Subsidiaries — 13 entities covered</div>
+    <table>
+      <thead><tr><th>Sheet</th><th>Entity</th><th>CV Account(s)</th><th>Sub Account(s)</th></tr></thead>
+      <tbody id="index-body"></tbody>
+    </table>
+  </div>
+
+  <div class="tab-bar" id="tab-bar"></div>
+  <div id="tab-content" style="margin-top:16px"></div>
+
+  <div class="notes-box">
+    <strong>How to use these formulas</strong><br>
+    1. <strong>One-time auth:</strong> Paste <code>=IMPORTRANGE("MASTER_URL","Transactions!A1")</code>
+       into any cell in a new subsidiary sheet and click "Allow access" when prompted. Do this once per sheet.<br>
+    2. <strong>B3 = Month cell:</strong> All current-month formulas use B3 as the month filter (e.g. "Mar 2026"). Put your month label in B3.<br>
+    3. <strong>Paste as formula:</strong> Click the green formula to select it, then copy and paste into Google Sheets. It becomes live when pasted.<br>
+    4. <strong>Dedicated N/P pairs:</strong> 10X Roofing, HRE, and CardoMax each have two pairs — a Due To/From pair (25001/15152) and a Promissory Note pair.<br><br>
+    <strong>Master sheet URL:</strong>
+    <div class="url-box" id="master-url-display"></div>
+  </div>
+</main>
+
+<script>
+const MASTER_URL = "https://docs.google.com/spreadsheets/d/1KSKAav0X-dEs1HIh9sxBNC7-JDma0lH_QyZPT_CyePg";
+
+const PAIRS = [
+  {label:"10X HVAC",                  cv:["15108"],         sub:["25001","15152"], entity:"10X HVAC, LLC",                                    kind:"shared"},
+  {label:"10X Buy/Sell",              cv:["15109","22209"], sub:["25001","15152"], entity:"10X Buy/Sell, LLC",                                kind:"shared"},
+  {label:"10X BA Franchising",        cv:["15113"],         sub:["25001","15152"], entity:"10X Business Advisor Franchising, LLC",            kind:"shared"},
+  {label:"Gundlachs",                 cv:["15114"],         sub:["25001","15152"], entity:"Gundlach Heating, Cooling, Plumbing & Electrical", kind:"shared"},
+  {label:"5225 N Scottsdale",         cv:["15116"],         sub:["25001","15152"], entity:"5225 N Scottsdale, LLC",                           kind:"shared"},
+  {label:"10X Global Staffing",       cv:["15121"],         sub:["25001","15152"], entity:"10X Global Staffing, LLC",                         kind:"shared"},
+  {label:"10X Roofing (Due To)",      cv:["15129"],         sub:["25001","15152"], entity:"10X Roofing Management, LLC",                      kind:"shared"},
+  {label:"10X HomeServe",             cv:["15138"],         sub:["25001","15152"], entity:"10X HomeServe, LLC",                               kind:"shared"},
+  {label:"10X Coverage",              cv:["15143"],         sub:["25001","15152"], entity:"10X Group Plan, LLC",                              kind:"shared"},
+  {label:"CardoMax",                  cv:["15145"],         sub:["25001","15152"], entity:"CardoMax, LLC",                                    kind:"shared"},
+  {label:"10X Farms & Ranch",         cv:["15146"],         sub:["25001","15152"], entity:"10X Farms & Ranch, LLC",                           kind:"shared"},
+  {label:"15111 N Pima",              cv:["15147"],         sub:["25001","15152"], entity:"15111 N Pima Road, LLC",                           kind:"shared"},
+  {label:"HRE",                       cv:["15150"],         sub:["25001","15152"], entity:"Heather Rae Essentials LLC",                       kind:"shared"},
+  {label:"10X Roofing (N/R<>N/P)",   cv:["15164"],         sub:["23203"],         entity:"10X Roofing Management, LLC",                      kind:"dedicated"},
+  {label:"HRE (Prom N/R<>N/P)",      cv:["15204"],         sub:["23206"],         entity:"Heather Rae Essentials LLC",                       kind:"dedicated"},
+  {label:"CardoMax (Prom N/R<>N/P)", cv:["15205"],         sub:["23207"],         entity:"CardoMax, LLC",                                    kind:"dedicated"},
+];
+
+const SHEET_NAMES = {
+  "10X HVAC, LLC":                                    "10X HVAC",
+  "10X Buy/Sell, LLC":                                "10X Buy-Sell",
+  "10X Business Advisor Franchising, LLC":            "10X BA Franchising",
+  "Gundlach Heating, Cooling, Plumbing & Electrical": "Gundlachs",
+  "5225 N Scottsdale, LLC":                           "5225 N Scottsdale",
+  "10X Global Staffing, LLC":                         "10X Global Staffing",
+  "10X Roofing Management, LLC":                      "10X Roofing",
+  "10X HomeServe, LLC":                               "10X HomeServe",
+  "10X Group Plan, LLC":                              "10X Coverage",
+  "CardoMax, LLC":                                    "CardoMax",
+  "10X Farms & Ranch, LLC":                           "10X Farms & Ranch",
+  "15111 N Pima Road, LLC":                           "15111 N Pima",
+  "Heather Rae Essentials LLC":                       "HRE",
+};
+
+// Group pairs by entity, preserving order
+const entityOrder = [];
+const entityPairs = {};
+for (const p of PAIRS) {
+  if (!entityOrder.includes(p.entity)) entityOrder.push(p.entity);
+  if (!entityPairs[p.entity]) entityPairs[p.entity] = [];
+  entityPairs[p.entity].push(p);
+}
+
+const COLS = "Col1,Col2,Col3,Col4,Col5,Col6,Col7,Col8,Col9,Col10,Col11,Col12,Col13";
+const TX   = `IMPORTRANGE("${MASTER_URL}","Transactions!A:M")`;
+const BAL  = `IMPORTRANGE("${MASTER_URL}","Account Balances!A:F")`;
+const RC   = `IMPORTRANGE("${MASTER_URL}","Recon Summary!A:J")`;
+const DF   = `"&TEXT(EOMONTH(DATEVALUE("1 "&B3),0),"yyyy-mm-dd")&"`;
+
+function buildFormulas(pair) {
+  const {entity, label, cv, sub, kind} = pair;
+  const rows = [];
+
+  rows.push({purpose:"CV-side transactions — current month",
+    formula:`=QUERY(${TX},"SELECT ${COLS} WHERE Col3='CV' AND Col4='${entity}' AND Col1='"&B3&"'")`,
+    notes:`B3 = month cell, e.g. "Mar 2026". Returns all CV-book entries for this entity.`});
+
+  rows.push({purpose:"Sub-side transactions — current month",
+    formula:`=QUERY(${TX},"SELECT ${COLS} WHERE Col3='Sub' AND Col4='${entity}' AND Col1='"&B3&"'")`,
+    notes:`Returns 25001 / 15152 (or dedicated N/P acct) rows for this entity.`});
+
+  rows.push({purpose:"All transactions (CV + Sub) — current month",
+    formula:`=QUERY(${TX},"SELECT ${COLS} WHERE Col4='${entity}' AND Col1='"&B3&"'")`,
+    notes:`Both sides combined for the selected month.`});
+
+  rows.push({purpose:"CV-side transactions — all history through B3",
+    formula:`=QUERY(${TX},"SELECT ${COLS} WHERE Col3='CV' AND Col4='${entity}' AND Col2 <= '${DF}'")`,
+    notes:`Every CV-side entry up to and including the month in B3. YYYY-MM-DD string comparison.`});
+
+  rows.push({purpose:"Sub-side transactions — all history through B3",
+    formula:`=QUERY(${TX},"SELECT ${COLS} WHERE Col3='Sub' AND Col4='${entity}' AND Col2 <= '${DF}'")`,
+    notes:`Every Sub-side entry up to and including the month in B3.`});
+
+  rows.push(null);
+
+  for (const acct of cv) {
+    rows.push({purpose:`CV acct ${acct} — end balance for month`,
+      formula:`=QUERY(${BAL},"SELECT Col6 WHERE Col1='"&B3&"' AND Col2='${acct}'")`,
+      notes:`Ending balance for acct ${acct} in the selected month. Returns single value.`});
+  }
+
+  if (kind === 'dedicated') {
+    for (const acct of sub) {
+      rows.push({purpose:`Sub acct ${acct} — end balance for month`,
+        formula:`=QUERY(${BAL},"SELECT Col6 WHERE Col1='"&B3&"' AND Col2='${acct}'")`,
+        notes:`Dedicated N/P intercompany account ending balance.`});
+    }
+  }
+
+  rows.push(null);
+
+  rows.push({purpose:`Recon row — ${label} — current month`,
+    formula:`=QUERY(${RC},"SELECT Col1,Col2,Col5,Col7,Col8,Col9,Col10 WHERE Col1='"&B3&"' AND Col2='${label}'")`,
+    notes:`Month | Relationship | CV End Bal | Sub Prior | Sub Activity | Sub End Bal | Variance`});
+
+  rows.push({purpose:`Recon history — ${label} — all months`,
+    formula:`=QUERY(${RC},"SELECT Col1,Col2,Col5,Col7,Col8,Col9,Col10 WHERE Col2='${label}' ORDER BY Col1")`,
+    notes:`No month filter. Full history sorted chronologically.`});
+
+  return rows;
+}
+
+function copyFormula(btn, formula) {
+  navigator.clipboard.writeText(formula).then(() => {
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+function renderIndex() {
+  const tbody = document.getElementById('index-body');
+  for (const entity of entityOrder) {
+    const pairs = entityPairs[entity];
+    const allCv  = [...new Set(pairs.flatMap(p => p.cv))];
+    const allSub = [...new Set(pairs.flatMap(p => p.sub))];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-weight:600">${SHEET_NAMES[entity] || entity}</td>
+      <td style="color:var(--muted)">${entity}</td>
+      <td>${allCv.map(a => `<span class="acct-pill">${a}</span>`).join('')}</td>
+      <td>${allSub.map(a => `<span class="acct-pill">${a}</span>`).join('')}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function renderTabs() {
+  const tabBar  = document.getElementById('tab-bar');
+  const content = document.getElementById('tab-content');
+
+  entityOrder.forEach((entity, idx) => {
+    const sheetName = SHEET_NAMES[entity] || entity;
+    const tabId = `tab-${idx}`;
+
+    // Tab button
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (idx === 0 ? ' active' : '');
+    btn.textContent = sheetName;
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    };
+    tabBar.appendChild(btn);
+
+    // Tab pane
+    const pane = document.createElement('div');
+    pane.className = 'tab-pane' + (idx === 0 ? ' active' : '');
+    pane.id = tabId;
+
+    const pairs = entityPairs[entity];
+    for (const pair of pairs) {
+      const cvStr  = pair.cv.join(' + ');
+      const subStr = pair.kind === 'shared' ? '25001 / 15152' : pair.sub.join(' / ');
+      const section = document.createElement('div');
+      section.className = 'pair-section';
+
+      let html = `
+        <div class="pair-header">${pair.label} &nbsp;·&nbsp; CV: ${cvStr} &nbsp;↔&nbsp; Sub: ${subStr}</div>
+        <table class="formula-table">
+          <thead><tr>
+            <th class="col-purpose">Purpose</th>
+            <th class="col-formula">Formula (paste into Google Sheets)</th>
+            <th class="col-notes">Notes</th>
+            <th class="col-copy"></th>
+          </tr></thead>
+          <tbody>`;
+
+      for (const row of buildFormulas(pair)) {
+        if (row === null) {
+          html += `<tr class="spacer-row"><td colspan="4"></td></tr>`;
+          continue;
+        }
+        const escapedFormula = row.formula.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const safeFormula = row.formula.replace(/'/g, "\\'").replace(/\n/g,'');
+        html += `
+          <tr class="formula-row">
+            <td class="col-purpose">${row.purpose}</td>
+            <td class="col-formula"><div class="formula-box">${escapedFormula}</div></td>
+            <td class="col-notes">${row.notes}</td>
+            <td class="col-copy"><button class="copy-btn" onclick="copyFormula(this,'${safeFormula}')">Copy</button></td>
+          </tr>`;
+      }
+      html += `</tbody></table>`;
+      section.innerHTML = html;
+      pane.appendChild(section);
+    }
+    content.appendChild(pane);
+  });
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const dark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', dark ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = dark ? '🌙 Dark' : '☀ Light';
+  localStorage.setItem('cv-theme', dark ? 'light' : 'dark');
+}
+
+(function init() {
+  const saved = localStorage.getItem('cv-theme');
+  if (saved) {
+    document.documentElement.setAttribute('data-theme', saved);
+    document.getElementById('theme-btn').textContent = saved === 'light' ? '🌙 Dark' : '☀ Light';
+  }
+  document.getElementById('master-url-display').textContent = MASTER_URL;
+  renderIndex();
+  renderTabs();
+})();
+</script>
+
+<script>const TOOL_KEY='importrange-builder'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

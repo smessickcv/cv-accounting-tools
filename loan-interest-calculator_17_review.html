@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loan Interest Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:#1a1a18; --paper:#f5f2eb; --cream:#ede9df; --rule:#d4cfc4;
+    --accent:#2d5a3d; --accent-light:#e8f0ea; --muted:#7a7569;
+    --danger:#c0392b; --gold:#b8860b;
+    --blue:#2d4a7a; --blue-bg:#eaf0f8; --blue-border:#b0c4de;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'DM Mono',monospace;font-size:13px;min-height:100vh;}
+
+  /* HEADER */
+  .header{background:var(--ink);color:var(--paper);padding:16px 32px;display:flex;align-items:center;gap:16px;border-bottom:3px solid var(--accent);}
+  .header h1{font-family:'Fraunces',serif;font-size:22px;font-weight:300;letter-spacing:.02em;}
+  .header-sub{font-size:11px;color:#999;letter-spacing:.08em;text-transform:uppercase;}
+  .mode-tabs{margin-left:auto;display:flex;gap:0;border:1px solid rgba(255,255,255,.2);border-radius:4px;overflow:hidden;}
+  .mode-tab{padding:7px 16px;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;color:#aaa;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:all .15s;}
+  .mode-tab.on{background:var(--accent);color:white;}
+
+  /* LAYOUT */
+  .app{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 57px);}
+
+  /* SIDEBAR */
+  .sidebar{background:var(--cream);border-right:1px solid var(--rule);padding:20px 16px;display:flex;flex-direction:column;gap:5px;overflow-y:auto;}
+  .sidebar-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;padding-bottom:8px;border-bottom:1px solid var(--rule);}
+  .loan-btn{background:none;border:1px solid transparent;border-radius:4px;padding:9px 11px;text-align:left;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;color:var(--ink);transition:all .15s;width:100%;}
+  .loan-btn:hover{background:white;border-color:var(--rule);}
+  .loan-btn.active{background:var(--accent);color:white;border-color:var(--accent);}
+  .loan-btn .ln{font-weight:500;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .loan-btn .lr{font-size:10px;opacity:.7;margin-top:2px;}
+  .pill{display:inline-block;padding:1px 5px;border-radius:2px;font-size:10px;}
+  .pill-main{background:rgba(255,255,255,.2);}
+  .pill-adv{background:rgba(184,134,11,.2);}
+  .pill-dpd{background:rgba(45,74,122,.2);}
+  .loan-btn.active .pill-main,.loan-btn.active .pill-adv,.loan-btn.active .pill-dpd{background:rgba(255,255,255,.25);}
+  .loan-item{position:relative;display:flex;align-items:stretch;gap:0;}
+  .drag-handle{display:flex;align-items:center;justify-content:center;width:22px;flex-shrink:0;cursor:grab;color:var(--rule);font-size:14px;border-radius:4px 0 0 4px;transition:color .15s;user-select:none;}
+  .drag-handle:hover{color:var(--muted);}
+  .loan-item .loan-btn{border-radius:0 4px 4px 0;flex:1;}
+  .loan-item.dragging{opacity:.4;}
+  .loan-item.drag-over{outline:2px solid var(--accent);border-radius:4px;}
+  .btn-new{margin-top:8px;background:none;border:1px dashed var(--rule);border-radius:4px;padding:9px 12px;text-align:center;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);transition:all .15s;letter-spacing:.05em;}
+  .btn-new:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-del{margin-top:auto;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--danger);cursor:pointer;padding:8px 0;text-align:left;opacity:.55;}
+  .btn-del:hover{opacity:1;}
+
+  /* MAIN */
+  .main{padding:24px 28px;overflow-y:auto;}
+  .section{background:white;border:1px solid var(--rule);border-radius:6px;margin-bottom:18px;overflow:hidden;}
+  .section-header{background:var(--cream);border-bottom:1px solid var(--rule);padding:9px 15px;display:flex;align-items:center;gap:8px;}
+  .section-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500;}
+  .section-body{padding:15px;}
+
+  /* FORM */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:13px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  .field input,.field select{background:var(--paper);border:1px solid var(--rule);border-radius:3px;padding:7px 9px;font-family:'DM Mono',monospace;font-size:13px;color:var(--ink);transition:border-color .15s;width:100%;}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--accent);background:white;}
+  .field input::placeholder{color:#ccc;}
+  .field-full{grid-column:1/-1;}
+
+  /* ADVANCES */
+  .adv-header{display:grid;grid-template-columns:140px 155px 1fr 28px;gap:9px;padding:0 0 5px;border-bottom:1px solid var(--rule);margin-bottom:5px;}
+  .col-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  .adv-row{display:grid;grid-template-columns:140px 155px 1fr 28px;gap:9px;align-items:center;padding:3px 0;}
+  .ai{background:var(--paper);border:1px solid var(--rule);border-radius:3px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color:var(--ink);width:100%;}
+  .ai:focus{outline:none;border-color:var(--accent);background:white;}
+  .ai.gold{color:var(--gold);}
+  .btn-x{background:none;border:none;color:var(--danger);cursor:pointer;font-size:18px;opacity:.4;transition:opacity .15s;width:28px;text-align:center;padding:0;}
+  .btn-x:hover{opacity:1;}
+  .btn-add{background:none;border:1px dashed var(--rule);border-radius:3px;padding:6px 11px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);cursor:pointer;margin-top:7px;transition:all .15s;}
+  .btn-add:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* CARDS */
+  .cards{display:flex;flex-direction:column;gap:11px;margin-bottom:18px;}
+  .cards-row{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;}
+  .card{background:white;border:1px solid var(--rule);border-radius:6px;padding:13px 15px;}
+  .card-prior{background:var(--cream);border:1px dashed var(--rule);}
+  .card-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .card-val{font-family:'Fraunces',serif;font-size:22px;font-weight:300;}
+  .cv-green{color:var(--accent);} .cv-gold{color:var(--gold);}
+
+  /* TABLE */
+  .rtbl{width:100%;border-collapse:collapse;font-size:12px;}
+  .rtbl th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:7px 9px;text-align:right;border-bottom:2px solid var(--rule);background:var(--cream);white-space:nowrap;}
+  .rtbl th.L{text-align:left;}
+  .rtbl td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--cream);font-variant-numeric:tabular-nums;}
+  .rtbl td.L{text-align:left;}
+  .rtbl tfoot td{font-weight:500;border-top:2px solid var(--rule);background:var(--cream);padding:9px;}
+  .tag{display:inline-block;padding:2px 6px;border-radius:2px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
+  .tag-m{background:var(--accent-light);color:var(--accent);border:1px solid #b8d4be;}
+  .tag-a{background:#fff8e6;color:var(--gold);border:1px solid #f0dfa0;}
+  .tag-d{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);}
+  .desc-chip{font-size:11px;color:var(--blue);background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:3px;padding:2px 7px;white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:middle;}
+
+  /* BUTTONS */
+  .btn-p{background:var(--accent);color:white;border:none;border-radius:4px;padding:9px 18px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;transition:background .15s;}
+  .btn-p:hover{background:#1e3e2a;}
+  .btn-s{background:white;color:var(--ink);border:1px solid var(--rule);border-radius:4px;padding:9px 18px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;transition:all .15s;}
+  .btn-s:hover{border-color:var(--accent);color:var(--accent);}
+  .brow{display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
+
+  /* TOGGLES */
+  .type-toggle{display:flex;border:1px solid var(--rule);border-radius:4px;overflow:hidden;}
+  .type-btn{flex:1;padding:7px 10px;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;color:var(--muted);transition:all .15s;text-align:center;}
+  .type-btn.on{background:var(--ink);color:white;}
+
+  /* INFO / MISC */
+  .info{font-size:11px;color:var(--muted);padding:8px 11px;background:var(--cream);border-radius:3px;border-left:3px solid var(--gold);margin-top:11px;line-height:1.6;}
+  .acct-box{background:var(--cream);border:1px solid var(--rule);border-radius:3px;padding:7px 10px;font-size:12px;line-height:1.5;}
+  .acct-row{display:flex;gap:8px;align-items:baseline;}
+  .acct-dir{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;width:40px;flex-shrink:0;}
+  .type-badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:3px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;}
+  .tb-main{background:var(--accent-light);color:var(--accent);border:1px solid #b8d4be;}
+  .tb-adv{background:#fff8e6;color:var(--gold);border:1px solid #f0dfa0;}
+  .tb-dpd{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);}
+  .empty{text-align:center;padding:60px 32px;color:var(--muted);}
+  .empty h2{font-family:'Fraunces',serif;font-weight:300;font-size:22px;margin-bottom:8px;color:var(--ink);}
+  .empty p{font-size:12px;line-height:1.7;}
+  .nomsg{color:var(--muted);font-size:12px;font-style:italic;padding:8px 0;}
+
+  /* MODAL */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(26,26,24,.55);z-index:100;align-items:center;justify-content:center;}
+  .overlay.open{display:flex;}
+  .modal{background:white;border-radius:8px;padding:26px;width:600px;max-width:96vw;box-shadow:0 20px 60px rgba(0,0,0,.2);max-height:92vh;overflow-y:auto;}
+  .modal h2{font-family:'Fraunces',serif;font-weight:300;font-size:20px;margin-bottom:5px;}
+  .modal .sub{font-size:11px;color:var(--muted);margin-bottom:18px;}
+  .modal .form-grid{grid-template-columns:1fr 1fr;}
+  .modal .brow{margin-top:22px;justify-content:flex-end;}
+  #rateWrap,#compWrap,#dayWrap,#customDaysWrap{transition:all .15s;}
+
+  /* MONTHLY CLOSE */
+  .close-loan-card{background:white;border:1px solid var(--rule);border-radius:6px;margin-bottom:12px;overflow:hidden;}
+  .close-loan-header{background:var(--cream);border-bottom:1px solid var(--rule);padding:9px 15px;display:flex;align-items:center;gap:10px;cursor:pointer;}
+  .close-loan-header:hover{background:#e5e0d6;}
+  .close-check{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+  .close-loan-body{padding:15px;display:none;}
+  .close-loan-body.open{display:block;}
+  .close-result-row{font-size:12px;padding:6px 0;border-bottom:1px solid var(--cream);display:grid;grid-template-columns:180px 1fr;gap:8px;}
+  .close-result-row:last-child{border-bottom:none;}
+  .close-result-lbl{color:var(--muted);}
+  .close-summary-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px;}
+  .close-summary-table th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 8px;text-align:left;border-bottom:2px solid var(--rule);background:var(--cream);}
+  .close-summary-table td{padding:6px 8px;border-bottom:1px solid var(--cream);}
+  .close-summary-table tr:last-child td{border-bottom:none;}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:white;padding:11px 17px;border-radius:4px;font-size:12px;letter-spacing:.05em;transform:translateY(80px);opacity:0;transition:all .3s;z-index:200;}
+  .toast.show{transform:translateY(0);opacity:1;}
+
+  /* INTERCOMPANY */
+  .interco-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:3px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);}
+  .interco-row-secondary{font-size:10px;color:var(--blue);margin-top:2px;}
+
+  /* RECONCILIATION TAB */
+  .recon-wrap{padding:24px 28px;max-width:1100px;}
+  .recon-loan-card{background:white;border:1px solid var(--rule);border-radius:6px;margin-bottom:14px;overflow:hidden;}
+  .recon-loan-hdr{background:var(--cream);border-bottom:1px solid var(--rule);padding:9px 15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .recon-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+  .recon-tbl th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:7px 10px;text-align:right;border-bottom:2px solid var(--rule);background:var(--cream);white-space:nowrap;}
+  .recon-tbl th.L{text-align:left;}
+  .recon-tbl td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--cream);font-variant-numeric:tabular-nums;}
+  .recon-tbl td.L{text-align:left;}
+  .recon-tbl tbody tr:last-child td{border-bottom:none;}
+  .recon-tbl tfoot td{font-weight:500;border-top:2px solid var(--rule);background:var(--cream);padding:8px 10px;}
+
+  /* DASHBOARD */
+  .dash-wrap{padding:28px 32px;max-width:1100px;}
+  .dash-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:18px;border-bottom:2px solid var(--ink);}
+  .dash-title{font-family:'Fraunces',serif;font-size:26px;font-weight:300;color:var(--ink);}
+  .dash-period{font-size:12px;color:var(--muted);margin-top:5px;letter-spacing:.02em;}
+  .dash-meta{text-align:right;font-size:11px;color:var(--muted);line-height:1.6;}
+  .dash-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+  .dash-kpi{background:white;border:1px solid var(--rule);border-radius:6px;padding:16px 18px;}
+  .dash-kpi.hi{background:var(--accent);color:white;border-color:var(--accent);}
+  .dash-kpi.hi .dash-kpi-lbl,.dash-kpi.hi .dash-kpi-sub{color:rgba(255,255,255,.72);}
+  .dash-kpi-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+  .dash-kpi-val{font-family:'Fraunces',serif;font-size:24px;font-weight:300;}
+  .dash-kpi-sub{font-size:11px;color:var(--muted);margin-top:5px;}
+  .dash-sect{background:white;border:1px solid var(--rule);border-radius:6px;margin-bottom:20px;overflow:hidden;}
+  .dash-sect-hdr{background:var(--cream);border-bottom:1px solid var(--rule);padding:10px 16px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500;}
+  .dash-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+  .dash-tbl th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:8px 12px;text-align:right;border-bottom:2px solid var(--rule);background:var(--cream);white-space:nowrap;}
+  .dash-tbl th.L{text-align:left;}
+  .dash-tbl td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--cream);font-variant-numeric:tabular-nums;vertical-align:top;}
+  .dash-tbl td.L{text-align:left;}
+  .dash-tbl tbody tr:last-child td{border-bottom:none;}
+  .dash-tbl tfoot td{font-weight:500;border-top:2px solid var(--rule);background:var(--cream);padding:10px 12px;}
+  .chg-pos{color:var(--accent);} .chg-neg{color:var(--danger);}
+  .dash-chart-wrap{padding:16px 18px;}
+  .dash-bar-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:11px;}
+  .dash-bar-lbl{width:210px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);}
+  .dash-bar-track{flex:1;background:var(--cream);border-radius:3px;height:16px;overflow:hidden;}
+  .dash-bar-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .5s;}
+  .dash-bar-val{width:120px;text-align:right;flex-shrink:0;color:var(--muted);}
+  .dash-no-data{text-align:center;padding:52px 32px;color:var(--muted);}
+  .dash-no-data h2{font-family:'Fraunces',serif;font-weight:300;font-size:22px;margin-bottom:8px;color:var(--ink);}
+  .dash-no-data p{font-size:12px;line-height:1.7;}
+  @media print{
+    .header,.sidebar,.mode-tabs,.no-print{display:none!important;}
+    .app{display:block;}
+    .main{padding:0;overflow:visible;}
+    .dash-wrap{padding:0;}
+    body{background:white;}
+    .dash-kpi,.dash-sect{break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Loan Interest Calculator</h1>
+  <span class="header-sub">NetSuite JE Export</span>
+  <div class="mode-tabs">
+    <button class="mode-tab on" id="tabLoan" onclick="setMode('loan')">Individual Loan</button>
+    <button class="mode-tab"    id="tabClose" onclick="setMode('close')">Monthly Close</button>
+    <button class="mode-tab"    id="tabDash"  onclick="setMode('dashboard')">Dashboard</button>
+    <button class="mode-tab"    id="tabRecon" onclick="setMode('recon')">Reconciliation</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-title">Loan Profiles</div>
+    <div id="loanList"></div>
+    <button class="btn-new" onclick="openModal()">+ New Loan Profile</button>
+    <div style="display:flex;gap:5px;margin-top:6px">
+      <button class="btn-new" style="margin-top:0;flex:1;font-size:10px;padding:7px 8px" onclick="exportProfiles()" title="Export all loan profiles to a JSON file">↓ Export Profiles</button>
+      <button class="btn-new" style="margin-top:0;flex:1;font-size:10px;padding:7px 8px" onclick="document.getElementById('importFile').click()" title="Import loan profiles from a JSON file">↑ Import Profiles</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importProfiles(event)">
+    <button class="btn-del" id="btnDel" onclick="deleteLoan()" style="display:none">✕ Delete this loan</button>
+  </div>
+  <div class="main" id="mainArea">
+    <div class="empty"><h2>No loan selected</h2><p>Create a loan profile in the sidebar.</p></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">New Loan Profile</h2>
+    <p class="sub">Each profile is either Main Portion or Advances Portion — set up one profile per calculation type.</p>
+    <div class="form-grid">
+
+      <div class="field field-full">
+        <label>Loan Name <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">— used as Memo in NetSuite JEs</span></label>
+        <input type="text" id="mName" placeholder="e.g. REVIV Bridge Loan">
+      </div>
+
+      <div class="field field-full">
+        <label>Portion Type</label>
+        <div class="type-toggle">
+          <button class="type-btn on" id="btnMain" onclick="setType('main')">Main Portion</button>
+          <button class="type-btn"    id="btnAdv"  onclick="setType('advances')">Advances Portion</button>
+        </div>
+      </div>
+
+      <div class="field field-full">
+        <label>Interest Method</label>
+        <div class="type-toggle">
+          <button class="type-btn on" id="btnMethodPct" onclick="setMethod('percent')">% Rate</button>
+          <button class="type-btn"    id="btnMethodDpd" onclick="setMethod('dpd')">$ Per Day</button>
+        </div>
+      </div>
+
+      <div id="rateWrap" class="field">
+        <label>Annual Interest Rate (%)</label>
+        <input type="number" id="mRate" placeholder="18.00" step="0.01" min="0">
+      </div>
+      <div id="dpdWrap" class="field" style="display:none">
+        <label>Daily Interest Amount ($)</label>
+        <input type="number" id="mDpd" placeholder="3985.20" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Currency</label>
+        <select id="mCur"><option>USD</option><option>CAD</option><option>EUR</option><option>GBP</option></select>
+      </div>
+
+      <div id="compWrap" class="field field-full">
+        <label>Compounding</label>
+        <div class="type-toggle">
+          <button class="type-btn on" id="btnCompYes" onclick="setComp('yes')">With Compounding</button>
+          <button class="type-btn"    id="btnCompNo"  onclick="setComp('no')">Simple Interest</button>
+        </div>
+      </div>
+
+      <div id="dayWrap" class="field field-full">
+        <label>Day Basis</label>
+        <div class="type-toggle">
+          <button class="type-btn on" id="btnDaysCal"    onclick="setDays('calendar')">Calendar Days (365/366)</button>
+          <button class="type-btn"    id="btnDays360"    onclick="setDays('360')">Fixed 360 Days</button>
+          <button class="type-btn"    id="btnDaysCustom" onclick="setDays('custom')">Custom</button>
+        </div>
+        <div id="customDaysWrap" style="display:none;margin-top:8px">
+          <input type="number" id="mCustomDays" placeholder="e.g. 364" min="1" max="999" step="1"
+            style="background:var(--paper);border:1px solid var(--rule);border-radius:3px;padding:7px 9px;font-family:'DM Mono',monospace;font-size:13px;width:160px">
+          <span style="font-size:11px;color:var(--muted);margin-left:8px">days per year</span>
+        </div>
+      </div>
+
+      <div class="field field-full">
+        <label>Subsidiary</label>
+        <input type="text" id="mSub" placeholder="e.g. Cardone Ventures, LLC">
+      </div>
+      <div class="field field-full">
+        <label>Entity <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">— NetSuite entity on JE lines (optional)</span></label>
+        <input type="text" id="mEntity" placeholder="e.g. REVIV Global Inc">
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Debit Account <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">— balance sheet loan account</span></label>
+        <input type="text" id="mDebit" placeholder="e.g. 15203 Notes Receivable : N/R - Reviv Global Bridge Note">
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Credit Account <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">— interest income account</span></label>
+        <input type="text" id="mCredit" placeholder="e.g. 42010 Other Revenue : Investment Income">
+      </div>
+    </div>
+    <div class="brow">
+      <button class="btn-s" onclick="closeModal()">Cancel</button>
+      <button class="btn-p" onclick="saveLoan()">Save Profile</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+const SK = 'loanCalc_v6';
+let loans = [];
+let cid   = null;
+let st    = {};
+let res   = null;
+let mode  = 'loan';   // 'loan' | 'close'
+
+// Modal toggles
+let mType='main', mComp='yes', mDays='calendar', mMethod='percent';
+let editingId = null;
+
+try { loans = JSON.parse(localStorage.getItem(SK)) || []; } catch { loans = []; }
+function persist() { try { localStorage.setItem(SK, JSON.stringify(loans)); } catch {} }
+
+// Monthly close state
+let closeState = { start:'', thru:'' };
+
+// ════════════════════════════════════════════════════════
+//  DATE / MATH
+// ════════════════════════════════════════════════════════
+const isLeap = y => (y%4===0&&y%100!==0)||y%400===0;
+const diy    = s => isLeap(new Date(s+'T00:00:00').getFullYear())?366:365;
+const pd     = s => new Date(s+'T00:00:00');
+const fd     = d => d.toISOString().slice(0,10);
+const addD   = (d,n) => { const r=new Date(d); r.setDate(r.getDate()+n); return r; };
+const diffD  = (a,b) => Math.round((b-a)/86400000)+1;
+const eom    = d => new Date(d.getFullYear(),d.getMonth()+1,0);
+const pm     = v => parseFloat(String(v||'').replace(/[$,]/g,''))||0;
+const f$     = n => '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const shortD = s => { const d=pd(s); return `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`; };
+const monthYr= s => pd(s).toLocaleString('en-US',{month:'long',year:'numeric'});
+
+// ════════════════════════════════════════════════════════
+//  DESCRIPTION BUILDER
+// ════════════════════════════════════════════════════════
+function buildDesc(loan, seg) {
+  const my = monthYr(seg.endDate);
+  if (loan.portionType === 'main') return `${loan.name} - ${my} Interest - Main Portion`;
+  return `${loan.name} - ${my} Interest - Advances Portion - Prorated ${shortD(seg.startDate)} - ${shortD(seg.endDate)}`;
+}
+
+// ════════════════════════════════════════════════════════
+//  MODE SWITCH
+// ════════════════════════════════════════════════════════
+function setMode(m) {
+  mode = m;
+  document.getElementById('tabLoan').className  = 'mode-tab' + (m==='loan'      ? ' on':'');
+  document.getElementById('tabClose').className = 'mode-tab' + (m==='close'     ? ' on':'');
+  document.getElementById('tabDash').className  = 'mode-tab' + (m==='dashboard' ? ' on':'');
+  document.getElementById('tabRecon').className = 'mode-tab' + (m==='recon'     ? ' on':'');
+  if (m === 'close') renderClose();
+  else if (m === 'dashboard') renderDashboard();
+  else if (m === 'recon') renderRecon();
+  else renderMain();
+}
+
+// ════════════════════════════════════════════════════════
+//  RECONCILIATION TAB
+// ════════════════════════════════════════════════════════
+function renderRecon() {
+  const el = document.getElementById('mainArea');
+  const calculated = loans.filter(l => closeResults[l.id]);
+
+  if (!calculated.length) {
+    el.innerHTML = `<div class="recon-wrap"><div class="dash-no-data">
+      <h2>No calculations yet</h2>
+      <p>Go to <strong>Monthly Close</strong>, set the period dates, and calculate each loan first.</p>
+    </div></div>`;
+    return;
+  }
+
+  const periodLabel = (closeState.start && closeState.thru)
+    ? `${fmtDateLong(closeState.start)} – ${fmtDateLong(closeState.thru)}`
+    : 'Period not set';
+
+  const loanCards = calculated.map(l => {
+    const r       = closeResults[l.id];
+    const isDpd   = l.method === 'dpd';
+    const isAdv   = l.portionType === 'advances';
+    const tbCls   = isDpd ? 'tb-dpd' : isAdv ? 'tb-adv' : 'tb-main';
+    const tbTxt   = isDpd ? '$/Day'  : isAdv ? 'Advances' : 'Main';
+    const partner = l.linkedTo ? loans.find(x => x.id === l.linkedTo) : null;
+
+    // Build recon rows (same grouping logic as the CSV export)
+    const rows = [];
+    let i = 0;
+    while (i < r.segs.length) {
+      const s = r.segs[i];
+      if (s.isAdv) {
+        const openBal = s.balAfter - s.amount;
+        let j = i+1, totInt = 0, lastEnd = s.date, lastClose = s.balAfter;
+        while (j < r.segs.length && !r.segs[j].isAdv) {
+          totInt += r.segs[j].interest; lastEnd = r.segs[j].endDate; lastClose = r.segs[j].closeBal; j++;
+        }
+        rows.push(`<tr style="background:#fffdf5">
+          <td class="L">${s.date}</td><td class="L">${lastEnd}</td>
+          <td>${f$(openBal)}</td><td style="color:var(--muted)">—</td>
+          <td style="color:var(--gold)">${f$(s.amount)}</td>
+          <td style="color:var(--gold)">${f$(s.balAfter)}</td>
+          <td class="chg-pos">${f$(totInt)}</td>
+          <td>${f$(lastClose)}</td>
+        </tr>`);
+        i = j;
+      } else {
+        rows.push(`<tr>
+          <td class="L">${s.startDate}</td><td class="L">${s.endDate}</td>
+          <td>${f$(s.openBal)}</td><td>${s.days}</td>
+          <td style="color:var(--muted)">—</td><td>${f$(s.openBal)}</td>
+          <td class="chg-pos">${f$(s.interest)}</td>
+          <td>${f$(s.closeBal)}</td>
+        </tr>`);
+        i++;
+      }
+    }
+
+    return `<div class="recon-loan-card">
+      <div class="recon-loan-hdr">
+        <span style="font-weight:500">${l.name}</span>
+        <span class="type-badge ${tbCls}" style="font-size:10px">${tbTxt}</span>
+        ${partner ? `<span class="interco-badge">↔ ${partner.name}</span>` : ''}
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">
+          Interest: <strong class="chg-pos">${f$(r.periodInt)}</strong>
+          &nbsp;·&nbsp; Closing Balance: <strong>${f$(r.grandTotal)}</strong>
+        </span>
+      </div>
+      <div style="overflow-x:auto;padding:12px 15px">
+        <table class="recon-tbl">
+          <thead><tr>
+            <th class="L">Start Date</th><th class="L">End Date</th>
+            <th>Opening Balance</th><th>Days</th>
+            <th>Advances</th><th>Bal After Advance</th>
+            <th>Interest to Book</th><th>Closing Balance</th>
+          </tr></thead>
+          <tbody>${rows.join('')}</tbody>
+          <tfoot><tr>
+            <td class="L" colspan="2">Totals</td>
+            <td></td><td></td>
+            <td style="color:var(--gold)">${r.periodAdv > 0 ? f$(r.periodAdv) : '—'}</td>
+            <td></td>
+            <td class="chg-pos">${f$(r.periodInt)}</td>
+            <td>${f$(r.grandTotal)}</td>
+          </tr></tfoot>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="recon-wrap">
+    <div class="dash-hdr" style="margin-bottom:20px">
+      <div>
+        <div class="dash-title">Reconciliation Detail</div>
+        <div class="dash-period">${periodLabel}</div>
+      </div>
+      <div class="dash-meta">
+        <div>Generated ${fmtDateLong(today())}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn-s no-print" onclick="exportCloseRecon()" style="font-size:11px;padding:7px 14px">↓ Export CSV</button>
+          <button class="btn-p no-print" onclick="window.print()" style="font-size:11px;padding:7px 14px">⎙ Print / Save PDF</button>
+        </div>
+      </div>
+    </div>
+    ${loanCards}
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════════════════════
+const fmtDateLong = s => s ? pd(s).toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '';
+
+function renderDashboard() {
+  const el = document.getElementById('mainArea');
+  const calculated = loans.filter(l => closeResults[l.id]);
+
+  if (!calculated.length) {
+    el.innerHTML = `<div class="dash-wrap"><div class="dash-no-data">
+      <h2>No data to display</h2>
+      <p>Switch to <strong>Monthly Close</strong>, set the period dates, enter balances for each loan,<br>and run Calculate. Then come back here to see the dashboard.</p>
+    </div></div>`;
+    return;
+  }
+
+  // ── Build display groups — interco pairs shown once ───
+  const seen = new Set();
+  const groups = [];
+  calculated.forEach(l => {
+    if (seen.has(l.id)) return;
+    seen.add(l.id);
+    const partner = l.linkedTo ? calculated.find(p => p.id === l.linkedTo) : null;
+    if (partner) { seen.add(partner.id); groups.push({ interco:true,  primary:l, secondary:partner }); }
+    else {                                groups.push({ interco:false, primary:l, secondary:null    }); }
+  });
+
+  // ── Aggregate totals — each interco pair counted once ─
+  let totOpenBal=0, totCloseBal=0, totPeriodInt=0, totPeriodAdv=0, totPriorInt=0;
+  groups.forEach(g => {
+    const r = closeResults[g.primary.id];
+    totOpenBal   += r.bal0;
+    totCloseBal  += r.grandTotal;
+    totPeriodInt += r.periodInt;
+    totPeriodAdv += r.periodAdv;
+    totPriorInt  += r.priorInterest;
+  });
+  const totNetChg  = totCloseBal - totOpenBal;
+  const totPctChg  = totOpenBal ? totNetChg / totOpenBal * 100 : 0;
+  const totYtdInt  = totPriorInt + totPeriodInt;
+  const intercoCnt = groups.filter(g => g.interco).length;
+  const advCnt     = groups.filter(g => closeResults[g.primary.id].periodAdv > 0).length;
+
+  const periodLabel = (closeState.start && closeState.thru)
+    ? `${fmtDateLong(closeState.start)} – ${fmtDateLong(closeState.thru)}`
+    : 'Period not set — configure dates in Monthly Close';
+
+  // ── KPI cards ─────────────────────────────────────────
+  const kpis = `<div class="dash-kpis">
+    <div class="dash-kpi hi">
+      <div class="dash-kpi-lbl">Period Interest Income</div>
+      <div class="dash-kpi-val">${f$(totPeriodInt)}</div>
+      <div class="dash-kpi-sub">YTD total: ${f$(totYtdInt)}</div>
+    </div>
+    <div class="dash-kpi">
+      <div class="dash-kpi-lbl">Period Advances</div>
+      <div class="dash-kpi-val cv-gold">${totPeriodAdv > 0 ? f$(totPeriodAdv) : '—'}</div>
+      <div class="dash-kpi-sub">${advCnt ? advCnt+' loan'+(advCnt===1?'':'s')+' with new advances' : 'No advances this period'}</div>
+    </div>
+    <div class="dash-kpi">
+      <div class="dash-kpi-lbl">Total Closing Balance</div>
+      <div class="dash-kpi-val">${f$(totCloseBal)}</div>
+      <div class="dash-kpi-sub">Opening: ${f$(totOpenBal)}</div>
+    </div>
+    <div class="dash-kpi">
+      <div class="dash-kpi-lbl">Net Balance Change</div>
+      <div class="dash-kpi-val ${totNetChg>=0?'chg-pos':'chg-neg'}">${totNetChg>=0?'+':''}${f$(totNetChg)}</div>
+      <div class="dash-kpi-sub">${totPctChg>=0?'+':''}${totPctChg.toFixed(2)}% from opening${intercoCnt?' · '+intercoCnt+' interco pair'+(intercoCnt===1?'':'s'):''}</div>
+    </div>
+  </div>`;
+
+  // ── Loan breakdown table ───────────────────────────────
+  const tableRows = groups.map(g => {
+    const l      = g.primary;
+    const r      = closeResults[l.id];
+    const isDpd  = l.method === 'dpd';
+    const isAdv  = l.portionType === 'advances';
+    const rateStr = isDpd ? f$(l.dpd)+'/day' : l.rate+'%';
+    const netChg  = r.grandTotal - r.bal0;
+    const pctChg  = r.bal0 ? netChg / r.bal0 * 100 : 0;
+    const chgCls  = netChg >= 0 ? 'chg-pos' : 'chg-neg';
+    const intPct  = totPeriodInt > 0 ? (r.periodInt / totPeriodInt * 100).toFixed(1) : '0.0';
+
+    const typeBadge = g.interco
+      ? `<span class="interco-badge">↔ Interco</span>`
+      : `<span class="type-badge ${isDpd?'tb-dpd':isAdv?'tb-adv':'tb-main'}" style="font-size:10px">${isDpd?'$/Day':isAdv?'Advances':'Main'}</span>`;
+
+    const nameCell = g.interco
+      ? `<strong>${l.name}</strong><div class="interco-row-secondary">↔ ${g.secondary.name}</div>${l.sub?`<div style="font-size:10px;color:var(--muted);margin-top:1px">${l.sub}</div>`:''}`
+      : `<strong>${l.name}</strong>${l.sub?`<div style="font-size:10px;color:var(--muted);margin-top:2px">${l.sub}</div>`:''}`;
+
+    // Flag interest mismatch on interco pairs
+    let intCell = `<span class="chg-pos">${f$(r.periodInt)}</span>`;
+    if (g.interco) {
+      const rSec = closeResults[g.secondary.id];
+      if (Math.abs(rSec.periodInt - r.periodInt) > 0.01) {
+        intCell += `<div style="font-size:10px;color:var(--danger);margin-top:2px" title="Interest amounts differ between linked loans">⚠ ${f$(rSec.periodInt)} on partner</div>`;
+      }
+    }
+
+    return `<tr>
+      <td class="L">${nameCell}</td>
+      <td class="L">${typeBadge}</td>
+      <td class="L" style="color:var(--muted);font-size:11px">${rateStr}</td>
+      <td>${f$(r.bal0)}</td>
+      <td>${r.periodAdv>0?`<span style="color:var(--gold)">${f$(r.periodAdv)}</span>`:'<span style="color:#ccc">—</span>'}</td>
+      <td>${intCell}</td>
+      <td style="font-size:10px;color:var(--muted);padding-right:6px">${intPct}%</td>
+      <td>${f$(r.grandTotal)}</td>
+      <td class="${chgCls}">${netChg>=0?'+':''}${f$(netChg)}</td>
+      <td class="${chgCls}">${pctChg>=0?'+':''}${pctChg.toFixed(2)}%</td>
+    </tr>`;
+  }).join('');
+
+  const totChgCls = totNetChg >= 0 ? 'chg-pos' : 'chg-neg';
+
+  // ── Bar chart ──────────────────────────────────────────
+  const maxInt = Math.max(...groups.map(g => closeResults[g.primary.id].periodInt), 1);
+  const barRows = groups
+    .slice().sort((a,b) => closeResults[b.primary.id].periodInt - closeResults[a.primary.id].periodInt)
+    .map(g => {
+      const r        = closeResults[g.primary.id];
+      const barPct   = (r.periodInt / maxInt * 100).toFixed(1);
+      const sharePct = totPeriodInt > 0 ? (r.periodInt / totPeriodInt * 100).toFixed(1) : '0.0';
+      const label    = g.interco ? `${g.primary.name} / ${g.secondary.name}` : g.primary.name;
+      return `<div class="dash-bar-row">
+        <div class="dash-bar-lbl" title="${label}">${label}</div>
+        <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${barPct}%"></div></div>
+        <div class="dash-bar-val">${f$(r.periodInt)} <span style="font-size:10px">(${sharePct}%)</span></div>
+      </div>`;
+    }).join('');
+
+  const intercoBanner = intercoCnt ? `<div class="info" style="margin-bottom:16px">
+    <strong>${intercoCnt} intercompany pair${intercoCnt===1?'':'s'} detected.</strong>
+    Each pair is reported once using the primary loan's figures. Interest mismatches are flagged in the table.
+    Both sides of each pair are exported separately for journal entry purposes.
+  </div>` : '';
+
+  el.innerHTML = `<div class="dash-wrap">
+    <div class="dash-hdr">
+      <div>
+        <div class="dash-title">Interest Income Summary</div>
+        <div class="dash-period">${periodLabel}</div>
+      </div>
+      <div class="dash-meta">
+        <div>Generated ${fmtDateLong(today())}</div>
+        <div style="margin-top:8px">
+          <button class="btn-p no-print" onclick="window.print()" style="font-size:11px;padding:7px 15px">⎙ Print / Save PDF</button>
+        </div>
+      </div>
+    </div>
+
+    ${kpis}
+    ${intercoBanner}
+
+    <div class="dash-sect">
+      <div class="dash-sect-hdr">Loan-by-Loan Breakdown${intercoCnt?' <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:var(--muted)"> — intercompany pairs reported once</span>':''}</div>
+      <div style="overflow-x:auto">
+        <table class="dash-tbl">
+          <thead><tr>
+            <th class="L">Loan</th><th class="L">Type</th><th class="L">Rate</th>
+            <th>Opening Balance</th><th>Advances</th><th>Interest Earned</th>
+            <th style="font-size:9px">% of Total</th>
+            <th>Closing Balance</th><th>Change ($)</th><th>Change (%)</th>
+          </tr></thead>
+          <tbody>${tableRows}</tbody>
+          <tfoot><tr>
+            <td class="L" colspan="3">Totals — ${groups.length} item${groups.length===1?'':'s'}${intercoCnt?' ('+intercoCnt+' interco pair'+(intercoCnt===1?'':'s')+')':''}</td>
+            <td>${f$(totOpenBal)}</td>
+            <td>${totPeriodAdv>0?`<span style="color:var(--gold)">${f$(totPeriodAdv)}</span>`:'<span style="color:#ccc">—</span>'}</td>
+            <td class="chg-pos">${f$(totPeriodInt)}</td>
+            <td></td>
+            <td>${f$(totCloseBal)}</td>
+            <td class="${totChgCls}">${totNetChg>=0?'+':''}${f$(totNetChg)}</td>
+            <td class="${totChgCls}">${totPctChg>=0?'+':''}${totPctChg.toFixed(2)}%</td>
+          </tr></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="dash-sect">
+      <div class="dash-sect-hdr">Interest Income by Loan</div>
+      <div class="dash-chart-wrap">${barRows||'<div class="nomsg">No interest data.</div>'}</div>
+    </div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════
+//  SIDEBAR
+// ════════════════════════════════════════════════════════
+function renderSidebar() {
+  const el = document.getElementById('loanList');
+  if (!loans.length) { el.innerHTML='<div class="nomsg">No profiles yet.</div>'; document.getElementById('btnDel').style.display='none'; return; }
+  el.innerHTML = loans.map(l => {
+    const isDpd = l.method === 'dpd';
+    const isAdv = l.portionType === 'advances';
+    const pillCls = isDpd ? 'pill pill-dpd' : isAdv ? 'pill pill-adv' : 'pill pill-main';
+    const pillTxt = isDpd ? '$/day' : isAdv ? 'Advances' : 'Main';
+    const rateTxt = isDpd
+      ? (f$(l.dpd||0)+'/day')
+      : (l.rate+'% · '+((l.compounding||'yes')==='yes'?'Cmpd':'Simple'));
+    return `<div class="loan-item" draggable="true" data-id="${l.id}"
+        ondragstart="onDragStart(event,'${l.id}')"
+        ondragover="onDragOver(event)"
+        ondragleave="onDragLeave(event)"
+        ondrop="onDrop(event,'${l.id}')"
+        ondragend="onDragEnd(event)">
+      <div class="drag-handle" title="Drag to reorder">⠿</div>
+      <button class="loan-btn ${l.id===cid?'active':''}" onclick="selectLoan('${l.id}')">
+        <span class="ln">${l.name}</span>
+        <span class="lr"><span class="${pillCls}">${pillTxt}</span> ${rateTxt} · ${l.currency}${l.linkedTo && loans.find(x=>x.id===l.linkedTo) ? ' · <span style="color:var(--blue-border)">↔</span>' : ''}</span>
+      </button>
+    </div>`;
+  }).join('');
+  document.getElementById('btnDel').style.display = cid ? 'block' : 'none';
+}
+
+function selectLoan(id) {
+  cid = id; res = null;
+  if (!st[id]) st[id] = { start:'', bal:'', thru:'', priorPrincipal:'', priorInterest:'', advances:[] };
+  renderSidebar();
+  if (mode === 'loan') renderMain();
+}
+
+// ════════════════════════════════════════════════════════
+//  MODAL
+// ════════════════════════════════════════════════════════
+function setType(t) {
+  mType = t;
+  document.getElementById('btnMain').className = 'type-btn'+(t==='main'?' on':'');
+  document.getElementById('btnAdv').className  = 'type-btn'+(t==='advances'?' on':'');
+}
+function setComp(v) {
+  mComp = v;
+  document.getElementById('btnCompYes').className = 'type-btn'+(v==='yes'?' on':'');
+  document.getElementById('btnCompNo').className  = 'type-btn'+(v==='no'?' on':'');
+}
+function setDays(v) {
+  mDays = v;
+  document.getElementById('btnDaysCal').className    = 'type-btn'+(v==='calendar'?' on':'');
+  document.getElementById('btnDays360').className    = 'type-btn'+(v==='360'?' on':'');
+  document.getElementById('btnDaysCustom').className = 'type-btn'+(v==='custom'?' on':'');
+  document.getElementById('customDaysWrap').style.display = v==='custom'?'flex':'none';
+}
+function setMethod(v) {
+  mMethod = v;
+  document.getElementById('btnMethodPct').className = 'type-btn'+(v==='percent'?' on':'');
+  document.getElementById('btnMethodDpd').className = 'type-btn'+(v==='dpd'?' on':'');
+  document.getElementById('rateWrap').style.display = v==='percent'?'':'none';
+  document.getElementById('dpdWrap').style.display  = v==='dpd'?'':'none';
+  document.getElementById('compWrap').style.display = v==='dpd'?'none':'';
+  document.getElementById('dayWrap').style.display  = v==='dpd'?'none':'';
+}
+
+function openModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'New Loan Profile';
+  ['mName','mDebit','mCredit','mSub','mEntity'].forEach(i => document.getElementById(i).value='');
+  document.getElementById('mRate').value = '';
+  document.getElementById('mDpd').value  = '';
+  document.getElementById('mCur').value  = 'USD';
+  document.getElementById('mCustomDays').value = '';
+  setType('main'); setComp('yes'); setDays('calendar'); setMethod('percent');
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+
+function openEditModal(id) {
+  const l = loans.find(x => x.id === id);
+  if (!l) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Edit Loan Profile';
+  document.getElementById('mName').value   = l.name        || '';
+  document.getElementById('mSub').value    = l.sub         || '';
+  document.getElementById('mEntity').value = l.entity      || '';
+  document.getElementById('mDebit').value  = l.debit       || '';
+  document.getElementById('mCredit').value = l.credit      || '';
+  document.getElementById('mCur').value    = l.currency    || 'USD';
+  document.getElementById('mCustomDays').value = l.customDays || '';
+  const isDpd = l.method === 'dpd';
+  setMethod(isDpd ? 'dpd' : 'percent');
+  if (isDpd) { document.getElementById('mDpd').value  = l.dpd  || ''; }
+  else        { document.getElementById('mRate').value = l.rate || ''; }
+  setType(l.portionType || 'main');
+  setComp(l.compounding || 'yes');
+  setDays(l.dayBasis    || 'calendar');
+  document.getElementById('overlay').classList.add('open');
+}
+
+function saveLoan() {
+  const name   = document.getElementById('mName').value.trim();
+  const isDpd  = mMethod === 'dpd';
+  const rate   = isDpd ? 0 : parseFloat(document.getElementById('mRate').value);
+  const dpd    = isDpd ? parseFloat(document.getElementById('mDpd').value) : 0;
+  if (!name) { alert('Enter a loan name.'); return; }
+  if (isDpd && (!dpd||dpd<=0)) { alert('Enter a valid daily interest amount.'); return; }
+  if (!isDpd && (!rate||rate<=0)) { alert('Enter a valid interest rate.'); return; }
+  const fields = {
+    name,
+    method:      mMethod,
+    rate:        isDpd ? 0 : rate,
+    dpd:         isDpd ? dpd : 0,
+    portionType: mType,
+    compounding: isDpd ? 'no' : mComp,
+    dayBasis:    isDpd ? 'calendar' : mDays,
+    customDays:  (!isDpd && mDays==='custom') ? (parseInt(document.getElementById('mCustomDays').value)||365) : null,
+    entity:   document.getElementById('mEntity').value.trim(),
+    debit:    document.getElementById('mDebit').value.trim(),
+    credit:   document.getElementById('mCredit').value.trim(),
+    sub:      document.getElementById('mSub').value.trim(),
+    currency: document.getElementById('mCur').value,
+  };
+  if (editingId) {
+    const idx = loans.findIndex(x => x.id === editingId);
+    if (idx >= 0) loans[idx] = { ...loans[idx], ...fields };
+    persist(); closeModal(); renderSidebar(); renderMain();
+    showToast('Loan profile updated.');
+  } else {
+    const loan = { id:'l'+Date.now(), ...fields };
+    loans.push(loan); persist(); closeModal(); selectLoan(loan.id);
+    showToast('Loan profile saved.');
+  }
+}
+
+function deleteLoan() {
+  if (!cid) return;
+  const l = loans.find(x=>x.id===cid);
+  if (!confirm(`Delete "${l.name}"? This cannot be undone.`)) return;
+  if (l.linkedTo) {
+    const partner = loans.find(x => x.id === l.linkedTo);
+    if (partner) partner.linkedTo = null;
+  }
+  loans = loans.filter(x=>x.id!==cid);
+  delete st[cid]; cid=null; persist(); renderSidebar(); renderMain();
+}
+
+// ════════════════════════════════════════════════════════
+//  INTERCOMPANY LINKING
+// ════════════════════════════════════════════════════════
+function setPartner(lid, partnerId) {
+  const loan = loans.find(x => x.id === lid);
+  if (!loan) return;
+  // Unlink existing partner first
+  if (loan.linkedTo) {
+    const old = loans.find(x => x.id === loan.linkedTo);
+    if (old) old.linkedTo = null;
+  }
+  loan.linkedTo = partnerId || null;
+  if (partnerId) {
+    const newPartner = loans.find(x => x.id === partnerId);
+    if (newPartner) {
+      // Displace any existing link the new partner had
+      if (newPartner.linkedTo && newPartner.linkedTo !== lid) {
+        const displaced = loans.find(x => x.id === newPartner.linkedTo);
+        if (displaced) displaced.linkedTo = null;
+      }
+      newPartner.linkedTo = lid;
+    }
+  }
+  persist();
+  renderSidebar();
+  renderMain();
+  showToast(partnerId ? 'Intercompany link saved.' : 'Intercompany link removed.');
+}
+
+// ════════════════════════════════════════════════════════
+//  INDIVIDUAL LOAN — MAIN PANEL
+// ════════════════════════════════════════════════════════
+function renderMain() {
+  const el = document.getElementById('mainArea');
+  if (!cid) { el.innerHTML=`<div class="empty"><h2>No loan selected</h2><p>Select or create a loan profile in the sidebar.</p></div>`; return; }
+  const l = loans.find(x=>x.id===cid);
+  const s = st[cid];
+  const isDpd = l.method === 'dpd';
+  const isAdv = l.portionType === 'advances';
+  const tbCls = isDpd ? 'tb-dpd' : isAdv ? 'tb-adv' : 'tb-main';
+  const tbTxt = isDpd ? '$/Day' : isAdv ? 'Advances Portion' : 'Main Portion';
+
+  const rateInfo = isDpd
+    ? (f$(l.dpd)+' per day · fixed')
+    : (l.rate+'% · '+((l.compounding||'yes')==='yes'?'Compounding':'Simple')+' · '+(
+        (l.dayBasis||'calendar')==='360'?'360-day':
+        (l.dayBasis||'calendar')==='custom'?((l.customDays||365)+'-day'):
+        'Calendar days'));
+
+  const otherLoans = loans.filter(x => x.id !== l.id);
+  const partnerOptions = otherLoans.map(ol =>
+    `<option value="${ol.id}"${ol.id === (l.linkedTo||'') ? ' selected' : ''}>${ol.name}</option>`
+  ).join('');
+  const partnerName = l.linkedTo ? (loans.find(x => x.id === l.linkedTo)||{}).name : null;
+
+  const advSection = isAdv ? `
+    <div class="section">
+      <div class="section-header"><span class="section-label">💰 Advances</span></div>
+      <div class="section-body">
+        <div class="adv-header">
+          <div class="col-lbl">Date</div><div class="col-lbl">Amount ($)</div>
+          <div class="col-lbl">Note (optional)</div><div></div>
+        </div>
+        <div id="advList"></div>
+        <button class="btn-add" onclick="addAdv()">+ Add Advance</button>
+      </div>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-header">
+        <span class="section-label">📋 ${l.name}</span>
+        <span class="type-badge ${tbCls}" style="margin-left:8px">${tbTxt}</span>
+        <button class="btn-s no-print" style="margin-left:12px;font-size:11px;padding:5px 12px" onclick="openEditModal('${l.id}')">Edit Profile</button>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">${rateInfo} · ${l.currency}</span>
+      </div>
+      <div class="section-body">
+        <div class="form-grid">
+          <div class="field"><label>Period Start Date</label>
+            <input type="date" id="fStart" value="${s.start}" onchange="st[cid].start=this.value"></div>
+          <div class="field"><label>Prior Period Closing Balance</label>
+            <input type="text" id="fBal" value="${s.bal}" placeholder="0.00" onchange="st[cid].bal=this.value"></div>
+          <div class="field"><label>Calculate Through</label>
+            <input type="date" id="fThru" value="${s.thru}" onchange="st[cid].thru=this.value"></div>
+          <div class="field"><label>Prior Period Total Principal</label>
+            <input type="text" id="fPriorPrincipal" value="${s.priorPrincipal||''}" placeholder="0.00" onchange="st[cid].priorPrincipal=this.value"></div>
+          <div class="field"><label>Prior Period Total Interest</label>
+            <input type="text" id="fPriorInterest" value="${s.priorInterest||''}" placeholder="0.00" onchange="st[cid].priorInterest=this.value"></div>
+        </div>
+        <div class="info" style="margin-top:11px">
+          <div class="acct-box">
+            <div class="acct-row"><span class="acct-dir">Debit</span><span>${l.debit||'<em style="color:#ccc">not set</em>'}</span></div>
+            <div class="acct-row" style="margin-top:3px"><span class="acct-dir">Credit</span><span>${l.credit||'<em style="color:#ccc">not set</em>'}</span></div>
+            ${l.entity?`<div class="acct-row" style="margin-top:3px"><span class="acct-dir">Entity</span><span>${l.entity}</span></div>`:''}
+          </div>
+        </div>
+        <div style="margin-top:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);flex-shrink:0;white-space:nowrap">Intercompany Partner <span style="font-size:10px;text-transform:none;letter-spacing:0;color:#bbb">— groups both sides of the same loan in Dashboard &amp; Reconciliation</span></label>
+          <select style="background:var(--paper);border:1px solid var(--rule);border-radius:3px;padding:6px 9px;font-family:'DM Mono',monospace;font-size:12px;color:var(--ink);min-width:200px" onchange="setPartner('${l.id}',this.value)">
+            <option value="">None</option>
+            ${partnerOptions}
+          </select>
+          ${partnerName ? `<span class="interco-badge">↔ Linked to ${partnerName}</span>` : ''}
+        </div>
+      </div>
+    </div>
+    ${advSection}
+    <div class="brow" style="margin-bottom:18px">
+      <button class="btn-p" onclick="calc()">Calculate Interest</button>
+      <button class="btn-s" onclick="clearRes()">Clear</button>
+    </div>
+    <div id="resArea"></div>`;
+  if (isAdv) renderAdvList();
+}
+
+function renderAdvList() {
+  const s = st[cid];
+  const el = document.getElementById('advList');
+  if (!el) return;
+  if (!s.advances.length) { el.innerHTML='<div class="nomsg">No advances added yet.</div>'; return; }
+  el.innerHTML = s.advances.map((a,i) => `
+    <div class="adv-row">
+      <input class="ai gold" type="date" value="${a.date||''}" onchange="st[cid].advances[${i}].date=this.value">
+      <input class="ai gold" type="text" value="${a.amount||''}" placeholder="0.00" onchange="st[cid].advances[${i}].amount=this.value">
+      <input class="ai" type="text" value="${a.note||''}" placeholder="e.g. CV Transaction" onchange="st[cid].advances[${i}].note=this.value">
+      <button class="btn-x" onclick="removeAdv(${i})">×</button>
+    </div>`).join('');
+}
+function addAdv()     { st[cid].advances.push({date:'',amount:'',note:''}); renderAdvList(); }
+function removeAdv(i) { st[cid].advances.splice(i,1); renderAdvList(); }
+
+// ════════════════════════════════════════════════════════
+//  CALCULATE — single loan
+// ════════════════════════════════════════════════════════
+function calc() {
+  const l = loans.find(x=>x.id===cid);
+  const s = st[cid];
+  const start          = document.getElementById('fStart').value || s.start;
+  const balRaw         = document.getElementById('fBal').value   || s.bal;
+  const thru           = document.getElementById('fThru').value  || s.thru;
+  const priorPrincipal = pm(document.getElementById('fPriorPrincipal').value || s.priorPrincipal || '0');
+  const priorInterest  = pm(document.getElementById('fPriorInterest').value  || s.priorInterest  || '0');
+  if (!start)  { alert('Enter Period Start Date.'); return; }
+  if (!balRaw) { alert('Enter Prior Period Closing Balance.'); return; }
+  if (!thru)   { alert('Enter Calculate Through date.'); return; }
+  const bal0   = pm(balRaw);
+  const startD = pd(start);
+  const endD   = pd(thru);
+  if (startD > endD) { alert('Period Start must be before or equal to Calculate Through date.'); return; }
+  const segs = calcSegs(l, s, bal0, priorPrincipal, startD, endD);
+  res = { l, segs, bal0, priorPrincipal, priorInterest };
+  renderRes();
+}
+
+// Core segment calculation — shared by individual calc and monthly close
+function calcSegs(l, s, bal0, priorPrincipal, startD, endD) {
+  const segs = [];
+  const isSimple = (l.compounding||'yes') === 'no';
+  const isDpd    = l.method === 'dpd';
+
+  if (l.portionType === 'main') {
+    const base = (isSimple && !isDpd) ? priorPrincipal : bal0;
+    buildSegs(startD, endD, base, l, segs);
+  } else {
+    const advs = (s.advances||[])
+      .filter(a=>a.date&&a.amount)
+      .map(a=>({date:a.date,amount:pm(a.amount),note:a.note||''}))
+      .sort((a,b)=>a.date.localeCompare(b.date))
+      .filter(a=>pd(a.date)>=startD&&pd(a.date)<=endD);
+
+    let runBal   = (isSimple && !isDpd) ? priorPrincipal : bal0;
+    let runPrinc = priorPrincipal;
+
+    if (advs.length > 0 && startD < pd(advs[0].date)) {
+      const preEnd = addD(pd(advs[0].date), -1);
+      const base   = (isSimple && !isDpd) ? runPrinc : runBal;
+      runBal = buildSegs(startD, preEnd, base, l, segs);
+      if (isSimple && !isDpd) runBal = runPrinc;
+    }
+
+    for (let i=0; i<advs.length; i++) {
+      const advD     = pd(advs[i].date);
+      const nextAdvD = (i+1<advs.length) ? pd(advs[i+1].date) : null;
+      const rawEnd   = nextAdvD ? addD(nextAdvD,-1) : endD;
+      const segEnd   = rawEnd > endD ? endD : rawEnd;
+
+      runPrinc += advs[i].amount;
+      const balAfterAdv = (isSimple && !isDpd) ? runPrinc : (runBal + advs[i].amount);
+      segs.push({isAdv:true, date:advs[i].date, amount:advs[i].amount, note:advs[i].note, balAfter:balAfterAdv});
+      runBal = buildSegs(advD, segEnd, balAfterAdv, l, segs);
+      if (isSimple && !isDpd) runBal = runPrinc;
+    }
+
+    if (advs.length === 0) {
+      const base = (isSimple && !isDpd) ? priorPrincipal : bal0;
+      buildSegs(startD, endD, base, l, segs);
+    }
+  }
+  return segs;
+}
+
+// Build interest segments (split at month-end), returns final closing balance
+function buildSegs(startD, endD, openBal, loan, out) {
+  const isDpd    = loan.method === 'dpd';
+  const compound = !isDpd && (loan.compounding||'yes') === 'yes';
+  const basis    = loan.dayBasis || 'calendar';
+  const fixedY   = basis==='360' ? 360 : basis==='custom' ? (loan.customDays||365) : null;
+  let cur = new Date(startD);
+  let b   = openBal;
+  while (cur <= endD) {
+    const me   = eom(cur);
+    const se   = me < endD ? me : endD;
+    const days = diffD(cur, se);
+    const y    = fixedY !== null ? fixedY : diy(fd(cur));
+    const interest = isDpd
+      ? (loan.dpd||0) * days
+      : b * (loan.rate/100) / y * days;
+    const closeBal = b + interest;
+    out.push({isAdv:false, startDate:fd(cur), endDate:fd(se), openBal:b, days, diy:y, interest, closeBal});
+    b = compound ? b + interest : openBal;
+    cur = addD(se, 1);
+  }
+  return b;
+}
+
+// ════════════════════════════════════════════════════════
+//  RENDER RESULTS — individual loan
+// ════════════════════════════════════════════════════════
+function renderRes() {
+  const el = document.getElementById('resArea');
+  if (!el||!res) return;
+  const { l, segs, bal0, priorPrincipal, priorInterest } = res;
+  const isSimple = (l.compounding||'yes') === 'no';
+  const isDpd    = l.method === 'dpd';
+
+  let periodInt=0, periodAdv=0;
+  segs.forEach(s => { if (s.isAdv) periodAdv+=s.amount; else periodInt+=s.interest; });
+
+  const totalInterest  = priorInterest + periodInt;
+  const totalPrincipal = priorPrincipal + periodAdv;
+  let grandTotal;
+  if (isSimple || isDpd) {
+    grandTotal = totalPrincipal + totalInterest;
+  } else {
+    let last = bal0;
+    segs.forEach(s => { if (s.isAdv) last=s.balAfter; else last=s.closeBal; });
+    grandTotal = last;
+  }
+
+  const cards = `<div class="cards">
+    <div class="cards-row">
+      <div class="card card-prior"><div class="card-lbl">Prior Period Total Principal</div><div class="card-val">${f$(priorPrincipal)}</div></div>
+      <div class="card card-prior"><div class="card-lbl">Prior Period Total Interest</div><div class="card-val cv-green">${f$(priorInterest)}</div></div>
+      <div class="card"><div class="card-lbl">Period Interest</div><div class="card-val cv-green">${f$(periodInt)}</div></div>
+      <div class="card"><div class="card-lbl">Period Advances</div><div class="card-val cv-gold">${f$(periodAdv)}</div></div>
+    </div>
+    <div class="cards-row">
+      <div class="card"><div class="card-lbl">Total Interest</div><div class="card-val cv-green">${f$(totalInterest)}</div></div>
+      <div class="card"><div class="card-lbl">Total Principal</div><div class="card-val cv-gold">${f$(totalPrincipal)}</div></div>
+      <div class="card" style="grid-column:span 2"><div class="card-lbl">Grand Total Balance</div><div class="card-val" style="color:var(--ink);font-size:26px">${f$(grandTotal)}</div></div>
+    </div>
+  </div>`;
+
+  const tagCls = l.method==='dpd' ? 'tag-d' : l.portionType==='main' ? 'tag-m' : 'tag-a';
+  const tagTxt = l.method==='dpd' ? '$/Day'  : l.portionType==='main' ? 'Main'  : 'Advances';
+
+  const rows = segs.map(s => {
+    if (s.isAdv) return `<tr style="background:#fffdf5">
+      <td class="L"><span class="tag tag-a">Advance</span></td>
+      <td class="L" colspan="2">${s.date}</td>
+      <td>—</td><td style="color:var(--gold)">${f$(s.amount)}</td>
+      <td style="color:var(--gold)">${f$(s.balAfter)}</td><td>—</td><td style="color:var(--gold)">${f$(s.balAfter)}</td>
+      <td class="L" style="font-size:11px;color:var(--muted)">${s.note}</td>
+    </tr>`;
+    const desc = buildDesc(l, s);
+    return `<tr>
+      <td class="L"><span class="tag ${tagCls}">${tagTxt}</span></td>
+      <td class="L">${s.startDate}</td><td class="L">${s.endDate}</td>
+      <td>${s.days}</td><td>—</td>
+      <td>${f$(s.openBal)}</td><td>${f$(s.interest)}</td><td>${f$(s.closeBal)}</td>
+      <td class="L"><span class="desc-chip" title="${desc}">${desc}</span></td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `${cards}
+  <div class="section">
+    <div class="section-header">
+      <span class="section-label">📊 Calculation Detail</span>
+      <div class="brow" style="margin-left:auto">
+        <button class="btn-s" onclick="exportCSV()">↓ Export JE CSV</button>
+        <button class="btn-s" onclick="exportReconCSV()">↓ Export Reconciliation CSV</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="rtbl">
+        <thead><tr>
+          <th class="L">Type</th><th class="L">Start</th><th class="L">End</th>
+          <th>Days</th><th>Advance</th><th>Opening Bal</th><th>Interest</th><th>Closing Bal</th>
+          <th class="L">NetSuite Description</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr>
+          <td class="L" colspan="4">Totals</td>
+          <td>${f$(periodAdv)}</td><td></td><td>${f$(periodInt)}</td><td>${f$(grandTotal)}</td><td></td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>`;
+}
+
+function clearRes() { res=null; const el=document.getElementById('resArea'); if(el) el.innerHTML=''; }
+
+// ════════════════════════════════════════════════════════
+//  MONTHLY CLOSE
+// ════════════════════════════════════════════════════════
+let closeResults = {}; // loanId -> result object
+
+function renderClose() {
+  const el = document.getElementById('mainArea');
+  const cs = closeState;
+
+  const loanCards = loans.map(l => {
+    const s   = st[l.id] || {};
+    const chk = s.closeInclude ? 'checked' : '';
+    const isDpd = l.method === 'dpd';
+    const isAdv = l.portionType === 'advances';
+    const tbCls = isDpd ? 'tb-dpd' : isAdv ? 'tb-adv' : 'tb-main';
+    const tbTxt = isDpd ? '$/Day' : isAdv ? 'Advances Portion' : 'Main Portion';
+
+    const resultHtml = closeResults[l.id]
+      ? buildCloseResultHtml(l, closeResults[l.id])
+      : '<div class="nomsg" style="padding:12px 0">Not yet calculated.</div>';
+
+    return `<div class="close-loan-card">
+      <div class="close-loan-header" onclick="toggleCloseCard('${l.id}')">
+        <input class="close-check" type="checkbox" ${chk}
+          onclick="event.stopPropagation();toggleCloseInclude('${l.id}',this.checked)"
+          title="Include in monthly close export">
+        <span style="font-weight:500">${l.name}</span>
+        <span class="type-badge ${tbCls}" style="margin-left:6px;font-size:10px">${tbTxt}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)" id="closeStatus_${l.id}">
+          ${closeResults[l.id] ? ('Interest: '+f$(closeResults[l.id].periodInt)) : ''}
+        </span>
+      </div>
+      <div class="close-loan-body" id="closeBody_${l.id}">
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="field"><label>Prior Period Closing Balance</label>
+            <input type="text" id="cb_${l.id}" value="${s.bal||''}" placeholder="0.00"
+              onchange="st['${l.id}'].bal=this.value"></div>
+          <div class="field"><label>Prior Period Total Principal</label>
+            <input type="text" id="cp_${l.id}" value="${s.priorPrincipal||''}" placeholder="0.00"
+              onchange="st['${l.id}'].priorPrincipal=this.value"></div>
+          <div class="field"><label>Prior Period Total Interest</label>
+            <input type="text" id="ci_${l.id}" value="${s.priorInterest||''}" placeholder="0.00"
+              onchange="st['${l.id}'].priorInterest=this.value"></div>
+          ${isAdv ? `<div class="field field-full" style="margin-top:4px">
+            <label>Advances this period</label>
+            <div id="closeAdvList_${l.id}"></div>
+            <button class="btn-add" style="margin-top:6px" onclick="addCloseAdv('${l.id}')">+ Add Advance</button>
+          </div>` : ''}
+        </div>
+        <button class="btn-p" style="font-size:11px;padding:7px 14px" onclick="calcClose('${l.id}')">Calculate</button>
+        <div id="closeResult_${l.id}" style="margin-top:12px">${resultHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-header"><span class="section-label">📅 Monthly Close Period</span></div>
+      <div class="section-body">
+        <div class="form-grid">
+          <div class="field"><label>Period Start Date</label>
+            <input type="date" id="closeStart" value="${cs.start}" onchange="closeState.start=this.value"></div>
+          <div class="field"><label>Period End Date</label>
+            <input type="date" id="closeThru" value="${cs.thru}" onchange="closeState.thru=this.value"></div>
+        </div>
+        <div class="info" style="margin-top:10px">Select loans to include, enter per-loan balances, then calculate each. When ready, export the combined CSV.</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      ${loans.length ? loanCards : '<div class="nomsg">No loan profiles yet — create some in the sidebar.</div>'}
+    </div>
+
+    <div class="brow">
+      <button class="btn-p" onclick="calcAllClose()">Calculate All Selected</button>
+      <button class="btn-s" onclick="exportCloseJE()">↓ Export JE Import</button>
+      <button class="btn-s" onclick="exportCloseRecon()">↓ Export Reconciliation</button>
+    </div>`;
+
+  // Render advance lists for advances-portion loans
+  loans.filter(l=>l.portionType==='advances').forEach(l => {
+    renderCloseAdvList(l.id);
+  });
+}
+
+function toggleCloseCard(id) {
+  const body = document.getElementById('closeBody_'+id);
+  if (body) body.className = body.className.includes('open') ? 'close-loan-body' : 'close-loan-body open';
+}
+
+function toggleCloseInclude(id, checked) {
+  if (!st[id]) st[id] = {start:'',bal:'',thru:'',priorPrincipal:'',priorInterest:'',advances:[]};
+  st[id].closeInclude = checked;
+}
+
+function renderCloseAdvList(lid) {
+  const s  = st[lid] || {};
+  const el = document.getElementById('closeAdvList_'+lid);
+  if (!el) return;
+  const advs = s.advances || [];
+  if (!advs.length) { el.innerHTML='<div class="nomsg">No advances.</div>'; return; }
+  el.innerHTML = advs.map((a,i) => `
+    <div class="adv-row" style="margin-top:4px">
+      <input class="ai gold" type="date" value="${a.date||''}" onchange="st['${lid}'].advances[${i}].date=this.value">
+      <input class="ai gold" type="text" value="${a.amount||''}" placeholder="0.00" onchange="st['${lid}'].advances[${i}].amount=this.value">
+      <input class="ai" type="text" value="${a.note||''}" placeholder="Note" onchange="st['${lid}'].advances[${i}].note=this.value">
+      <button class="btn-x" onclick="removeCloseAdv('${lid}',${i})">×</button>
+    </div>`).join('');
+}
+
+function addCloseAdv(lid) {
+  if (!st[lid]) st[lid]={start:'',bal:'',thru:'',priorPrincipal:'',priorInterest:'',advances:[]};
+  st[lid].advances.push({date:'',amount:'',note:''});
+  renderCloseAdvList(lid);
+}
+function removeCloseAdv(lid,i) { st[lid].advances.splice(i,1); renderCloseAdvList(lid); }
+
+function calcClose(lid) {
+  const l   = loans.find(x=>x.id===lid);
+  const s   = st[lid] || {};
+  const start = closeState.start;
+  const thru  = closeState.thru;
+  const bal   = pm(document.getElementById('cb_'+lid)?.value || s.bal || '0');
+  const pp    = pm(document.getElementById('cp_'+lid)?.value || s.priorPrincipal || '0');
+  const pi    = pm(document.getElementById('ci_'+lid)?.value || s.priorInterest  || '0');
+  if (!start||!thru) { alert('Set the close period dates at the top first.'); return; }
+  if (!bal) { alert('Enter prior period closing balance for '+l.name); return; }
+  const startD = pd(start), endD = pd(thru);
+  const segs = calcSegs(l, s, bal, pp, startD, endD);
+
+  let periodInt=0, periodAdv=0;
+  segs.forEach(s => { if(s.isAdv) periodAdv+=s.amount; else periodInt+=s.interest; });
+  const isSimple = (l.compounding||'yes')==='no';
+  const isDpd    = l.method==='dpd';
+  const totalInterest  = pi + periodInt;
+  const totalPrincipal = pp + periodAdv;
+  let grandTotal;
+  if (isSimple||isDpd) { grandTotal = totalPrincipal+totalInterest; }
+  else { let last=bal; segs.forEach(s=>{if(s.isAdv)last=s.balAfter;else last=s.closeBal;}); grandTotal=last; }
+
+  closeResults[lid] = { segs, bal0:bal, priorPrincipal:pp, priorInterest:pi, periodInt, periodAdv, totalInterest, totalPrincipal, grandTotal };
+
+  // Update status and result in UI
+  const statusEl = document.getElementById('closeStatus_'+lid);
+  if (statusEl) statusEl.textContent = 'Interest: '+f$(periodInt);
+  const resultEl = document.getElementById('closeResult_'+lid);
+  if (resultEl) resultEl.innerHTML = buildCloseResultHtml(l, closeResults[lid]);
+}
+
+function calcAllClose() {
+  loans.filter(l => st[l.id]&&st[l.id].closeInclude).forEach(l => calcClose(l.id));
+}
+
+function buildCloseResultHtml(l, r) {
+  const tagCls = l.method==='dpd'?'tag-d':l.portionType==='main'?'tag-m':'tag-a';
+  const rows = r.segs.map(s => {
+    if (s.isAdv) return `<tr style="background:#fffdf5">
+      <td class="L"><span class="tag tag-a" style="font-size:9px">Adv</span></td>
+      <td class="L">${s.date}</td><td class="L">—</td>
+      <td style="text-align:right">—</td>
+      <td style="text-align:right;color:var(--gold)">${f$(s.amount)}</td>
+      <td style="text-align:right">—</td>
+      <td style="text-align:right;color:var(--gold)">${f$(s.balAfter)}</td>
+      <td class="L" style="font-size:10px;color:var(--muted)">${s.note||''}</td>
+    </tr>`;
+    const desc = buildDesc(l, s);
+    return `<tr>
+      <td class="L"><span class="tag ${tagCls}" style="font-size:9px">${l.method==='dpd'?'$/d':l.portionType==='main'?'Main':'Adv'}</span></td>
+      <td class="L">${s.startDate}</td><td class="L">${s.endDate}</td>
+      <td style="text-align:right">${s.days}</td>
+      <td style="text-align:right">—</td>
+      <td style="text-align:right">${f$(s.openBal)}</td>
+      <td style="text-align:right">${f$(s.interest)}</td>
+      <td class="L"><span class="desc-chip" title="${desc}" style="max-width:220px">${desc}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+      <div style="background:var(--cream);border:1px dashed var(--rule);border-radius:5px;padding:10px">
+        <div class="card-lbl">Prior Principal</div><div style="font-family:'Fraunces',serif;font-size:16px">${f$(r.priorPrincipal)}</div></div>
+      <div style="background:var(--cream);border:1px dashed var(--rule);border-radius:5px;padding:10px">
+        <div class="card-lbl">Prior Interest</div><div style="font-family:'Fraunces',serif;font-size:16px;color:var(--accent)">${f$(r.priorInterest)}</div></div>
+      <div style="background:white;border:1px solid var(--rule);border-radius:5px;padding:10px">
+        <div class="card-lbl">Period Interest</div><div style="font-family:'Fraunces',serif;font-size:16px;color:var(--accent)">${f$(r.periodInt)}</div></div>
+      <div style="background:white;border:1px solid var(--rule);border-radius:5px;padding:10px">
+        <div class="card-lbl">Grand Total</div><div style="font-family:'Fraunces',serif;font-size:16px;color:var(--ink)">${f$(r.grandTotal)}</div></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="rtbl" style="font-size:11px">
+        <thead><tr>
+          <th class="L">Type</th><th class="L">Start</th><th class="L">End</th>
+          <th>Days</th><th>Advance</th><th>Opening Bal</th><th>Interest</th>
+          <th class="L">Description</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════
+//  EXPORT — individual loan JE CSV
+// ════════════════════════════════════════════════════════
+function exportCSV() {
+  if (!res) { alert('Run a calculation first.'); return; }
+  const { l, segs } = res;
+  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const hdr = ['External ID','Date','Currency','Subsidiary','Memo','Account','Debit','Credit','Description','Entity'];
+  const rows = [hdr.join(',')];
+  let n = 1;
+  segs.forEach(s => {
+    if (s.isAdv) return;
+    const desc  = buildDesc(l, s);
+    const extId = `${l.name.replace(/[\s,/\\'"]+/g,'_')}_${s.endDate}_${n++}`;
+    const amt   = s.interest.toFixed(2);
+    rows.push([esc(extId),s.endDate,l.currency,esc(l.sub),esc(desc),esc(l.debit), amt,'', esc(desc),esc(l.entity||'')].join(','));
+    rows.push([esc(extId),s.endDate,l.currency,esc(l.sub),esc(desc),esc(l.credit),'', amt, esc(desc),esc(l.entity||'')].join(','));
+  });
+  dlCsv(rows.join('\n'), `${l.name.replace(/[\s,]+/g,'_')}_${l.portionType}_JE_${today()}.csv`);
+  showToast('JE CSV exported.');
+}
+
+// ════════════════════════════════════════════════════════
+//  EXPORT — individual loan reconciliation CSV
+// ════════════════════════════════════════════════════════
+function exportReconCSV() {
+  if (!res) { alert('Run a calculation first.'); return; }
+  const { l, segs, bal0 } = res;
+  const hdr = ['Start Date','End Date','Opening Balance','# of Days','Advances','Balance After Advance','Interest to Book','Month Closing Balance'];
+  const rows = [hdr.join(',')];
+  let i = 0;
+  while (i < segs.length) {
+    const s = segs[i];
+    if (s.isAdv) {
+      const openBal = s.balAfter - s.amount;
+      let j=i+1, totInt=0, lastEnd=s.date, lastClose=s.balAfter;
+      while (j<segs.length&&!segs[j].isAdv) { totInt+=segs[j].interest; lastEnd=segs[j].endDate; lastClose=segs[j].closeBal; j++; }
+      rows.push([s.date,lastEnd,openBal.toFixed(2),'',s.amount.toFixed(2),s.balAfter.toFixed(2),totInt.toFixed(2),lastClose.toFixed(2)].join(','));
+      i=j;
+    } else {
+      rows.push([s.startDate,s.endDate,s.openBal.toFixed(2),s.days,'',s.openBal.toFixed(2),s.interest.toFixed(2),s.closeBal.toFixed(2)].join(','));
+      i++;
+    }
+  }
+  dlCsv(rows.join('\n'), `${l.name.replace(/[\s,]+/g,'_')}_${l.portionType}_Recon_${today()}.csv`);
+  showToast('Reconciliation CSV exported.');
+}
+
+// ════════════════════════════════════════════════════════
+//  EXPORT — monthly close JE import CSV (selected loans)
+// ════════════════════════════════════════════════════════
+function exportCloseJE() {
+  const included = loans.filter(l => st[l.id]&&st[l.id].closeInclude&&closeResults[l.id]);
+  if (!included.length) { alert('No calculated loans are selected. Check the boxes next to loans to include, then calculate them first.'); return; }
+  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const hdr = ['External ID','Date','Currency','Subsidiary','Memo','Account','Debit','Credit','Description','Entity'];
+  const rows = [hdr.join(',')];
+  let n = 1;
+  included.forEach(l => {
+    const r = closeResults[l.id];
+    r.segs.forEach(s => {
+      if (s.isAdv) return;
+      const desc  = buildDesc(l, s);
+      const extId = `${l.name.replace(/[\s,/\\'"]+/g,'_')}_${s.endDate}_${n++}`;
+      const amt   = s.interest.toFixed(2);
+      rows.push([esc(extId),s.endDate,l.currency,esc(l.sub),esc(desc),esc(l.debit), amt,'', esc(desc),esc(l.entity||'')].join(','));
+      rows.push([esc(extId),s.endDate,l.currency,esc(l.sub),esc(desc),esc(l.credit),'', amt, esc(desc),esc(l.entity||'')].join(','));
+    });
+  });
+  const month = closeState.thru ? pd(closeState.thru).toLocaleString('en-US',{month:'short',year:'numeric'}).replace(' ','_') : today();
+  dlCsv(rows.join('\n'), `JE_Import_${month}.csv`);
+  showToast('JE Import CSV exported.');
+}
+
+// ════════════════════════════════════════════════════════
+//  EXPORT — reconciliation CSV (all calculated loans)
+// ════════════════════════════════════════════════════════
+function exportCloseRecon() {
+  const included = loans.filter(l => closeResults[l.id]);
+  if (!included.length) { alert('No loans have been calculated yet.'); return; }
+  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const hdr = ['Loan','Start Date','End Date','Opening Balance','# of Days','Advances','Balance After Advance','Interest to Book','Month Closing Balance'];
+  const rows = [hdr.join(',')];
+  included.forEach(l => {
+    const r = closeResults[l.id];
+    let i = 0;
+    while (i < r.segs.length) {
+      const s = r.segs[i];
+      if (s.isAdv) {
+        const openBal = s.balAfter - s.amount;
+        let j=i+1, totInt=0, lastEnd=s.date, lastClose=s.balAfter;
+        while (j<r.segs.length&&!r.segs[j].isAdv) { totInt+=r.segs[j].interest; lastEnd=r.segs[j].endDate; lastClose=r.segs[j].closeBal; j++; }
+        rows.push([esc(l.name),s.date,lastEnd,openBal.toFixed(2),'',s.amount.toFixed(2),s.balAfter.toFixed(2),totInt.toFixed(2),lastClose.toFixed(2)].join(','));
+        i=j;
+      } else {
+        rows.push([esc(l.name),s.startDate,s.endDate,s.openBal.toFixed(2),s.days,'',s.openBal.toFixed(2),s.interest.toFixed(2),s.closeBal.toFixed(2)].join(','));
+        i++;
+      }
+    }
+    rows.push([esc(l.name+' TOTALS'),'','','','','','',r.periodInt.toFixed(2),r.grandTotal.toFixed(2)].join(','));
+    rows.push('');
+  });
+  const month = closeState.thru ? pd(closeState.thru).toLocaleString('en-US',{month:'short',year:'numeric'}).replace(' ','_') : today();
+  dlCsv(rows.join('\n'), `Reconciliation_${month}.csv`);
+  showToast('Reconciliation CSV exported.');
+}
+
+// ════════════════════════════════════════════════════════
+//  UTILITIES
+// ════════════════════════════════════════════════════════
+function dlCsv(content, filename) {
+  const blob = new Blob([content],{type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+}
+function dlJson(content, filename) {
+  const blob = new Blob([content],{type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+}
+function today() { return new Date().toISOString().slice(0,10); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── EXPORT / IMPORT PROFILES ─────────────────────────
+function exportProfiles() {
+  if (!loans.length) { showToast('No profiles to export.'); return; }
+  const data = { version: 1, exported: new Date().toISOString(), loans };
+  dlJson(JSON.stringify(data, null, 2),
+    'loan-profiles-' + new Date().toISOString().slice(0,10) + '.json');
+  showToast(loans.length + ' profile' + (loans.length===1?'':'s') + ' exported.');
+}
+
+function importProfiles(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      // Accept either { loans: [...] } wrapper or a bare array
+      const incoming = Array.isArray(data) ? data : (data.loans || []);
+      if (!incoming.length) { alert('No loan profiles found in the file.'); return; }
+
+      // Merge: skip any that already exist by id, add the rest
+      const existingIds = new Set(loans.map(l => l.id));
+      const toAdd   = incoming.filter(l => !existingIds.has(l.id));
+      const dupes   = incoming.length - toAdd.length;
+
+      if (toAdd.length === 0) {
+        alert('All profiles in this file already exist (matched by ID). Nothing imported.');
+        return;
+      }
+
+      const msg = dupes > 0
+        ? `Import ${toAdd.length} new profile${toAdd.length===1?'':'s'}? (${dupes} already exist and will be skipped)`
+        : `Import ${toAdd.length} profile${toAdd.length===1?'':'s'}?`;
+
+      if (!confirm(msg)) return;
+
+      loans.push(...toAdd);
+      persist();
+      renderSidebar();
+      showToast(toAdd.length + ' profile' + (toAdd.length===1?'':'s') + ' imported.');
+    } catch(err) {
+      alert('Could not read file. Make sure it is a valid loan profiles JSON export.');
+    }
+    // Reset so the same file can be re-imported if needed
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── DRAG TO REORDER ──────────────────────────────────
+let dragId = null;
+
+function onDragStart(e, id) {
+  dragId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => e.currentTarget.classList.add('dragging'), 0);
+}
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function onDrop(e, targetId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!dragId || dragId === targetId) return;
+  const fromIdx = loans.findIndex(l => l.id === dragId);
+  const toIdx   = loans.findIndex(l => l.id === targetId);
+  if (fromIdx < 0 || toIdx < 0) return;
+  const [moved] = loans.splice(fromIdx, 1);
+  loans.splice(toIdx, 0, moved);
+  persist();
+  renderSidebar();
+}
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  dragId = null;
+  // Clean up any leftover drag-over states
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+// ── INIT ──────────────────────────────────────────────
+renderSidebar(); renderMain();
+</script>
+
+<script>const TOOL_KEY='loan-calculator'; const TOOL_VERSION='1.7';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

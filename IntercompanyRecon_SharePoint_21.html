@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Subsidiary Due To/From Recon | Cardone Ventures</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:${T.surface}}::-webkit-scrollbar-thumb{background:${T.border};border-radius:2px}.pbtn:hover{background:${T.accentGlow}!important}.tbtn{cursor:pointer;background:none;border:none}input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #08090c; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+var { useState, useMemo, useCallback } = React;
+
+const T = {
+    bg: "#08090c", surface: "#0f1117", surfaceHigh: "#161b24",
+    border: "#1c2333", borderMid: "#252f42", accent: "#3b82f6",
+    accentGlow: "#3b82f618", green: "#10b981", greenDim: "#10b98114",
+    amber: "#f59e0b", amberDim: "#f59e0b14", red: "#ef4444", redDim: "#ef444414",
+    purple: "#8b5cf6", purpleDim: "#8b5cf614", text: "#f1f5f9",
+    textMid: "#94a3b8", textDim: "#475569",
+    mono: "'IBM Plex Mono','Courier New',monospace", sans: "'Syne',sans-serif",
+};
+const MIRROR_PAIRS = [
+    { cv: "15108", sub: "25001", sub2: "15152", subFilter: "10X HVAC, LLC", label: "10X HVAC  <>  CV (25001/15152)" },
+    { cv: "15109", cv2: "22209", sub: "25001", sub2: "15152", subFilter: "10X Buy/Sell, LLC", label: "10X Buy/Sell  <>  CV (25001/15152)" },
+    { cv: "15113", sub: "25001", sub2: "15152", subFilter: "10X Business Advisor Franchising, LLC", label: "10X BA Franchising  <>  CV (25001/15152)" },
+    { cv: "15114", sub: "25001", sub2: "15152", subFilter: "Gundlach Heating, Cooling, Plumbing & Electrical", label: "Gundlachs  <>  CV (25001/15152)" },
+    { cv: "15116", sub: "25001", sub2: "15152", subFilter: "5225 N Scottsdale, LLC", label: "5225 N Scottsdale  <>  CV (25001/15152)" },
+    { cv: "15121", sub: "25001", sub2: "15152", subFilter: "10X Global Staffing, LLC", label: "10X Global Staffing  <>  CV (25001/15152)" },
+    { cv: "15129", sub: "25001", sub2: "15152", subFilter: "10X Roofing Management, LLC", label: "10X Roofing Due-To  <>  CV (25001/15152)" },
+    { cv: "15138", sub: "25001", sub2: "15152", subFilter: "10X HomeServe, LLC", label: "10X HomeServe  <>  CV (25001/15152)" },
+    { cv: "15143", sub: "25001", sub2: "15152", subFilter: "10X Coverage, LLC", label: "10X Coverage  <>  CV (25001/15152)" },
+    { cv: "15145", sub: "25001", sub2: "15152", subFilter: "CardoMax, LLC", label: "CardoMax  <>  CV (25001/15152)" },
+    { cv: "15146", sub: "25001", sub2: "15152", subFilter: "10X Farms & Ranch, LLC", label: "10X Farms & Ranch  <>  CV (25001/15152)" },
+    { cv: "15147", sub: "25001", sub2: "15152", subFilter: "15111 N Pima Road, LLC", label: "15111 N Pima  <>  CV (25001/15152)" },
+    { cv: "15150", sub: "25001", sub2: "15152", subFilter: "Heather Rae Essentials LLC", label: "HRE  <>  CV (25001/15152)" },
+    { cv: "15164", sub: "23203", sub2: null, subFilter: null, label: "10X Roofing N/R  <>  N/P Interco (23203)" },
+    { cv: "15204", sub: "23206", sub2: null, subFilter: null, label: "HRE Promissory N/R  <>  N/P (23206)" },
+    { cv: "15205", sub: "23207", sub2: null, subFilter: null, label: "CardoMax Promissory N/R  <>  N/P (23207)" },
+];
+const SUBSIDIARY_MAP = {
+    "Cardone Ventures Corp": "1",
+    "Cardone Ventures, LLC": "11",
+    "10X Business Advisor Franchising, LLC": "13",
+    "10X Buy/Sell, LLC": "3",
+    "10X Farms & Ranch, LLC": "23",
+    "10X Global Staffing, LLC": "22",
+    "10X Group Plan, LLC": "16",
+    "10X Health": "4",
+    "10X HomeServe, LLC": "8",
+    "10X HVAC, LLC": "5",
+    "Gundlach Heating, Cooling, Plumbing & Electrical": "6",
+    "10X Roofing Management, LLC": "17",
+    "10X Roofing, LLC": "29",
+    "15111 N Pima Road, LLC": "28",
+    "5225 N Scottsdale, LLC": "21",
+    "52CV Ventures, LLC": "18",
+    "CardoMax, LLC": "25",
+    "Heather Rae Essentials LLC": "27",
+};
+const SUBSIDIARIES = Object.keys(SUBSIDIARY_MAP);
+const COA_STR = "1078|28014 0\n1053|41100 10X Bus Adv Franchise\n1666|40550 10X Business Academy\n1865|40552 10X Business Academy : 10X Business Academy Coaching\n1667|40551 10X Business Academy : 10X Business Academy Revenue\n1658|44002 10X Global External Services\n1657|44001 10X Global Internal Services\n3269|231021 10X Roofing - Service Liability\n1490|51019 10XBA Commission\n1338|0011 2022 balance forward\n1583|1579 52CV Ventures, LLC - Clearing Account\n111|22000 Accounts Payable\n1645|22 Accounts Payable 1\n1029|22002 Accounts Payable : Commissions Due to CTTI\n1031|22004 Accounts Payable : Credit Transfers Due To CTTI\n1131|22006 Accounts Payable : Due to 10X Stages\n834|22001 Accounts Payable : Intercompany Accounts Payable\n1464|22007 Accounts Payable : Intercompany AP\n1034|22005 Accounts Payable : Rev Shares Due to CTTI\n1030|22003 Accounts Payable : Wholesale Costs Due to CTTI\n119|12000 Accounts Receivable\n3247|12009 Accounts Receivable : Accounts Receivable - 10X Global Staffing\n1882|12005 Accounts Receivable : Accounts Receivable - Gundlachs\n1636|12001 Accounts Receivable : Client Partnership Receivables\n1463|12100 Accounts Receivable : Intercompany AR\n1729|12004 Accounts Receivable : Receivables Cardomax\n1670|15315 Accrued Income\n359|22200 Accrued Payables\n3627|22209 Accrued Payables : 10X Buy/Sell Payment Liability\n3628|22210 Accrued Payables : 10X Roofing Payment Liability\n1007|22202 Accrued Payables : Accrued Chargeback (Disputing)\n360|23100 Accrued Payables : Accrued Payroll\n1687|23107 Accrued Payables : Accrued Payroll : 401(k)\n1112|23104 Accrued Payables : Accrued Payroll : 401K - Matrix\n839|23101 Accrued Payables : Accrued Payroll : Accrued Payroll\n1584|23105 Accrued Payables : Accrued Payroll : Accrued Severance Pay\n1686|23106 Accrued Payables : Accrued Payroll : Garnishments\n1690|23110 Accrued Payables : Accrued Payroll : Insurance Liability\n565|23102 Accrued Payables : Accrued Payroll : Payroll Liabilities\n1688|23108 Accrued Payables : Accrued Payroll : Payroll Taxes\n566|23103 Accrued Payables : Accrued Payroll : WA/WC\n1689|23109 Accrued Payables : Accrued Payroll : Workers Comp\n3610|22208 Accrued Payables : Accrued Property Taxes\n1886|22207 Accrued Payables : Accrued Purchases\n1008|22203 Accrued Payables : AMI Rev Share Due\n1009|22204 Accrued Payables : CTTI Event & Comm. Due\n570|22201 Accrued Payables : Event Prepaids - OLD\n1019|22205 Accrued Payables : Gift Card Outstanding\n1637|22206 Accrued Payables : Partnership Revenue Share\n112|22211 Accrued Payables : Purchase Order Clearing\n1545|17100 Accumulated Amortization\n1574|17108 Accumulated Amortization : 15111 N Pima\n1852|17110 Accumulated Amortization : Accumulated Amortization - ROU Assets\n1551|17106 Accumulated Amortization : Accumulated Amortization - ROU Assets : 10X Centre\n3255|17119 Accumulated Amortization : Accumulated Amortization - ROU Assets : 15111 N Pima\n1546|17101 Accumulated Amortization : Accumulated Amortization - ROU Assets : 203 SE Park Plaza\n1838|17109 Accumulated Amortization : Accumulated Amortization - ROU Assets : Miami Equipment Lease\n1547|17102 Accumulated Amortization : Accumulated Amortization - ROU Assets : Portales Office Ste 5500\n1548|17103 Accumulated Amortization : Accumulated Amortization - ROU Assets : Portales Ste 5000\n3601|17120 Accumulated Amortization : Accumulated Amortization - ROU Assets : Promenade B105\n1549|17104 Accumulated Amortization : Accumulated Amortization - ROU Assets : Promenade B195 & B440\n1550|17105 Accumulated Amortization : Accumulated Amortization - ROU Assets : Promenade B300\n3606|17121 Accumulated Amortization : Accumulated Amortization - ROU Assets : Promenade B400\n1857|17118 Accumulated Amortization : Accumulated Amortization - ROU Assets : Promenade B420\n1566|17107 Accumulated Amortization : Intellectual Property - DB\n1473|17011 Accumulated Depreciation\n1475|17013 Accumulated Depreciation : 10X Centre\n1537|17016 Accumulated Depreciation : 16435 North Scottsdale Rd. - Suites B195 & B440\n1540|17017 Accumulated Depreciation : 16435 Scottsdale Road – Suite B300\n1474|17012 Accumulated Depreciation : 203 SE Park Plaza\n1476|17014 Accumulated Depreciation : Portales Office Ste 5500\n1530|17015 Accumulated Depreciation : Portales Ste 5000\n861|40700 Affiliate Programs\n1682|40750 Affiliate Programs : Affiliate Revenue\n845|40710 Affiliate Programs : Cardone University Revenue\n846|40720 Affiliate Programs : R3 Hiring Tool Revenue\n862|40730 Affiliate Programs : Referral Fee Income\n577|53000 Affiliate Wholesale Cost\n579|53020 Affiliate Wholesale Cost : Cardone University COGS\n581|53040 Affiliate Wholesale Cost : CEO/Knowledge Vault Access\n580|53030 Affiliate Wholesale Cost : CTTI Event/Wholesale Costs\n1703|53025 Affiliate Wholesale Cost : CTTI Revenue Share COGS\n578|53010 Affiliate Wholesale Cost : R3 Hiring Tool COGS\n1701|53021 Affiliate Wholesale Cost : Sales Private Coaching COGS\n583|53060 Affiliate Wholesale Cost : Scale CRM Services\n1037|13000 Allowance For Credit Losses\n1880|14020 Amazon Reserves Receivable\n3263|13100 Bitcoin Holdings\n844|40500 BMLP\n859|40510 BMLP : BMLP Online Program\n860|40520 BMLP : BMLP Retreat\n1697|40521 BMLP : Elevate\n1698|40522 BMLP : Elevate Retreat\n54|63000 Business Expense\n1113|63055 Business Expense : Advertising & promotions\n1506|63130 Business Expense : All Staff Events\n1847|63083 Business Expense : Bad Debt\n402|63070 Business Expense : Bank Service Charges\n398|63100 Business Expense : Business Insurance\n400|63102 Business Expense : Business Insurance : EPLI\n399|63101 Business Expense : Business Insurance : General Liability\n1613|63104 Business Expense : Business Insurance : Property Insurance\n401|63103 Business Expense : Business Insurance : Workers' Comp\n1671|63051 Business Expense : Business Travel\n1705|63052 Business Expense : Business Travel : Airfare\n1706|63053 Business Expense : Business Travel : Business Meeting\n3254|63058 Business Expense : Business Travel : General Travel\n1708|63057 Business Expense : Business Travel : Ground Transportation\n1707|63054 Business Expense : Business Travel : Hotel/Lodging\n1846|63082 Business Expense : Charitable Contributions\n1612|63001 Business Expense : Closing Costs & Commissions\n397|63090 Business Expense : Continued Education\n3633|63041 Business Expense : Corporate Project Overlay\n1885|63071 Business Expense : Credit Card Processing Fees\n1869|63095 Business Expense : Customer Damage/Goodwill Repairs\n391|63040 Business Expense : Dues & Subscriptions\n1048|63085 Business Expense : Gifts\n1599|63056 Business Expense : Guaranteed Payment\n1749|63140 Business Expense : Job Supplies\n1101|63081 Business Expense : Meals\n388|63010 Business Expense : Office Supplies\n390|63030 Business Expense : Postage & Delivery\n389|63020 Business Expense : Printing & Reproduction\n392|63060 Business Expense : Professional Services\n393|63061 Business Expense : Professional Services : Accounting\n1665|63061.1 Business Expense : Professional Services : Audit\n396|63064 Business Expense : Professional Services : Consulting\n372|61030 Business Expense : Professional Services : Contractor\n395|63063 Business Expense : Professional Services : IT Services\n394|63062 Business Expense : Professional Services : Legal\n1502|63062.4 Business Expense : Professional Services : Legal : Commercial\n1499|63062.1 Business Expense : Professional Services : Legal : Corporate\n1603|63062.9 Business Expense : Professional Services : Legal : Defense\n1501|63062.3 Business Expense : Professional Services : Legal : Employment\n1503|63062.5 Business Expense : Professional Services : Legal : Franchise\n1589|63062.7 Business Expense : Professional Services : Legal : Intellectual Property\n1500|63062.2 Business Expense : Professional Services : Legal : IP\n1588|63062.6 Business Expense : Professional Services : Legal : Real Estate\n1602|63062.8 Business Expense : Professional Services : Legal : Trademark\n1104|63065 Business Expense : Professional Services : Management fee\n1105|63066 Business Expense : Professional Services : Marketing Shared Services\n2043|63067 Business Expense : Professional Services : Property Management Services\n3612|68000 Business Expense : Research and Development\n3613|68001 Business Expense : Research and Development : Product Testing\n1884|63031 Business Expense : Shipping & Handling Supplies\n403|63050 Business Expense : Software\n1022|63080 Business Expense : Teambuilding\n1114|63015 Business Expense : Tools\n1103|63120 Business Expense : Uniforms\n1868|63045 Business Expense : Warranty Expense\n1|10100 Cash\n1616|10115 Cash : 10X HVAC, LLC - Clearing Account\n3636|10136 Cash : 10X Roofing BofA 3513\n2038|10130 Cash : 15111 N Pima - VWP Operating Account (BOK) - 3358\n3596|10134 Cash : 15111 N Pima LLC BofA 4130\n1600|10114 Cash : Bank of America (checking) - 3246\n1659|10118 Cash : Bank of America (savings) - 3262\n1684|10120 Cash : Bank of America - 5510\n2040|10132 Cash : BOK 15111 N Pima Rd LLC FBO - 3039\n1702|10122 Cash : BoK Restricted (15111 N. Pima)\n1920|10129 Cash : CardoMax Bank of America 4782\n1442|10112 Cash : Chargeback/Disputes - Clearing\n329|10101 Cash : City National Bank - 0963\n1066|10109 Cash : CV UMPQUA SWEEP *2589\n3641|10137 Cash : Future Buy/Sell Cash Account\n1898|10128 Cash : HRE Bank of America 8513\n1833|10125 Cash : HRE PayPal Bank Account\n1656|10117 Cash : Morgan Stanley *0023\n1065|10108 Cash : Morgan Stanley Money Market *3023\n1663|10119 Cash : Morgan Stanley Money Market *8023\n1894|10127 Cash : PayPal Account - CardoMax\n330|10102 Cash : PayPal Bank Account\n1750|10124 Cash : PNC - CardoMax 0372\n1560|10113 Cash : Reallocation clearing account\n1695|10121 Cash : Shopify - 10X Business Advisor\n1893|10126 Cash : Shopify - CardoMax\n1717|10123 Cash : Shopify - Heather Rae Essentials\n331|10103 Cash : Shopify Payments\n3586|10133 Cash : Square Clearing Account\n3626|10135 Cash : Stripe - Cardomax\n332|10104 Cash : Stripe Account\n1047|10106 Cash : Umpqua Checking (10XBA) 7709\n1055|10107 Cash : Umpqua Checking (GUNDLACH) 8484\n1090|10110 Cash : Umpqua Checking (GUNDLACH- SWEEP) 5846\n333|10105 Cash : Umpqua Checking - 5811\n1336|10111 Cash : Venmo Bank Account\n362|51000 Commissions\n1509|51021 Commissions : 10X BA Commission\n972|51020 Commissions : CTTI Sales Commission\n971|51010 Commissions : CV Sales Commission\n123|20520 Commissions Due\n559|20521 Commissions Due : AMI Rev Share Due\n560|25022 Commissions Due : CTTI Event & Commissions\n561|20523 Commissions Due : M Halloran - Guar Payments\n851|40400 Consulting Programs\n855|40450 Consulting Programs : Business Services\n1447|40475 Consulting Programs : Business Services : 10X Buy/Sell\n2034|40476 Consulting Programs : Business Services : 10X Buy/Sell : 10X Buy/Sell Success Fee\n3589|40451.00 Consulting Programs : Business Services : 10X Financial Service\n856|40451 Consulting Programs : Business Services : 10X Financial Service : 10X Bookkeeping\n857|40452 Consulting Programs : Business Services : 10X Financial Service : 10X Roadmap\n858|40460 Consulting Programs : Business Services : 10X Marketing\n863|40740 Consulting Programs : Business Services : 10X Marketing : Scale CRM\n3647|40470 Consulting Programs : Business Services : 10X People Services\n3646|40472 Consulting Programs : Business Services : 10X People Services : 10X Human Resources\n1023|40471 Consulting Programs : Business Services : 10X People Services : 10X Recruitment Services\n1484|40301 Consulting Programs : Business Services : Revified\n1654|40411 Consulting Programs : Consulting Revenue\n853|40430 Consulting Programs : Corporate Management Fees\n843|40410 Consulting Programs : Platform Review\n854|40440 Consulting Programs : Private Coaching\n1676|40441 Consulting Programs : Private Coaching : Elite250  PC\n852|40420 Consulting Programs : SBU Services\n1590|40422 Consulting Programs : SBU Services : SBU Discount\n1513|40421 Consulting Programs : SBU Services : SBU Partnerships\n1908|12006 Contingent Receivables\n1118|56100 Cost of Goods Sold\n365|55020 Cost of Goods Sold : Client Referrals/Credits\n1119|56110 Cost of Goods Sold : Contracts & Permits\n3272|54120 Cost of Goods Sold : Cost of Recruiting Services\n1514|54100 Cost of Goods Sold : Discounts\n1860|56122 Cost of Goods Sold : Finished Goods\n1734|56180 Cost of Goods Sold : Freight in\n3642|58000 Cost of Goods Sold : Fulfillment COGS\n3643|58010 Cost of Goods Sold : Fulfillment COGS : Postage & Delivery\n3645|58030 Cost of Goods Sold : Fulfillment COGS : Processing & Packing Overhead\n3644|58020 Cost of Goods Sold : Fulfillment COGS : Shipping & Handling Supplies\n1873|56181 Cost of Goods Sold : Import Duties / Taxes\n1120|56120 Cost of Goods Sold : Labor\n1121|56130 Cost of Goods Sold : Materials\n1715|56160 Cost of Goods Sold : Merchandise\n3273|54130 Cost of Goods Sold : Merchandise Shipping\n3271|54110 Cost of Goods Sold : Platform Printing\n1594|56150 Cost of Goods Sold : Plumbing Materials & Equipment\n1122|56140 Cost of Goods Sold : Plumbing Subcontractors\n1733|56170 Cost of Goods Sold : Purchases\n1724|56190 Cost of Goods Sold : Variance Accounts\n1736|56192 Cost of Goods Sold : Variance Accounts : Inventory Adjustments\n1735|56191 Cost of Goods Sold : Variance Accounts : Inventory Variance\n966|52000 Cost of Materials\n967|52010 Cost of Materials : Apparel Printing\n582|52020 Cost of Materials : Books and Merchandise Costs\n3583|52022 Cost of Materials : Merchandise Wholesale Costs\n1680|52021 Cost of Materials : Product Supplies\n1872|46002 CPS Portal Revenue\n345|21010 Credit Cards\n977|21300 Credit Cards : American Express\n978|21301 Credit Cards : American Express : A Butler\n985|21309 Credit Cards : American Express : A Mills\n979|21302 Credit Cards : American Express : A Olivier\n980|21303 Credit Cards : American Express : A Smith Nelson\n984|21308 Credit Cards : American Express : B Dawson\n1863|21313 Credit Cards : American Express : Brandon Dawson - 01418\n1890|21332 Credit Cards : American Express : CardoMax - AMEX *1004\n1888|21331 Credit Cards : American Express : CardoMax - AMEX *1007\n1887|21330 Credit Cards : American Express : CardoMax - AMEX *1009\n986|21310 Credit Cards : American Express : D Petrosian\n987|21311 Credit Cards : American Express : F Castaneda\n981|21304 Credit Cards : American Express : J Clark\n988|21306 Credit Cards : American Express : J Jessen\n982|21305 Credit Cards : American Express : J OBrien\n983|21307 Credit Cards : American Express : N Workman\n1456|21390 Credit Cards : American Express : Platinum Amex\n1472|21312 Credit Cards : American Express : S Bach -1087\n3579|21014 Credit Cards : Cardomax - BofA Credit Card 5704\n1891|21012 Credit Cards : CardoMax - Capital One Card\n1892|21013 Credit Cards : CardoMax - Chase Card\n1889|21011 Credit Cards : CardoMax - Citi Origins Card\n976|21100 Credit Cards : Centurion\n346|21101 Credit Cards : Centurion : A Calio 01020\n1625|21129 Credit Cards : Centurion : A Mcgee - 1293\n347|21102 Credit Cards : Centurion : A Mills - 2044\n1115|21102.1 Credit Cards : Centurion : A Mills - 2044 (Gundlach)\n1033|21114 Credit Cards : Centurion : A Mills Travel\n348|21103 Credit Cards : Centurion : A Smith Nelson - 01061\n349|21104 Credit Cards : Centurion : B Dawson - 3000\n1710|21135 Credit Cards : Centurion : B Sander - 01350\n1866|21140 Credit Cards : Centurion : Brandon Dawson Ad Spend - 01418\n1919|21141 Credit Cards : Centurion : Brandon Dawson Business Services - 01426\n1842|21138 Credit Cards : Centurion : Brandon Dawson CV Marketing - 01400\n1855|21139 Credit Cards : Centurion : Brandon Dawson Gen Corp - 01392\n1841|21137 Credit Cards : Centurion : Brandon Dawson Tech - 01376\n1709|21134 Credit Cards : Centurion : C Hanzlik - 1343\n355|21110 Credit Cards : Centurion : CV Travel - 1111\n1655|21131 Credit Cards : Centurion : D DesLauriers - 1319\n350|21105 Credit Cards : Centurion : D Petrosian 01079\n1110|21120 Credit Cards : Centurion : E Calderin - 2184\n1699|21133 Credit Cards : Centurion : E Doebel - 1335\n356|21111 Credit Cards : Centurion : E Syrop - 11377\n1482|21123 Credit Cards : Centurion : E Valentino - 3240\n1498|21125 Credit Cards : Centurion : F Stein - 1251\n1532|21127 Credit Cards : Centurion : G Bolt - 1285\n1333|21122 Credit Cards : Centurion : G Petagna - 1178\n1531|21126 Credit Cards : Centurion : J Gabbert - 1269\n352|21107 Credit Cards : Centurion : J Jessen - 01012\n1049|21117 Credit Cards : Centurion : J Moreno 1228\n357|21112 Credit Cards : Centurion : J Reese 1145\n351|21106 Credit Cards : Centurion : J Trovato - 2036\n1043|21116 Credit Cards : Centurion : K Michnal\n1109|21119 Credit Cards : Centurion : KWR 1129\n3595|21142 Credit Cards : Centurion : L Robinson - 1434\n1647|21130 Credit Cards : Centurion : L Wiseman - 1301\n1051|21118 Credit Cards : Centurion : Lauren Summa 1210\n1111|21121 Credit Cards : Centurion : M Barrada 1160\n1582|21128 Credit Cards : Centurion : M Kostowic - 3273\n353|21108 Credit Cards : Centurion : N Dawson - 1053\n1032|21113 Credit Cards : Centurion : N Jansen 1152\n1042|21115 Credit Cards : Centurion : P Amacher - 1194\n3640|21143 Credit Cards : Centurion : P Cox - 1442\n1677|21132 Credit Cards : Centurion : R Graybill - 1327\n354|21109 Credit Cards : Centurion : Scottsdale - 1103\n1483|21124 Credit Cards : Centurion : T Ralston - 4230\n3580|21015 Credit Cards : Heather Rae Essentials - BofA Credit Card 8940\n1516|21211 Credit Cards : Umpqua Credit Cards\n1061|21203 Credit Cards : Umpqua Credit Cards : 10X Marketing - 6689\n1722|21208 Credit Cards : Umpqua Credit Cards : Alexis Virtual Mills - 5983\n1723|21209 Credit Cards : Umpqua Credit Cards : BL ACCT CARDONE CARDS - 2960\n1052|21201 Credit Cards : Umpqua Credit Cards : BL ACCT CARDONE CARDS - 2960 : Matt Hendryx - 2965\n1334|21205 Credit Cards : Umpqua Credit Cards : CV Corp FB Ads - 8543\n1058|21202 Credit Cards : Umpqua Credit Cards : CV Marketing - 4374\n1091|21204 Credit Cards : Umpqua Credit Cards : Gundlachs\n1664|21207 Credit Cards : Umpqua Credit Cards : J Bradley - 5034\n1836|21136 Credit Cards : Umpqua Credit Cards : Marketing 10X Services\n1843|21210 Credit Cards : Umpqua Credit Cards : Marketing 10X Services - 6670\n3639|21212 Credit Cards : Umpqua Credit Cards : Roofing Ad Spend 10X - 1173\n358|21200 Credit Cards : Umpqua Credit Cards : Umpqua Visa Business Rewards - 7580\n1454|21206 Credit Cards : Umpqua Credit Cards : Umpqua Visa Business Rewards - 7580 : CV Corp Umpqua Credit Card -3264\n864|40800 CTTI Programs\n867|40830 CTTI Programs : 10X Business Summit\n866|40820 CTTI Programs : CTTI Essentials\n865|40810 CTTI Programs : Growth Con\n868|40840 CTTI Programs : Summits/Masterminds\n1718|23120 CTTI SSS Liability\n1465|Cumulative Translation Adjustment-Elimination\n1468|22100 Customer Deposits\n1732|40860 Customer Refund\n363|55000 Customer Relations\n364|55010 Customer Relations : Client Reimbursements\n3251|15071 Debt Issuance Costs\n211|Deferred Expense\n953|20500 Deferred Revenue\n1669|20509 Deferred Revenue : 10X Business Academy Deferred Revenue\n3597|20565 Deferred Revenue : 10X Buy/Sell Deferred Revenue\n1661|20560 Deferred Revenue : 10X Global Service External Service Deferred Revenue\n1662|20561 Deferred Revenue : 10X Global Service Internal Service Deferred Revenue\n3270|20564 Deferred Revenue : 10X Roofing - Integrator Deferred Revenue\n955|20511 Deferred Revenue : 10X360 Deferred Revenue\n1339|20599 Deferred Revenue : 2022 balance forward\n956|20512 Deferred Revenue : BMLP Deferred Revenue\n957|20514 Deferred Revenue : Business Essentials Deferred Revenue\n1044|20510 Deferred Revenue : Business Services Deferred Revenue\n958|20516 Deferred Revenue : Cardone U Deferred Revenue\n959|20517 Deferred Revenue : CTTI Events Deferred Revenue\n1719|20562 Deferred Revenue : CTTI SSS Deferred Revenue\n217|NS001 Deferred Revenue : Def. Revenue\n1685|20525 Deferred Revenue : Discounts/Comped Deferred Revenue\n1692|20522 Deferred Revenue : ELEVATE Leadership Program Deferred Revenue\n3584|20540 Deferred Revenue : Merchandise Deferred Revenue\n960|20518 Deferred Revenue : Other Deferred Revenue\n954|20515 Deferred Revenue : Platform Review Deferred Revenue\n3266|20563 Deferred Revenue : Platform Review Project Work Deferred Revenue\n961|20513 Deferred Revenue : Private Coaching Deferred Revenue\n962|20519 Deferred Revenue : SBU Services Deferred Revenue\n1504|20530 Deferred Revenue : Vertical Events Deferred Revenue\n220|Deferred Revenue Clearing\n1730|40859 Discounts Given\n1096|56000 Do not use\n1097|56010 Do not use : do not use 2\n1098|56020 Do not use : do not use 3\n1100|56040 Do not use : do not use 4\n1099|56030 Do not use : Materials\n324|15100 Due From\n1039|15119 Due From : Due From 10X Dental\n1045|15120 Due From : Due From 10X Eyes\n1046|15121 Due From : Due From 10X Global Staffing, LLC\n118|15101 Due From : Due From 10X Health, LLC\n1124|15124 Due From : Due From 10X Pools & Landscape\n532|15110 Due From : Due From 10X Stages\n1038|15118 Due From : Due From Cardone Capital\n1862|15152 Due From : Due From Cardone Ventures\n1700|15149 Due From : Due From Cardone Ventures UK LTD\n3598|15154 Due From : Due From HVAC New Co.\n1829|15151 Due From : Due from Reviv Global Ltd.\n2031|15153 Due From : Due From TEM\n992|15113 Due From : Due to/From 10X Business Advisor Franchising\n336|15109 Due From : Due To/From 10X Buy Sell, LLC\n1626|15143 Due From : Due To/From 10X Coverage, LLC\n1652|15146 Due From : Due To/From 10X Farms & Ranch, LLC\n1578|15139 Due From : Due to/from 10X Finance, LLC\n213|15102 Due From : Due To/From 10X Health Franchising\n1561|15138 Due From : Due to/from 10X Home Service\n335|15108 Due From : Due To/From 10X HVAC, LLC\n1646|15144 Due From : Due To/From 10X Ranch Founders\n1511|15129 Due From : Due to/from 10X Roofing\n1660|15147 Due From : Due To/From 15111 N. Pima\n1012|15116 Due From : Due to/from 5225 N. Scottsdale, LLC\n1615|15142 Due From : Due To/From 52CV Ventures, LLC\n3617|15155 Due From : Due to/from BD/ND New Entity - TEMP NAME\n216|15103 Due From : Due To/From Brandon M Dawson LLC\n1650|15145 Due From : Due To/From CardoMax, LLC\n121|15104 Due From : Due To/From Cardone Equity Group, LLC\n529|15105 Due From : Due To/From CV Equity Partners\n531|15107 Due From : Due To/From CV Private Equity\n1559|15137 Due From : Due to/from DaVinci Medical Inc.\n1552|15130 Due From : Due to/from FIT Solutions\n1553|15131 Due From : Due to/from Flawless Smile Dentistry\n1601|15140 Due From : Due To/From Greg Bolt\n1010|15114 Due From : Due to/from Gundlach's\n1554|15132 Due From : Due to/from Harrison Enterprises dba General Air Conditionin\n1713|15150 Due From : Due To/From Heather Rae Essentials\n1604|15141 Due From : Due To/From Jeremy Gabbert\n1555|15133 Due From : Due to/from LCI LLC (DBA Portsmouth Flooring)\n1556|15134 Due From : Due to/from M.S.C. Mechanical, Inc. dba Malek Service Compan\n1082|15122 Due From : Due to/from MSC\n1505|15127 Due From : Due to/from Reviv USA Inc\n1557|15135 Due From : Due to/from Silver Lining Herbal Equine Supplements\n1013|15117 Due From : Due to/From SWAT HVAC\n1558|15136 Due From : Due to/from TRC Electronics\n1025|15600 Due From CTTI\n1026|15601 Due From CTTI : Commissions Due from CTTI\n1027|15602 Due From CTTI : Credit Transfers Due from CTTI\n1089|25002 Due to 10X HVAC\n1087|25001 Due to Cardone Ventures\n1832|25003 Due to HEM\n1904|25004 Due To Matbock\n340|15200 Employee Loans/Advances\n1014|15201 Employee Loans/Advances : N/P B Koetitz\n1015|15202 Employee Loans/Advances : N/P M Burkhalter\n995|33000 Equity Tax\n571|33010 Equity Tax : 10X Health Equity Tax\n996|33020 Equity Tax : AM Equity Tax\n1921|33001 Equity Tax : BD Equity Tax\n1922|33002 Equity Tax : CTTI Equity Tax\n1453|33110 Equity Tax : CW Equity Tax\n997|33030 Equity Tax : DB Equity Tax\n1507|33116 Equity Tax : EV Equity Tax\n1508|33117 Equity Tax : FS Equity Tax\n998|33040 Equity Tax : HB Equity Tax\n999|33050 Equity Tax : JD Equity Tax\n1455|33115 Equity Tax : JG Equity Tax\n1000|33060 Equity Tax : JJ Equity Tax\n1001|33070 Equity Tax : KM Equity Tax\n1002|33080 Equity Tax : ND Equity Tax\n1452|33100 Equity Tax : OO Equity Tax\n1003|33090 Equity Tax : SC Equity Tax\n3262|33118 Equity Tax : Silver Linings Ventures, LLC Equity Tax\n1586|15900 Escrow Deposits\n1587|15901 Escrow Deposits : ED - 15111 N Pima\n840|40100 Events\n3599|40143 Events : 10X Business Acquisition Summit\n1487|40141 Events : 10X Business Summit\n841|40110 Events : 10X360\n842|40120 Events : Business Essentials\n1515|40150 Events : CV Mastermind\n1488|40142 Events : Elite Edge (Nine Figure Boardroom)\n847|40130 Events : Mastery Programs\n848|40140 Events : Vertical Events\n412|65000 Events/Travel\n413|65010 Events/Travel : Event Expenses\n419|65015 Events/Travel : Event Expenses : AV Equipment\n415|65011 Events/Travel : Event Expenses : Client Dinner\n416|65012 Events/Travel : Event Expenses : Event Catering\n1036|65017 Events/Travel : Event Expenses : Event Entertainment\n970|65016 Events/Travel : Event Expenses : Event Speaker\n1485|65018 Events/Travel : Event Expenses : Event Staff Meals\n417|65013 Events/Travel : Event Expenses : Event Supplies\n1570|65019 Events/Travel : Event Expenses : Events Inventory Disposal\n2033|65009 Events/Travel : Event Expenses : Events Security\n418|65014 Events/Travel : Event Expenses : Venue\n420|65020 Events/Travel : Travel\n421|65021 Events/Travel : Travel : Airfare\n425|65025 Events/Travel : Travel : Business Meeting\n424|65024 Events/Travel : Travel : Ground Transportation\n423|65023 Events/Travel : Travel : Hotel/Lodging\n422|65022 Events/Travel : Travel : Meals & Entertainment\n426|65026 Events/Travel : Travel : Other Travel\n108|64000 Facilities & Equipment\n407|64040 Facilities & Equipment : Building Repairs\n408|64050 Facilities & Equipment : Building Repairs & Maintenance\n409|64051 Facilities & Equipment : Building Repairs & Maintenance : Janitorial Services\n969|64052 Facilities & Equipment : Building Repairs & Maintenance : Security\n411|64070 Facilities & Equipment : Computer Equipment\n1446|64020 Facilities & Equipment : Equipment lease\n1445|64080 Facilities & Equipment : Furniture\n410|64060 Facilities & Equipment : Licenses & Permits\n3278|64085 Facilities & Equipment : Moving Expenses\n1608|64011 Facilities & Equipment : Parking\n405|64010 Facilities & Equipment : Rent\n406|64030 Facilities & Equipment : Utilities\n973|64031 Facilities & Equipment : Utilities : Telephone/Internet\n1867|14009 Fixed Asset Clearing\n327|17010 Fixed Assets\n1609|17800 Fixed Assets : Buildings\n3250|17803 Fixed Assets : Buildings : 15111 N. Pima\n1610|17801 Fixed Assets : Buildings : 5225 N. Scottsdale Purchase\n1614|17802 Fixed Assets : Buildings : WIP - 5225 Buildout\n1619|17909 Fixed Assets : Equipment - Gundlach Purchase\n1564|18000 Fixed Assets : Intangible Assets\n1565|18001 Fixed Assets : Intangible Assets : Intellectual Property - DB\n1620|17913 Fixed Assets : Intangible Assets : Non-Compete Agreement - Gundlach Purchase\n1643|18002 Fixed Assets : Intangible Assets : Software Development - POS/iOS app\n993|17901 Fixed Assets : Intangible Assets : Website Build\n635|17500 Fixed Assets : Leasehold Improvements\n991|17502 Fixed Assets : Leasehold Improvements : 10X Centre Suite\n1572|17508 Fixed Assets : Leasehold Improvements : 15111 N Pima\n1073|17505 Fixed Assets : Leasehold Improvements : 203 SE Park Plaza\n990|17501 Fixed Assets : Leasehold Improvements : Portales Building Ste 5500\n1533|17506 Fixed Assets : Leasehold Improvements : Portales Ste 5000\n3594|17511 Fixed Assets : Leasehold Improvements : Promenade 4th Common\n3600|17512 Fixed Assets : Leasehold Improvements : Promenade B105 (bathroom)\n1040|17503 Fixed Assets : Leasehold Improvements : Promenade B195\n1539|17507 Fixed Assets : Leasehold Improvements : Promenade B300\n3244|17510 Fixed Assets : Leasehold Improvements : Promenade B400\n2036|17509 Fixed Assets : Leasehold Improvements : Promenade B420\n1041|17504 Fixed Assets : Leasehold Improvements : Promenade B440\n630|17200 Fixed Assets : Office Equipment\n729|17202 Fixed Assets : Office Equipment : 98\" Monitor - BD AZ Office\n743|17902 Fixed Assets : Office Equipment : Artwork\n994|17209 Fixed Assets : Office Equipment : BlueStreet Credit Line\n631|17201 Fixed Assets : Office Equipment : Furniture and Fixtures\n730|17203 Fixed Assets : Office Equipment : Google Jamboard with Stand\n732|17207 Fixed Assets : Office Equipment : LG Cinebeam Projector\n837|17206 Fixed Assets : Office Equipment : Office Equipment\n3635|17211 Fixed Assets : Office Equipment : Pima Gym Equipment\n1018|17210 Fixed Assets : Office Equipment : Signage - AZ\n733|17208 Fixed Assets : Office Equipment : Suite 1000 Office Furniture\n731|17204 Fixed Assets : Office Equipment : Suite 414 Office Equipment\n632|17205 Fixed Assets : Office Equipment : Televisions\n830|17900 Fixed Assets : Other Fixed Assets\n1063|17904 Fixed Assets : Other Fixed Assets : 10X HVAC - MSC Stock Purchase\n1057|17903 Fixed Assets : Other Fixed Assets : 10X HVAC of CA - Gundlach Purchase\n734|17300 Fixed Assets : Public Speaking Equipment\n739|17305 Fixed Assets : Public Speaking Equipment : 85\" Studio TVs\n740|17306 Fixed Assets : Public Speaking Equipment : Dawson Ridge Studio\n736|17302 Fixed Assets : Public Speaking Equipment : Jabra Blue Parrott Headsets\n989|17307 Fixed Assets : Public Speaking Equipment : Miami Studio\n838|17301 Fixed Assets : Public Speaking Equipment : Public Speaking Equipment\n737|17303 Fixed Assets : Public Speaking Equipment : Scottsdale Production Studio Display\n738|17304 Fixed Assets : Public Speaking Equipment : Video Equipment\n634|17400 Fixed Assets : Vehicles\n741|17401 Fixed Assets : Vehicles : 2015 Aistream Van\n1092|17403 Fixed Assets : Vehicles : 2016 Ford F250 XL Super Duty\n742|17402 Fixed Assets : Vehicles : 2019 Airstream Van\n1839|17404 Fixed Assets : Vehicles : 2025 Forest River Vans\n1591|49500 Foreign Currency Gains\n1592|70500 Foreign Currency Losses\n1911|80010 Gain on Sale of CardoMax Assets\n1844|80000 Gain on Sale of Fixed Assets\n1621|14200 Goodwill\n1622|14201 Goodwill : Goodwill - Gundlach Purchase\n1466|GST - SALES TAX\n1459|GST/HST Liability\n1458|GST/HST on Purchases\n1460|GST/HST Payable\n1093|28013.1 Gundlach Promissory Note\n1094|43010 Gundlach Sales\n1095|43020 Gundlach Services\n1605|43030 HVAC Commercial\n1489|IC Netting Clearing Account\n3253|210000 IC Payables Clearing - Cardomax\n3252|112000 IC Receivables Clearing - Cardomax\n1679|16010 Inventory\n1618|16001 Inventory - Gundlach Purchase\n1830|16012 Inventory : Finished Goods\n1896|16015 Inventory : Inventory In-Transit\n1864|16013 Inventory : Merchandise Inventory\n1907|16016 Inventory : Non-Inventory Asset\n1716|16011 Inventory : Raw Materials\n3582|16017 Inventory : Wholesale Inventory\n1895|16014 Inventory : Work-In Process\n337|15300 Investments, at cost\n1123|15123 Investments, at cost : 10X Cyber & Managed Services, LLC\n3265|15323 Investments, at cost : 10X Health\n1672|15316 Investments, at cost : 15315 - 15111 N. Pima\n2035|15321 Investments, at cost : 5225 N. Scottsdale\n1071|15310 Investments, at cost : Accrued Interest\n538|15305 Investments, at cost : Adamas One Corp\n2037|15322 Investments, at cost : Cardomax\n1681|15317 Investments, at cost : CardoMax Investment\n1341|15311 Investments, at cost : Cardone Canada\n535|15301 Investments, at cost : Earnest Money - Karen Dr.\n2030|15319 Investments, at cost : Gundlachs\n1712|15318 Investments, at cost : Heather Rae Essentials\n1064|15308 Investments, at cost : Investment - SMARTAC\n338|15302 Investments, at cost : Investment in Company\n536|15303 Investments, at cost : inVision AZ\n530|15106 Investments, at cost : LCI/McKenzei\n1016|15307 Investments, at cost : Matthew Mims\n537|15304 Investments, at cost : Mocaworks\n1070|15309 Investments, at cost : MS Mutual Funds\n2032|15320 Investments, at cost : MSC Mechanical, Inc.\n533|15111 Investments, at cost : MVXM - Movieix\n3593|15325 Investments, at cost : Oregon Roofing\n539|15306 Investments, at cost : Quantum Tiger Inc.\n1563|15314 Investments, at cost : REVIV Global\n1011|15115 Investments, at cost : Silver Lining Ventures\n1471|15312 Investments, at cost : SMARTAC\n1478|15313 Investments, at cost : SWAT HVAC\n3581|15324 Investments, at cost : Webtalk\n1900|23300 Loan Payables\n1902|23302 Loan Payables : Ondeck Capital - CardoMax\n1901|23301 Loan Payables : Shopify Capital Loan - CardoMax\n1084|14100 Long Term Assets\n1335|14103 Long Term Assets : Loan Receivables\n1069|14101 Long Term Assets : MSC - Loan receivable\n1083|14102 Long Term Assets : MSC - Stock investment\n567|28000 Long Term Lease Liabilities\n1133|28017 Long Term Lease Liabilities : 10X Centre Long Term Lease Liability\n1576|28024 Long Term Lease Liabilities : 15111 N Pima LT Lease Liability\n1134|28018 Long Term Lease Liabilities : 203 SE Park PL LT\n1611|28021 Long Term Lease Liabilities : 5225 MidFirst Mortgage - Long Term Liability\n1054|28013 Long Term Lease Liabilities : Due to Gundlach (Promissory Note)\n569|28011 Long Term Lease Liabilities : Lease Liability (Miami Office)\n1050|28012 Long Term Lease Liabilities : Long Term Deferred Revenue\n1536|28020 Long Term Lease Liabilities : Portales Ste 5000 Sublease: Furniture\n1135|28019 Long Term Lease Liabilities : Portales Ste 5500 Long Term Lease Liability\n3604|28028 Long Term Lease Liabilities : Promenade B105 LT Lease Liability\n1528|28023 Long Term Lease Liabilities : Promenade B195 & B440 LT Lease Liability\n1523|28022 Long Term Lease Liabilities : Promenade B300 LT Lease Liability\n3608|28029 Long Term Lease Liabilities : Promenade B400 LT Lease Liability\n1858|28025 Long Term Lease Liabilities : Promenade B420 LT Lease Liability\n568|28010 Long Term Lease Liabilities : SBA PPP Loans\n1727|67010 Manufacturing Labor\n1744|67011 Manufacturing Labor : Mfg Labor\n1726|67000 Manufacturing Overhead (Mfg OH)\n1903|28026 Marcus Goldman Sachs Loan - CardoMax\n869|40900 Merchandise Revenue\n870|40910 Merchandise Revenue : Books Revenue\n871|40920 Merchandise Revenue : Clothing/Merchandise\n964|46140 Merchandise Revenue : Employee Discount\n3585|46150 Merchandise Revenue : Events Store Revenue\n1337|46130 Merchandise Revenue : Shipping Income\n366|57000 Merchant Fees\n1876|57010 Merchant Fees : Fulfillment By Amazon Fees\n1088|28016 MSC - Loan repayment\n1079|28014 MSC Letter of Commitment (3 years)\n1108|28015 MSC Payroll - Maleks (1 year)\n109|39000 Net Income\n221|23200 Notes Payable\n3248|23204 Notes Payable : N/P - 15111 N. Pima - BoK\n562|23201 Notes Payable : N/P - Brandon Dawson\n3632|23207 Notes Payable : N/P - Cardomax / Cardone Ventures Promissory Note\n1581|23202 Notes Payable : N/P - David Boyd\n3631|23206 Notes Payable : N/P - HRE Beauty / Cardone Ventures Promissory Note\n1593|23203 Notes Payable : N/P Intercompany Cardone Ventures\n1624|23205 Notes Payable : N/P M.S.C Mechanical, Inc\n1470|15160 Notes Receivable\n3624|15198 Notes Receivable : Discount on Notes Receivable - REVIV Global Bridge Loan\n3630|15205 Notes Receivable : N/R - Cardomax Promissory Note\n1649|15199 Notes Receivable : N/R - Discount N/R - Reviv Global Loan Assignment\n534|15112 Notes Receivable : N/R - Fluzzletube\n3629|15204 Notes Receivable : N/R - HRE Beauty Promissory Note\n1617|15128 Notes Receivable : N/R - M.S.C Mechanical, Inc\n1644|15165 Notes Receivable : N/R - Maleks\n1870|15168 Notes Receivable : N/R - MSC Loan Repayment\n1918|15203 Notes Receivable : N/R - Reviv Global Bridge Note\n1648|15166 Notes Receivable : N/R - Reviv Global Ltd Loan Assignment\n1510|15161 Notes Receivable : N/R - Reviv Global Ltd.\n1469|15126 Notes Receivable : N/R - Reviv USA Inc\n1720|15167 Notes Receivable : N/R - Stricklin & Porter\n1568|15163 Notes Receivable : N/R Brandon M Dawson LLC\n1597|15164 Notes Receivable : N/R Intercompany 10X Roofing\n1562|15162 Notes Receivable : N/R Intercompany 10XHVAC\n1451|15125 Notes Receivable : N/R IV Biz Bash\n849|40200 Online Events\n965|40210 Online Events : Webinars\n53|32000 Opening Balance\n427|70000 Other Expenses\n3257|92001 Other Expenses : Advertising and Marketing\n1567|70020 Other Expenses : Amortization Expense\n3615|70042 Other Expenses : Asset Disposal Costs\n3614|70041 Other Expenses : Asset Impairment Expense\n833|70040 Other Expenses : Depreciation Expense\n429|70050 Other Expenses : Interest Expense\n1024|70030 Other Expenses : Loan Expense\n431|70080 Other Expenses : Other Bad Debt\n430|70070 Other Expenses : Other Charitable Contributions\n829|70060 Other Expenses : Taxes\n974|70061 Other Expenses : Taxes : Income Taxes\n975|70062 Other Expenses : Taxes : Property Taxes\n1641|70059 Other Expenses : Taxes : State Tax Expense\n1607|70090 Other Expenses : Uncategorized Expense\n1072|49000 Other Income\n1480|49006 Other Income : 10X Health Ventures LLC Income\n3637|49009 Other Income : Digital Advertising\n1067|49001 Other Income : Dividend Income\n1068|49002 Other Income : Interest Income\n1481|49007 Other Income : MocaWorks LLC Income\n1080|49003 Other Income : MSC Investment Net Income (50%)\n1477|49004 Other Income : Silver Lining Ventures LLC Income\n1479|49005 Other Income : SWAT HVAC Income\n1606|49008 Other Income : Uncategorized Income\n948|14010 Other Prepaid Expenses\n1035|14011 Other Prepaid Expenses : 10X Marketing Services Prepaids\n1512|14013 Other Prepaid Expenses : Other Events Prepaid\n1486|14012 Other Prepaid Expenses : Prepaid - ad spend\n52|36000 Other provisions\n952|30800 Other Provisions\n873|42000 Other Revenue\n1125|42010 Other Revenue : Investment Income\n850|40300 Other Revenue : Online Program\n3592|42020 Other Revenue : Partnership CRM\n1747|67100 Overhead Expense\n1745|67110 Overhead Expense : Overhead Travel\n1746|670111 Overhead Expense : Overhead Travel : Automobile Expense\n1737|67120 Overhead Expense : Processing & Packing Overhead\n2026|34000 Owners' Contribution\n2042|34005 Owners' Contribution : Brandon M Dawson, LLC Contributions\n2027|34001 Owners' Contribution : Cardone Ventures Contributions\n2028|34002 Owners' Contribution : HEM Contributions\n2041|34004 Owners' Contribution : Merill Stromer Contributions\n2029|34003 Owners' Contribution : TEM Contributions\n951|37000 Owners' Distribution\n3622|37025 Owners' Distribution : A Mills\n575|37010 Owners' Distribution : B Dawson\n3623|37026 Owners' Distribution : C Workman\n576|37020 Owners' Distribution : CTTI\n3621|37024 Owners' Distribution : F Stein\n3620|37023 Owners' Distribution : J Dawson\n3619|37022 Owners' Distribution : J Gabbert\n3618|37021 Owners' Distribution : N Dawson\n1693|37030 Owners' Distribution : Ray Lewis - 52CV Ventures\n1086|40431 Partner Incentive Fee\n872|41000 Partner Revenue\n1627|55100 Partnership Revenue Share\n1691|55110 Partnership Revenue Share : 10X Business Academy\n1630|55103 Partnership Revenue Share : 10X Business Summit\n1640|55109 Partnership Revenue Share : 10X Buy/Sell\n1628|55101 Partnership Revenue Share : 10X360\n1634|55107 Partnership Revenue Share : BMLP Online Program\n1629|55102 Partnership Revenue Share : Business Essentials\n1635|55108 Partnership Revenue Share : Cardone University\n1632|55105 Partnership Revenue Share : Elite Edge (Nine Figure Boardroom)\n1633|55106 Partnership Revenue Share : Platform Review\n1631|55104 Partnership Revenue Share : Vertical Events\n1639|12002 Partnership Revenue Share Receivable\n3590|13204 PAYPAL Clearing Account\n224|61000 Personnel\n374|61060 Personnel : Benefits\n1711|61066 Personnel : Benefits : 401(k) Expense\n1107|61064 Personnel : Benefits : 401k\n376|61062 Personnel : Benefits : Insurance\n1569|61065 Personnel : Benefits : Other Employee Benefits\n377|61063 Personnel : Benefits : Relocation Expense\n1725|61070 Personnel : Fringe Benefits\n1738|61071 Personnel : Fringe Benefits : FICA\n1740|61073 Personnel : Fringe Benefits : FUTA\n1741|61074 Personnel : Fringe Benefits : Holiday\n1742|61075 Personnel : Fringe Benefits : SUTA\n1739|61072 Personnel : Fringe Benefits : Workman's Compensation\n370|61022 Personnel : Incentives\n369|61021 Personnel : Payroll\n378|61080 Personnel : Payroll Services\n373|61050 Personnel : Payroll Taxes\n371|61023 Personnel : Referral Incentive\n375|61061 Personnel : Severance\n368|61020 Personnel : Staff\n1102|63110 Personnel : Staff Recruitment\n1849|14000 Prepaid Expenses\n1850|14001 Prepaid Expenses : Events Prepaid\n3591|14001.1 Prepaid Expenses : Events Prepaid : Events Inventory\n1851|14002 Prepaid Expenses : Prepaid Ad Spend\n1897|14003 Prepaid Expenses : Vendor Deposits\n1871|46001 Procurement Revenue\n1462|PST Expenses AB\n1461|PST Payable AB\n1130|70602 Realized Gain/Loss\n3616|70605 Realized Gain/Loss : Realized Gain/Loss on Assets\n3267|70604 Realized Gain/Loss : Realized Gain/Loss on Investments\n2025|70603 Realized Gain/Loss : Realized Gain/Loss on Loans\n1913|14021 Receivable from CardoMax\n1906|37040 Reclassification of Due to/from Matbock\n3256|42100 Rental Income\n1596|37100 Retained Earnings\n1853|17950 Right of Use (ROU) Assets\n1127|17905 Right of Use (ROU) Assets : ROU Asset - 10X Centre\n1573|17912 Right of Use (ROU) Assets : ROU Asset - 15111 N Pima\n1128|17906 Right of Use (ROU) Assets : ROU Asset - 203 SE Park Plaza\n1837|17914 Right of Use (ROU) Assets : ROU Asset - Miami Equipment Lease\n1529|17908 Right of Use (ROU) Assets : ROU Asset - Portales Ste 5000\n1129|17907 Right of Use (ROU) Assets : ROU Asset - Portales Ste 5500\n3602|17916 Right of Use (ROU) Assets : ROU Asset - Promenade B105\n1526|17911 Right of Use (ROU) Assets : ROU Asset - Promenade B195 & B440\n1525|17910 Right of Use (ROU) Assets : ROU Asset - Promenade B300\n3605|17917 Right of Use (ROU) Assets : ROU Asset - Promenade B400\n1856|17915 Right of Use (ROU) Assets : ROU Asset - Promenade B420\n949|94900 Rounding Gain/Loss\n433|91000 Rounding Gain/Loss : Other Income\n58|62000 Sales & Marketing\n968|62080 Sales & Marketing : Ad Spend\n384|62050 Sales & Marketing : Agency\n1875|62081 Sales & Marketing : CardoMax Gift Cards\n385|62060 Sales & Marketing : Design\n382|62030 Sales & Marketing : Digital\n1674|67001 Sales & Marketing : Investment Ad Spend\n1675|67002 Sales & Marketing : Investment Sales & Marketing\n386|62070 Sales & Marketing : Marketing & Sales\n383|62040 Sales & Marketing : Photo & Video\n381|62020 Sales & Marketing : Social\n380|62010 Sales & Marketing : Website Hosting & Development\n1835|40858 Sales Returns\n1721|40850 Sales Revenue\n2045|Sales Tax Expense Alabama\n3280|Sales Tax Expense Arizona\n2145|Sales Tax Expense Arkansas\n2148|Sales Tax Expense California\n2245|Sales Tax Expense Colorado\n2248|Sales Tax Expense Georgia\n2348|Sales Tax Expense Idaho\n2351|Sales Tax Expense Illinois\n3380|Sales Tax Expense Indiana\n2345|Sales Tax Expense Iowa\n2445|Sales Tax Expense Kansas\n2545|Sales Tax Expense Kentucky\n2645|Sales Tax Expense Louisiana\n2548|Sales Tax Expense Maryland\n2551|Sales Tax Expense Michigan\n2554|Sales Tax Expense Minnesota\n2748|Sales Tax Expense Nebraska\n2845|Sales Tax Expense Nevada\n2751|Sales Tax Expense New Jersey\n2848|Sales Tax Expense New York\n2745|Sales Tax Expense North Carolina\n2851|Sales Tax Expense Ohio\n2945|Sales Tax Expense South Carolina\n3045|Sales Tax Expense Tennessee\n3048|Sales Tax Expense Texas\n3145|Sales Tax Expense Utah\n3148|Sales Tax Expense Virginia\n3480|Sales Tax Expense Washington\n2044|Sales Tax Payable Alabama\n3279|Sales Tax Payable Arizona\n2144|Sales Tax Payable Arkansas\n2147|Sales Tax Payable California\n2244|Sales Tax Payable Colorado\n2247|Sales Tax Payable Georgia\n2347|Sales Tax Payable Idaho\n2350|Sales Tax Payable Illinois\n3379|Sales Tax Payable Indiana\n2344|Sales Tax Payable Iowa\n2444|Sales Tax Payable Kansas\n2544|Sales Tax Payable Kentucky\n2644|Sales Tax Payable Louisiana\n2547|Sales Tax Payable Maryland\n2550|Sales Tax Payable Michigan\n2553|Sales Tax Payable Minnesota\n2747|Sales Tax Payable Nebraska\n2844|Sales Tax Payable Nevada\n2750|Sales Tax Payable New Jersey\n2847|Sales Tax Payable New York\n2744|Sales Tax Payable North Carolina\n2850|Sales Tax Payable Ohio\n2944|Sales Tax Payable South Carolina\n3044|Sales Tax Payable Tennessee\n3047|Sales Tax Payable Texas\n3144|Sales Tax Payable Utah\n3147|Sales Tax Payable Virginia\n3479|Sales Tax Payable Washington\n836|15070 Security Deposits\n1905|28027 Seraph LOC - MB Origins\n572|38000 Share Capital\n1917|38033 Share Capital : Capital-Ambrose Conroy\n1916|38032 Share Capital : Capital-S. Matson\n1915|38031 Share Capital : Capital-Z. Steinbock\n573|38020 Share Capital : Members' Equity\n1081|38011 Share Capital : MSN - Shares purchased\n574|38010 Share Capital : Opening Balance Equity\n1914|38030 Share Capital : Owner's Investment\n1731|40852 Shipping and Handling\n563|21000 Short Term Debt\n3249|21001 Short Term Debt : N/P 15111 N. Pima - BoK - Short Term\n1132|27000 Short Term Lease Liabilities\n1233|27010 Short Term Lease Liabilities : 10X Centre Short Term Lease Liability\n1575|27017 Short Term Lease Liabilities : 15111 N Pima ST Lease Liability\n1234|27011 Short Term Lease Liabilities : 203 SE Park PL ST\n1924|27019 Short Term Lease Liabilities : 5225 MidFirst Mortgage - Short Term Liability\n1535|27013 Short Term Lease Liabilities : Portales Ste 5000 ST Lease Liability\n1235|27012 Short Term Lease Liabilities : Portales Ste 5500 Short Term Lease Liability\n3603|27020 Short Term Lease Liabilities : Promenade B105 ST Lease Liability\n1527|27016 Short Term Lease Liabilities : Promenade B195 & B440 ST Lease Liability\n1524|27015 Short Term Lease Liabilities : Promenade B300 ST Lease Liability\n3607|27021 Short Term Lease Liabilities : Promenade B400 ST Lease Liability\n1859|27018 Short Term Lease Liabilities : Promenade B420 ST Lease Liability\n1444|40600 Speaking Engagement Income\n1651|15700 Startup Costs\n214|54000 Subcontractors\n584|54010 Subcontractors : Data Support\n1443|54012 Subcontractors : Digital Marketing\n1062|54011 Subcontractors : Subcontractors Ad Spend\n1834|40851 Subscription Revenue\n1877|40853 Tax Revenue\n325|24000 Taxes Payable\n326|24100 Taxes Payable : Dept of Revenue Payable\n548|24108 Taxes Payable : Dept of Revenue Payable : Alabama\n222|24102 Taxes Payable : Dept of Revenue Payable : Arizona\n545|24105 Taxes Payable : Dept of Revenue Payable : California\n546|24106 Taxes Payable : Dept of Revenue Payable : Illinois\n549|24109 Taxes Payable : Dept of Revenue Payable : Minnesota\n210|24103 Taxes Payable : Dept of Revenue Payable : Missouri\n544|24104 Taxes Payable : Dept of Revenue Payable : Nebraska\n547|24107 Taxes Payable : Dept of Revenue Payable : Tennessee\n223|24101 Taxes Payable : Dept of Revenue Payable : Washington State\n551|24200 Taxes Payable : Sales Tax Payable\n1925|24224 Taxes Payable : Sales Tax Payable : Sales Tax Payable AE\n950|24217 Taxes Payable : Sales Tax Payable : Sales Tax Payable AL\n1926|24225 Taxes Payable : Sales Tax Payable : Sales Tax Payable AP\n1751|24201 Taxes Payable : Sales Tax Payable : Sales Tax Payable AR\n3261|24256 Taxes Payable : Sales Tax Payable : Sales Tax Payable AZ\n1752|24202 Taxes Payable : Sales Tax Payable : Sales Tax Payable CA\n1927|24226 Taxes Payable : Sales Tax Payable : Sales Tax Payable CO\n1928|24227 Taxes Payable : Sales Tax Payable : Sales Tax Payable CT\n1930|24229 Taxes Payable : Sales Tax Payable : Sales Tax Payable DC\n1929|24228 Taxes Payable : Sales Tax Payable : Sales Tax Payable DE\n963|24218 Taxes Payable : Sales Tax Payable : Sales Tax Payable FL\n1753|24203 Taxes Payable : Sales Tax Payable : Sales Tax Payable GA\n1931|24230 Taxes Payable : Sales Tax Payable : Sales Tax Payable HI\n1933|24232 Taxes Payable : Sales Tax Payable : Sales Tax Payable IA\n1932|24231 Taxes Payable : Sales Tax Payable : Sales Tax Payable ID\n1754|24204 Taxes Payable : Sales Tax Payable : Sales Tax Payable IL\n1755|24205 Taxes Payable : Sales Tax Payable : Sales Tax Payable IN\n1934|24233 Taxes Payable : Sales Tax Payable : Sales Tax Payable KS\n1756|24206 Taxes Payable : Sales Tax Payable : Sales Tax Payable KY\n1757|24207 Taxes Payable : Sales Tax Payable : Sales Tax Payable LA\n1936|24235 Taxes Payable : Sales Tax Payable : Sales Tax Payable MA\n1758|24208 Taxes Payable : Sales Tax Payable : Sales Tax Payable MD\n1935|24234 Taxes Payable : Sales Tax Payable : Sales Tax Payable ME\n3275|24257 Taxes Payable : Sales Tax Payable : Sales Tax Payable MI\n1759|24209 Taxes Payable : Sales Tax Payable : Sales Tax Payable MN\n1938|24237 Taxes Payable : Sales Tax Payable : Sales Tax Payable MO\n1937|24236 Taxes Payable : Sales Tax Payable : Sales Tax Payable MS\n1939|24238 Taxes Payable : Sales Tax Payable : Sales Tax Payable MT\n1760|24210 Taxes Payable : Sales Tax Payable : Sales Tax Payable NC\n1942|24241 Taxes Payable : Sales Tax Payable : Sales Tax Payable ND\n1761|24211 Taxes Payable : Sales Tax Payable : Sales Tax Payable NE\n1940|24239 Taxes Payable : Sales Tax Payable : Sales Tax Payable NH\n1762|24212 Taxes Payable : Sales Tax Payable : Sales Tax Payable NJ\n1941|24240 Taxes Payable : Sales Tax Payable : Sales Tax Payable NM\n1763|24213 Taxes Payable : Sales Tax Payable : Sales Tax Payable NV\n1910|24220 Taxes Payable : Sales Tax Payable : Sales Tax Payable NY\n1764|24214 Taxes Payable : Sales Tax Payable : Sales Tax Payable OH\n1943|24242 Taxes Payable : Sales Tax Payable : Sales Tax Payable OK\n1944|24243 Taxes Payable : Sales Tax Payable : Sales Tax Payable OR\n1945|24244 Taxes Payable : Sales Tax Payable : Sales Tax Payable PA\n1946|24245 Taxes Payable : Sales Tax Payable : Sales Tax Payable PR\n1947|24246 Taxes Payable : Sales Tax Payable : Sales Tax Payable RI\n1948|24247 Taxes Payable : Sales Tax Payable : Sales Tax Payable SC\n1949|24248 Taxes Payable : Sales Tax Payable : Sales Tax Payable SD\n1950|24249 Taxes Payable : Sales Tax Payable : Sales Tax Payable TN\n1951|24250 Taxes Payable : Sales Tax Payable : Sales Tax Payable TX\n1765|24215 Taxes Payable : Sales Tax Payable : Sales Tax Payable UT\n1766|24216 Taxes Payable : Sales Tax Payable : Sales Tax Payable VA\n1952|24251 Taxes Payable : Sales Tax Payable : Sales Tax Payable VT\n1953|24252 Taxes Payable : Sales Tax Payable : Sales Tax Payable WA\n1955|24254 Taxes Payable : Sales Tax Payable : Sales Tax Payable WI\n1954|24253 Taxes Payable : Sales Tax Payable : Sales Tax Payable WV\n1956|24255 Taxes Payable : Sales Tax Payable : Sales Tax Payable WY\n1909|24219 Taxes Payable : Sales Tax Payable : Sales Taxes Payable MI\n3277|24259 Taxes Payable : Sales Tax Payable : Tax VIC\n550|24300 Taxes Payable : Shopify Tax Agency Payable\n1642|24400 Taxes Payable : State Income Tax Payable\n1580|10116 Tipalti Clearing - USD\n1728|90000 Unallowable IAW FAR 31.205\n1748|90010 Unallowable IAW FAR 31.205 : Penalties and Interest\n1595|66000 Unapplied Cash Bill Payment Expense\n218|12003 Unbilled Receivable\n1017|15500 Uncategorized Asset\n1343|00013 Uncategorized Expense\n1344|00010 Uncategorized Income\n947|15400 Undeposited Funds\n122|10201 Undeposited Funds : Undeposited CV\n1874|15406 Undeposited Funds : Undeposited Funds - CardoMax\n1883|15407 Undeposited Funds : Undeposited Funds - Gundlachs\n1899|15408 Undeposited Funds : Undeposited Funds - HRE\n542|15403 Undeposited Funds : Undeposited Funds ACH\n1340|15405 Undeposited Funds : Undeposited Funds From AMI\n1028|15404 Undeposited Funds : Undeposited Funds from CTTI\n540|15401 Undeposited Funds : Undeposited Funds Visa/MC/Disc\n541|15402 Undeposited Funds : Undposited Funds AMEX\n1912|29010 Unearned Customer Payments\n1457|70601 Unrealized Gain/Loss\n1126|70600 Unrealized Matching Gain/Loss\n2046|Use Tax Payable Alabama\n3281|Use Tax Payable Arizona\n2146|Use Tax Payable Arkansas\n2149|Use Tax Payable California\n2246|Use Tax Payable Colorado\n2249|Use Tax Payable Georgia\n2349|Use Tax Payable Idaho\n2352|Use Tax Payable Illinois\n3381|Use Tax Payable Indiana\n2346|Use Tax Payable Iowa\n2446|Use Tax Payable Kansas\n2546|Use Tax Payable Kentucky\n2646|Use Tax Payable Louisiana\n2549|Use Tax Payable Maryland\n2552|Use Tax Payable Michigan\n2555|Use Tax Payable Minnesota\n2749|Use Tax Payable Nebraska\n2846|Use Tax Payable Nevada\n2752|Use Tax Payable New Jersey\n2849|Use Tax Payable New York\n2746|Use Tax Payable North Carolina\n2852|Use Tax Payable Ohio\n2946|Use Tax Payable South Carolina\n3046|Use Tax Payable Tennessee\n3049|Use Tax Payable Texas\n3146|Use Tax Payable Utah\n3149|Use Tax Payable Virginia\n3481|Use Tax Payable Washington\n1106|65050 Vehicle : Fuel, Repair & Maint\n1491|15800 WIP\n1577|15816 WIP : WIP - 15111 N Pima\n1494|15812 WIP : WIP - Promenade 4th Common\n1497|15815 WIP : WIP - Promenade A180\n1878|15819 WIP : WIP - Promenade B105 (Bathroom)\n1496|15814 WIP : WIP - Promenade B195\n1495|15813 WIP : WIP - Promenade B300\n1678|15818 WIP : WIP - Promenade B400\n1493|15811 WIP : WIP - Promenade B420\n1492|15810 WIP : WIP - Promenade B440\n1579|15817 WIP : WIP - Reviv\n3258|15820 WIP : WIP - Software Development\n3274|15820.2 WIP : WIP - Software Development : WIP - 10X Hub\n3268|15820.1 WIP : WIP - Software Development : WIP - Software: MDM";
+const COA = COA_STR.split("\n").map(line => { const [id, ...rest] = line.split("|"); return { id, d: rest.join("|") }; });
+function classifyTransaction(txn) {
+    const raw = (txn.desc + " " + txn.memo + " " + txn.name).toLowerCase();
+    const byId = id => COA.find(a => a.id === id);
+    const DUE_TO_CV = byId("1087");
+    if (/payroll|pay date|period \d/.test(raw))
+        return { debit: byId("369"), credit: byId("839"), note: "Payroll Expense / Accrued Payroll", conf: "high" };
+    if (/cigna/.test(raw))
+        return { debit: byId("376"), credit: DUE_TO_CV, note: "Cigna medical/dental premium from CV", conf: "high" };
+    if (/guardian/.test(raw))
+        return { debit: byId("376"), credit: DUE_TO_CV, note: "Guardian life/dental premium from CV", conf: "high" };
+    if (/buchalter|peterson business law/.test(raw))
+        return { debit: byId("394"), credit: DUE_TO_CV, note: "Legal fees via CV", conf: "high" };
+    if (/csc clk|capitol services|delaware corp|secretary of state|annual report/.test(raw))
+        return { debit: byId("1499"), credit: DUE_TO_CV, note: "Corporate filing fees", conf: "high" };
+    if (/ernst.*young|ey |audit/.test(raw))
+        return { debit: byId("1665"), credit: DUE_TO_CV, note: "Audit/accounting fees", conf: "high" };
+    if (/revenue share|rev share/.test(raw))
+        return { debit: byId("1627"), credit: byId("1639"), note: "Partnership Revenue Share COGS", conf: "medium" };
+    if (/netting|offset.*interco|interco.*offset/.test(raw))
+        return { debit: byId("1593"), credit: byId("1597"), note: "Interco netting N/P vs N/R", conf: "medium" };
+    if (/promissory.*interest|note.*interest|interest.*note/.test(raw))
+        return { debit: byId("54"), credit: DUE_TO_CV, note: "Note interest", conf: "low" };
+    if (/promissory note|note advance/.test(raw))
+        return { debit: byId("1470"), credit: byId("221"), note: "Promissory note advance", conf: "medium" };
+    if (/expense report|reimb/.test(raw))
+        return { debit: byId("54"), credit: DUE_TO_CV, note: "Expense reimbursement", conf: "medium" };
+    if (/commission/.test(raw))
+        return { debit: byId("362"), credit: DUE_TO_CV, note: "Commission", conf: "medium" };
+    if (/airline|southwest|frontier|american airlines|british airways|amtrav|passenger ticket|airfare/.test(raw))
+        return { debit: byId("421"), credit: DUE_TO_CV, note: "Airfare on CV card", conf: "high" };
+    if (/hotel|lodging|hyatt|hilton|rwlv|resort|marriott|westin/.test(raw))
+        return { debit: byId("423"), credit: DUE_TO_CV, note: "Hotel/lodging on CV card", conf: "high" };
+    if (/taxi|cab |curb service|enterprise ren|ground transport/.test(raw))
+        return { debit: byId("424"), credit: DUE_TO_CV, note: "Ground transportation", conf: "high" };
+    if (/restaurant|steakhouse|instacart|liquor|meals|catering/.test(raw))
+        return { debit: byId("422"), credit: DUE_TO_CV, note: "Meals & entertainment", conf: "medium" };
+    if (/expo|conference|summit|convention/.test(raw))
+        return { debit: byId("413"), credit: DUE_TO_CV, note: "Event/conference registration", conf: "medium" };
+    if (/highlevel|semrush|typeform|scribe|shopify|godaddy|duda|design pickle|acculynx/.test(raw))
+        return { debit: byId("54"), credit: DUE_TO_CV, note: "Software/SaaS subscription", conf: "medium" };
+    if (/management fee|mgmt fee/.test(raw))
+        return { debit: byId("1104"), credit: DUE_TO_CV, note: "Management fee from CV", conf: "high" };
+    if (/msc|malek|loan repayment|settlement credit/.test(raw))
+        return { debit: DUE_TO_CV, credit: byId("1617"), note: "MSC/Malek loan repayment", conf: "medium" };
+    if (/paydown|balance.*paydown/.test(raw))
+        return { debit: DUE_TO_CV, credit: COA.find(a => a.t === "Bank"), note: "Interco balance paydown", conf: "medium" };
+    if (/reclassif.*deferred|deferred.*reclassif/.test(raw))
+        return { debit: byId("953"), credit: DUE_TO_CV, note: "Deferred rev reclassification", conf: "medium" };
+    return { debit: byId("54"), credit: DUE_TO_CV, note: "Could not auto-classify - review manually", conf: "low" };
+}
+function searchCOA(query) {
+    if (!query || query.length < 2)
+        return [];
+    const q = query.toLowerCase();
+    return COA.filter(a => a.d.toLowerCase().includes(q) || a.id === q).slice(0, 10);
+}
+function initLegs(txn) {
+    const s = classifyTransaction(txn);
+    const amt = Math.abs(txn.amount).toFixed(2);
+    const suggestedEntity = txn.entity || "";
+    return [{ type: "debit", account: s.debit || null, amount: amt, entity: suggestedEntity }, { type: "credit", account: s.credit || null, amount: amt, entity: suggestedEntity }];
+}
+function buildJECsv(unmatchedCV, unmatchedSub, jeLegs, period, pairLabel, subsidiary, pairPrefix) {
+    const cols = ["External ID", "Date", "Subsidiary", "Memo",
+        "Journal Entry - Line: Account", "Journal Entry - Line: Debit",
+        "Journal Entry - Line: Credit", "Journal Entry - Line: Entity",
+        "Journal Entry - Line: Memo", "Journal Entry - Line: Description"];
+    const rows = [cols];
+    let n = 1;
+    const pad = x => String(x).padStart(3, "0");
+    const fmtD = s => { if (!s)
+        return ""; const p = s.split("-"); return p.length === 3 ? p[1] + "/" + p[2] + "/" + p[0] : s; };
+    const csvAmt = x => x > 0 ? x.toFixed(2) : "";
+    const escCell = cell => {
+        const s = String(cell !== null && cell !== undefined ? cell : "");
+        if (s.indexOf(",") >= 0 || s.indexOf('"') >= 0)
+            return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+    };
+    const addJE = (txn, side, legs) => {
+        const id = "MEC-" + period.split(" ").join("") + "-" + pad(n++);
+        const lineMemo = "CV Document Number: " + (txn.docNum || "N/A") + " | Type: " + (txn.type || "") + " | Description: " + (txn.desc || "").slice(0, 80) + " | Memo: " + (txn.memo || "").slice(0, 80);
+        const headerMemo = "MEC " + period + " | " + pairLabel;
+        legs.forEach(leg => {
+            const acct = leg.account ? leg.account.d : "";
+            const isD = leg.type === "debit";
+            const amt = parseFloat(leg.amount) || 0;
+            const subId = SUBSIDIARY_MAP[subsidiary] || subsidiary;
+            rows.push([id, fmtD(txn.date), subId, headerMemo, acct,
+                isD ? csvAmt(amt) : "", isD ? "" : csvAmt(amt),
+                leg.entity || "", lineMemo, (txn.desc || "").slice(0, 100)]);
+        });
+    };
+    unmatchedCV.forEach(txn => addJE(txn, "cv", jeLegs[(pairPrefix || "") + "cv-" + txn._id] || initLegs(txn)));
+    unmatchedSub.forEach(txn => addJE(txn, "sub", jeLegs[(pairPrefix || "") + "sub-" + txn._id] || initLegs(txn)));
+    return rows.map(row => row.map(escCell).join(",")).join("\r\n");
+}
+function buildAllJEsCsv(accounts, jeLegs, period) {
+    if (!accounts)
+        return "";
+    const cols = ["External ID", "Date", "Subsidiary", "Memo",
+        "Journal Entry - Line: Account", "Journal Entry - Line: Debit",
+        "Journal Entry - Line: Credit", "Journal Entry - Line: Entity",
+        "Journal Entry - Line: Memo", "Journal Entry - Line: Description"];
+    const rows = [cols];
+    let n = 1;
+    const pad = x => String(x).padStart(4, "0");
+    const fmtD = s => { if (!s)
+        return ""; const p = s.split("-"); return p.length === 3 ? p[1] + "/" + p[2] + "/" + p[0] : s; };
+    const csvAmt = x => x > 0 ? x.toFixed(2) : "";
+    const escCell = cell => {
+        const s = String(cell !== null && cell !== undefined ? cell : "");
+        if (s.indexOf(",") >= 0 || s.indexOf('"') >= 0)
+            return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+    };
+    MIRROR_PAIRS.forEach(pair => {
+        const cvAcct = accounts[pair.cv];
+        const subAcct = accounts[pair.sub];
+        const cv2Acct2 = pair.cv2 ? accounts[pair.cv2] : null;
+        const cvTxns = [...(cvAcct ? cvAcct.txns : []), ...(cv2Acct2 ? cv2Acct2.txns : [])];
+        const sub2Acct = pair.sub2 ? accounts[pair.sub2] : null;
+        const fromSub = subAcct ? (pair.subFilter ? subAcct.txns.filter(t => t.subsidiary === pair.subFilter) : subAcct.txns) : [];
+        const fromSub2 = sub2Acct ? (pair.subFilter ? sub2Acct.txns.filter(t => t.subsidiary === pair.subFilter) : sub2Acct.txns) : [];
+        const subTxns = [...fromSub, ...fromSub2];
+        if (cvTxns.length === 0 && subTxns.length === 0)
+            return;
+        const result = matchAccountPair(cvTxns, subTxns);
+        const allUnmatched = [
+            ...result.unmatchedCV.map(t => (Object.assign(Object.assign({}, t), { _side: "cv" }))),
+            ...result.unmatchedSub.map(t => (Object.assign(Object.assign({}, t), { _side: "sub" }))),
+        ];
+        if (allUnmatched.length === 0)
+            return;
+        const subsidiary = pair.subFilter || PAIR_TO_SUB[pair.cv] || "";
+        const subId = SUBSIDIARY_MAP[subsidiary] || subsidiary;
+        allUnmatched.forEach(txn => {
+            const side = txn._side;
+            const pk = pair.cv + ":" + pair.sub + ":" + (pair.subFilter || "");
+            const legs = jeLegs[pk + "|" + (side === "cv" ? "cv-" : "sub-") + txn._id] || initLegs(txn);
+            const id = "MEC-" + period.split(" ").join("") + "-" + pad(n++);
+            const lineMemo = "CV Document Number: " + (txn.docNum || "N/A") + " | Type: " + (txn.type || "") + " | Description: " + (txn.desc || "").slice(0, 80) + " | Memo: " + (txn.memo || "").slice(0, 80);
+            const headerMemo = "MEC " + period + " | " + pair.label;
+            legs.forEach(leg => {
+                const acct = leg.account ? leg.account.d : "";
+                const isD = leg.type === "debit";
+                const amt = parseFloat(leg.amount) || 0;
+                rows.push([id, fmtD(txn.date), subId, headerMemo, acct,
+                    isD ? csvAmt(amt) : "", isD ? "" : csvAmt(amt),
+                    leg.entity || "", lineMemo, (txn.desc || "").slice(0, 100)]);
+            });
+        });
+    });
+    if (rows.length === 1)
+        return ""; // only header, no data
+    return rows.map(row => row.map(escCell).join(",")).join("\r\n");
+}
+function parseNetSuiteXML(xmlText) {
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xmlText, "text/xml");
+        const ns = "urn:schemas-microsoft-com:office:spreadsheet";
+        const ws = doc.getElementsByTagNameNS(ns, "Worksheet")[0];
+        if (!ws)
+            return null;
+        const table = ws.getElementsByTagNameNS(ns, "Table")[0];
+        if (!table)
+            return null;
+        const rowEls = table.getElementsByTagNameNS(ns, "Row");
+        const rows = [];
+        for (let r = 0; r < rowEls.length; r++) {
+            const cellEls = rowEls[r].getElementsByTagNameNS(ns, "Cell");
+            const vals = [];
+            for (let c = 0; c < cellEls.length; c++) {
+                const cell = cellEls[c];
+                const idxAttr = cell.getAttributeNS(ns, "Index");
+                const dataEl = cell.getElementsByTagNameNS(ns, "Data")[0];
+                const val = dataEl ? dataEl.textContent : "";
+                if (idxAttr) {
+                    const idx = parseInt(idxAttr) - 1;
+                    while (vals.length < idx)
+                        vals.push("");
+                }
+                vals.push(val);
+            }
+            while (vals.length < 13)
+                vals.push("");
+            rows.push(vals);
+        }
+        return rows;
+    }
+    catch (e) {
+        return null;
+    }
+}
+function extractAccounts(rows) {
+    const accounts = {};
+    let cur = null;
+    // Detect column positions dynamically from header row
+    let C = { type: 1, date: 2, doc: 3, name: 4, amount: 5, balance: 6, desc: 7, memo: 8, entity: 9, subsidiary: 11, acctLine: 12 };
+    for (const row of rows) {
+        const ti = row.indexOf("Type");
+        if (ti >= 0 && row.indexOf("Date") >= 0 && row.indexOf("Amount") >= 0) {
+            C.type = ti;
+            C.date = row.indexOf("Date");
+            C.doc = row.indexOf("Document Number");
+            C.name = row.indexOf("Name");
+            C.amount = row.indexOf("Amount");
+            C.balance = row.indexOf("Balance");
+            C.desc = row.indexOf("Description");
+            C.memo = row.indexOf("Memo");
+            C.entity = row.indexOf("Entity");
+            C.subsidiary = row.findIndex((v) => v === "Subsidiary: Name" || v === "Subsidiary");
+            C.acctLine = row.findIndex((v) => v === "Account (Line): Name" || v === "Account");
+            break;
+        }
+    }
+    for (const row of rows) {
+        const financialRow = (row[0] || "").trim();
+        const txType = (row[C.type] || "").trim();
+        if (financialRow && !txType) {
+            const m = financialRow.match(/^(\d{5})\s*-\s*(.+)/);
+            if (m && !financialRow.startsWith("Total")) {
+                cur = m[1];
+                if (!accounts[cur])
+                    accounts[cur] = { acctNum: cur, acctName: financialRow, openBal: parseFloat((row[C.balance] || 0)) || 0, txns: [] };
+            }
+            else if (financialRow.startsWith("Total"))
+                cur = null;
+            continue;
+        }
+        if (txType && cur && accounts[cur]) {
+            const amount = parseFloat((row[C.amount] || "").trim()) || 0;
+            const doc = C.doc >= 0 ? (row[C.doc] || "").trim() : "";
+            const rawEntity = C.entity >= 0 ? (row[C.entity] || "").trim() : "";
+            const entity = (rawEntity && rawEntity !== "- No Entity -") ? rawEntity : (C.name >= 0 ? (row[C.name] || "").trim() : "");
+            accounts[cur].txns.push({
+                type: txType, date: ((row[C.date] || "").split("T")[0]),
+                docNum: doc, rawDoc: doc, name: (C.name >= 0 ? (row[C.name] || "").trim() : ""),
+                entity,
+                amount, balance: parseFloat((row[C.balance >= 0 ? C.balance : 6] || "")) || 0,
+                desc: ((C.desc >= 0 ? row[C.desc] || "" : "") + " " + (C.memo >= 0 ? row[C.memo] || "" : "")).trim(),
+                memo: (C.memo >= 0 ? (row[C.memo] || "").trim() : ""),
+                subsidiary: (C.subsidiary >= 0 ? (row[C.subsidiary] || "").trim() : ""),
+                acctLine: (C.acctLine >= 0 ? (row[C.acctLine] || "").trim() : ""),
+            });
+        }
+    }
+    return accounts;
+}
+function matchAccountPair(cvTxns, subTxns) {
+    const cv = cvTxns.map((t, i) => (Object.assign(Object.assign({}, t), { _id: i, _matched: false })));
+    const sub = subTxns.map((t, i) => (Object.assign(Object.assign({}, t), { _id: i, _matched: false })));
+    const matches = [];
+    const usedSub = new Set();
+    const eq = (a, b) => Math.abs(a - b) < 0.02;
+    const eqEntity = (a, b) => {
+        const ae = (a || "").trim().toLowerCase();
+        const be = (b || "").trim().toLowerCase();
+        return !ae || !be || ae === be;
+    };
+    // Pass 1: exact JE doc number + amount
+    for (const c of cv) {
+        if (c._matched || !c.docNum)
+            continue;
+        for (const s of sub) {
+            if (s._matched || usedSub.has(s._id) || !s.docNum)
+                continue;
+            if (c.docNum === s.docNum && eq(Math.abs(c.amount), Math.abs(s.amount))) {
+                c._matched = true;
+                s._matched = true;
+                usedSub.add(s._id);
+                matches.push({ cv: c, sub: s, conf: "exact-je" });
+                break;
+            }
+        }
+    }
+    // Pass 2: amount + entity (handles duplicate amounts by requiring entity agreement)
+    for (const c of cv) {
+        if (c._matched)
+            continue;
+        const cands = sub.filter(s => !s._matched && !usedSub.has(s._id) && eq(Math.abs(c.amount), Math.abs(s.amount)) && eqEntity(c.entity, s.entity));
+        if (cands.length === 1) {
+            const s = cands[0];
+            c._matched = true;
+            s._matched = true;
+            usedSub.add(s._id);
+            matches.push({ cv: c, sub: s, conf: "amount+entity" });
+        }
+    }
+    // Pass 3: date + amount + entity
+    for (const c of cv) {
+        if (c._matched)
+            continue;
+        const cands = sub.filter(s => !s._matched && !usedSub.has(s._id) && eq(Math.abs(c.amount), Math.abs(s.amount)) && c.date === s.date && eqEntity(c.entity, s.entity));
+        if (cands.length === 1) {
+            const s = cands[0];
+            c._matched = true;
+            s._matched = true;
+            usedSub.add(s._id);
+            matches.push({ cv: c, sub: s, conf: "date+amt" });
+        }
+    }
+    // Pass 4: unique amount only (fallback when entity fields are blank on both sides)
+    for (const c of cv) {
+        if (c._matched)
+            continue;
+        const cands = sub.filter(s => !s._matched && !usedSub.has(s._id) && eq(Math.abs(c.amount), Math.abs(s.amount)));
+        if (cands.length === 1) {
+            const s = cands[0];
+            c._matched = true;
+            s._matched = true;
+            usedSub.add(s._id);
+            matches.push({ cv: c, sub: s, conf: "amount" });
+        }
+    }
+    const rollupMatches = [];
+    const usedRollup = new Set();
+    const cvGroups = {};
+    for (const c of cv) {
+        if (c._matched || usedRollup.has(c._id))
+            continue;
+        const key = c.docNum ? "doc:" + c.docNum : "date:" + c.date;
+        if (!cvGroups[key])
+            cvGroups[key] = [];
+        cvGroups[key].push(c);
+    }
+    for (const groupKey of Object.keys(cvGroups)) {
+        const cvGroup = cvGroups[groupKey];
+        if (cvGroup.length < 2)
+            continue;
+        const cvSum = cvGroup.reduce((s, c) => s + c.amount, 0);
+        const cands = sub.filter(s => !s._matched && !usedSub.has(s._id) && eq(Math.abs(cvSum), Math.abs(s.amount)));
+        if (cands.length === 1) {
+            const s = cands[0];
+            rollupMatches.push({ cvLines: cvGroup, sub: s, cvSum, groupKey, conf: "rollup", confirmed: false });
+            cvGroup.forEach(c => usedRollup.add(c._id));
+            usedSub.add(s._id);
+            s._matched = true;
+        }
+    }
+    return { matches, rollupMatches, unmatchedCV: cv.filter(t => !t._matched && !usedRollup.has(t._id)), unmatchedSub: sub.filter(t => !t._matched) };
+}
+const fmt = n => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
+const fmtDate = s => s ? s.replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$2/$3/$1") : " - ";
+const truncate = (s, n) => { const lim = n || 55; return s && s.length > lim ? s.slice(0, lim) + "..." : (s || " - "); };
+function confBadge(conf) {
+    const map = { "exact-je": { bg: T.greenDim, text: T.green, label: "[OK] JE#" },
+        "amount+entity": { bg: T.greenDim, text: T.green, label: "[OK] Amt+Entity" },
+        "amount": { bg: T.amberDim, text: T.amber, label: "~ Amt" },
+        "date+amt": { bg: T.purpleDim, text: T.purple, label: "~ Date+Amt" } };
+    const s = map[conf] || { bg: T.redDim, text: T.red, label: "?" };
+    return React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, padding: "2px 6px", borderRadius: 3, background: s.bg, color: s.text, letterSpacing: "0.06em", whiteSpace: "nowrap" } }, s.label);
+}
+function Pill({ n, color, label }) {
+    return React.createElement("span", { style: { display: "inline-flex", alignItems: "center", gap: 5, background: color + "18", border: "1px solid " + color + "30", borderRadius: 20, padding: "3px 10px 3px 8px" } },
+        React.createElement("span", { style: { fontFamily: T.mono, fontSize: 13, fontWeight: 700, color } }, n),
+        React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: T.textDim, letterSpacing: "0.1em" } }, label));
+}
+function TxnCell({ txn }) {
+    if (!txn)
+        return React.createElement("div", { style: { padding: "10px 12px", color: T.textDim, fontFamily: T.mono, fontSize: 10 } }, " - ");
+    const amtColor = txn.amount >= 0 ? T.green : T.red;
+    return React.createElement("div", { style: { padding: "10px 12px" } },
+        React.createElement("div", { style: { fontFamily: T.mono, fontSize: 11, color: T.text, marginBottom: 2 } }, truncate(txn.desc, 52)),
+        React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center" } },
+            React.createElement("span", { style: { fontFamily: T.mono, fontSize: 10, color: T.textDim } }, fmtDate(txn.date)),
+            txn.docNum && React.createElement("span", { style: { fontFamily: T.mono, fontSize: 10, color: T.accent } }, txn.docNum)),
+        React.createElement("div", { style: { fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: amtColor, marginTop: 3 } }, fmt(txn.amount)));
+}
+function UnmatchedTxn({ txn, side, checked, onCheck }) {
+    const color = side === "cv" ? T.amber : T.purple;
+    const label = side === "cv" ? "CV ONLY - add to sub" : "SUB ONLY - add to CV";
+    return React.createElement("div", { style: { display: "grid", gridTemplateColumns: "32px 1fr 130px 120px 200px", borderBottom: "1px solid " + T.border, background: side === "cv" ? T.amberDim : T.purpleDim } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center" } }, side === "cv" && onCheck && React.createElement("input", { type: "checkbox", checked: !!checked, onChange: onCheck, style: { cursor: "pointer", accentColor: "#06b6d4", width: 13, height: 13 } })),
+        React.createElement("div", { style: { padding: "10px 12px" } },
+            React.createElement("div", { style: { fontFamily: T.mono, fontSize: 11, color: T.text } }, truncate(txn.desc, 60)),
+            React.createElement("div", { style: { fontFamily: T.mono, fontSize: 10, color: T.textDim, marginTop: 2 } },
+                fmtDate(txn.date),
+                txn.docNum && React.createElement("span", { style: { color: T.accent, marginLeft: 8 } }, txn.docNum))),
+        React.createElement("div", { style: { padding: "10px 8px", display: "flex", alignItems: "center", justifyContent: "flex-end" } },
+            React.createElement("span", { style: { fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: txn.amount >= 0 ? T.green : T.red } }, fmt(txn.amount))),
+        React.createElement("div", { style: { padding: "10px 8px", display: "flex", alignItems: "center" } },
+            React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, padding: "3px 8px", borderRadius: 3, background: color + "22", color, letterSpacing: "0.08em" } }, txn.type)),
+        React.createElement("div", { style: { padding: "10px 8px", display: "flex", alignItems: "center" } },
+            React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: T.amber, letterSpacing: "0.06em" } }, label)));
+}
+function AccountPicker({ value, searchKey, coaSearch, setCoaSearch, coaFocus, setCoaFocus, onSelect, compact }) {
+    const query = coaSearch[searchKey] || "";
+    const isFocused = coaFocus === searchKey;
+    const results = isFocused && query.length >= 2 ? searchCOA(query) : [];
+    return React.createElement("div", { style: { position: "relative", paddingRight: compact ? 0 : 4 } },
+        !isFocused && React.createElement("div", { onClick: () => { setCoaFocus(searchKey); setCoaSearch(s => (Object.assign(Object.assign({}, s), { [searchKey]: "" }))); }, style: { cursor: "pointer", padding: compact ? "2px 5px" : "3px 6px", borderRadius: 4, border: "1px solid " + T.border, background: T.surfaceHigh, fontSize: 9, color: value ? T.text : T.textDim, fontFamily: T.mono, lineHeight: 1.5, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", minWidth: 0 } },
+            React.createElement("div", null, value ? value.d : " - "),
+            !compact && value && React.createElement("div", { style: { color: T.textDim, fontSize: 8 } },
+                "ID: ",
+                value.id)),
+        isFocused && React.createElement("input", { autoFocus: true, value: query, onChange: e => setCoaSearch(s => (Object.assign(Object.assign({}, s), { [searchKey]: e.target.value }))), onBlur: () => setTimeout(() => setCoaFocus(null), 150), placeholder: "Search account...", style: { width: "100%", padding: "4px 6px", fontSize: 9, fontFamily: T.mono, background: T.surfaceHigh, border: "1px solid " + T.accent, borderRadius: 4, color: T.text, outline: "none" } }),
+        isFocused && results.length > 0 && React.createElement("div", { style: { position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999, background: T.surface, border: "1px solid " + T.accent, borderRadius: 4, maxHeight: 200, overflowY: "auto", boxShadow: "0 8px 24px #00000080", minWidth: 280 } }, results.map((acct, i) => React.createElement("div", { key: i, onMouseDown: () => { onSelect(acct); setCoaFocus(null); setCoaSearch(s => (Object.assign(Object.assign({}, s), { [searchKey]: "" }))); }, style: { padding: "7px 10px", cursor: "pointer", borderBottom: "1px solid " + T.border, fontSize: 9, fontFamily: T.mono }, onMouseEnter: e => e.currentTarget.style.background = T.accentGlow, onMouseLeave: e => e.currentTarget.style.background = "transparent" },
+            React.createElement("div", { style: { color: T.text } }, truncate(acct.d, 42)),
+            React.createElement("div", { style: { color: T.textDim, fontSize: 8 } },
+                "ID: ",
+                acct.id,
+                " - ",
+                acct.t)))));
+}
+function JERow({ txn, jeNum, side, pairLabel, coaSearch, setCoaSearch, coaFocus, setCoaFocus, legs, onLegsChange, checked, onCheck, onDelete }) {
+    const totalAmt = Math.abs(txn.amount);
+    const debitTotal = legs.filter(l => l.type === "debit").reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+    const creditTotal = legs.filter(l => l.type === "credit").reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+    const balanced = Math.abs(debitTotal - creditTotal) < 0.02;
+    const sideColor = side === "cv" ? T.amber : T.purple;
+    const addLeg = type => {
+        const used = legs.filter(l => l.type === type).reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+        onLegsChange([...legs, { type, account: null, amount: Math.max(0, totalAmt - used).toFixed(2) }]);
+    };
+    const updateLeg = (idx, field, val) => onLegsChange(legs.map((l, i) => i === idx ? Object.assign(Object.assign({}, l), { [field]: val }) : l));
+    const removeLeg = idx => { if (legs.length <= 2)
+        return; onLegsChange(legs.filter((_, i) => i !== idx)); };
+    return React.createElement("div", { style: { border: "1px solid " + T.border, borderTop: "none", borderLeft: "3px solid " + sideColor, background: T.surface } },
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "28px 1fr auto", padding: "9px 12px", borderBottom: "1px solid " + T.border, background: T.surfaceHigh } },
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+                React.createElement("input", { type: "checkbox", checked: checked, onChange: onCheck, style: { cursor: "pointer", accentColor: T.accent, width: 13, height: 13 } }),
+                React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: T.textDim } }, jeNum)),
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 10, color: T.text, marginBottom: 1 } }, truncate(txn.desc, 70)),
+                React.createElement("div", { style: { fontSize: 9, color: T.textDim, display: "flex", gap: 10 } },
+                    txn.docNum && React.createElement("span", { style: { color: T.accent } }, txn.docNum),
+                    React.createElement("span", null, fmtDate(txn.date)),
+                    React.createElement("span", { style: { color: sideColor } }, side === "cv" ? "post to sub" : "post to CV"))),
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                React.createElement("button", { onClick: onDelete, title: "Delete this JE row", style: { background: "none", border: "1px solid " + T.border, borderRadius: 3, color: T.textDim, cursor: "pointer", fontSize: 11, padding: "1px 6px", lineHeight: 1.4, opacity: 0.6 } }, "x"),
+                React.createElement("div", { style: { fontFamily: T.mono, fontSize: 9, padding: "3px 8px", borderRadius: 4, background: balanced ? T.greenDim : T.redDim, border: "1px solid " + (balanced ? T.green : T.red) + "30", color: balanced ? T.green : T.red } }, balanced ? "[OK] Balanced" : "Diff " + fmt(Math.abs(debitTotal - creditTotal))),
+                React.createElement("div", { style: { fontFamily: T.mono, fontSize: 11, fontWeight: 700, color: txn.amount >= 0 ? T.green : T.red } }, fmt(txn.amount)))),
+        React.createElement("div", { style: { padding: "8px 12px 4px" } },
+            legs.map((leg, idx) => {
+                const sk = "leg-" + txn._id + "-" + side + "-" + idx;
+                return React.createElement("div", { key: idx, style: { display: "grid", gridTemplateColumns: "52px 1fr 140px 140px 22px", gap: 6, marginBottom: 5, alignItems: "center" } },
+                    React.createElement("div", { style: { fontFamily: T.mono, fontSize: 9, padding: "3px 8px", borderRadius: 3, textAlign: "center", background: leg.type === "debit" ? "#3b82f618" : "#8b5cf618", color: leg.type === "debit" ? T.accent : T.purple } }, leg.type === "debit" ? "DR" : "CR"),
+                    React.createElement(AccountPicker, { value: leg.account, searchKey: sk, coaSearch: coaSearch, setCoaSearch: setCoaSearch, coaFocus: coaFocus, setCoaFocus: setCoaFocus, compact: true, onSelect: acct => updateLeg(idx, "account", acct) }),
+                    React.createElement("input", { type: "number", value: leg.amount, onChange: e => updateLeg(idx, "amount", e.target.value), style: { fontFamily: T.mono, fontSize: 10, textAlign: "right", background: T.surfaceHigh, border: "1px solid " + T.border, borderRadius: 4, color: T.text, padding: "3px 6px", outline: "none", width: "100%" } }),
+                    React.createElement("input", { type: "text", value: leg.entity || "", onChange: e => updateLeg(idx, "entity", e.target.value), placeholder: "Entity / vendor...", style: { fontFamily: T.mono, fontSize: 9, background: T.surfaceHigh, border: "1px solid " + T.border, borderRadius: 4, color: T.text, padding: "3px 6px", outline: "none", width: "100%" } }),
+                    React.createElement("button", { onClick: () => removeLeg(idx), disabled: legs.filter(l => l.type === leg.type).length <= 1, style: { background: "none", border: "none", color: T.textDim, cursor: "pointer", fontSize: 13, opacity: legs.filter(l => l.type === leg.type).length <= 1 ? 0.2 : 0.6, padding: 0, lineHeight: 1 } }, "x"));
+            }),
+            React.createElement("div", { style: { display: "flex", gap: 8, paddingTop: 4, paddingBottom: 8 } },
+                React.createElement("button", { onClick: () => addLeg("debit"), style: { fontFamily: T.mono, fontSize: 9, padding: "3px 10px", borderRadius: 4, background: "#3b82f612", border: "1px solid " + T.accent + "30", color: T.accent, cursor: "pointer" } }, "+ DR split"),
+                React.createElement("button", { onClick: () => addLeg("credit"), style: { fontFamily: T.mono, fontSize: 9, padding: "3px 10px", borderRadius: 4, background: "#8b5cf612", border: "1px solid " + T.purple + "30", color: T.purple, cursor: "pointer" } }, "+ CR split"))));
+}
+const PAIR_TO_SUB = { "15108": "10X HVAC, LLC", "15109": "10X Buy/Sell, LLC", "15113": "10X Business Advisor Franchising, LLC", "15114": "Gundlach Heating, Cooling, Plumbing & Electrical", "15116": "5225 N Scottsdale, LLC", "15121": "10X Global Staffing, LLC", "15129": "10X Roofing Management, LLC", "15138": "10X HomeServe, LLC", "15143": "10X Coverage, LLC", "15145": "CardoMax, LLC", "15146": "10X Farms & Ranch, LLC", "15147": "15111 N Pima Road, LLC", "15150": "Heather Rae Essentials LLC", "15164": "10X Roofing Management, LLC", "15204": "Heather Rae Essentials LLC", "15205": "CardoMax, LLC" };
+function IntercompanyRecon() {
+    const [fileName, setFileName] = useState(null);
+    const [accounts, setAccounts] = useState(null);
+    const [selectedPair, setSelectedPair] = useState(null);
+    const [activeTab, setActiveTab] = useState("unmatched");
+    const [error, setError] = useState(null);
+    const [dragging, setDragging] = useState(false);
+    const [period, setPeriod] = useState("Feb 2026");
+    const [jeLegs, setJeLegs] = useState({});
+    const [selectedJERows, setSelectedJERows] = useState(new Set());
+    const [selectedCVForRollup, setSelectedCVForRollup] = useState(new Set());
+    const [manualRollups, setManualRollups] = useState({});
+    const [selectedUnmatched, setSelectedUnmatched] = useState(new Set()); // for manual rollup
+    const [deletedJERows, setDeletedJERows] = useState(new Set());
+    const [confirmedRollups, setConfirmedRollups] = useState({}); // keyed by pairKey
+    const [coaSearch, setCoaSearch] = useState({});
+    const [coaFocus, setCoaFocus] = useState(null);
+    const [exportSub, setExportSub] = useState("");
+    const handleFile = useCallback(file => {
+        if (!file)
+            return;
+        setFileName(file.name);
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const rows = parseNetSuiteXML(e.target.result);
+                if (!rows) {
+                    setError("Could not parse file - expected NetSuite SpreadsheetML (.xls)");
+                    return;
+                }
+                if (rows.length < 5) {
+                    setError("File parsed but contains too few rows (" + rows.length + ") - may not be the right report");
+                    return;
+                }
+                const accts = extractAccounts(rows);
+                const acctKeys = Object.keys(accts);
+                if (!acctKeys.length) {
+                    setError("Parsed " + rows.length + " rows but found no account data. Check the file is the MEC - Subsidiary Due To/Froms report.");
+                    return;
+                }
+                setAccounts(accts);
+                setError(null);
+                setJeLegs({});
+                setConfirmedRollups({});
+                setManualRollups({});
+                setSelectedJERows(new Set());
+                setDeletedJERows(new Set());
+                for (const pair of MIRROR_PAIRS) {
+                    if (accts[pair.cv] || accts[pair.sub]) {
+                        setSelectedPair(pair);
+                        setExportSub(pair.subFilter || PAIR_TO_SUB[pair.cv] || "");
+                        break;
+                    }
+                }
+                if (!acctKeys.some(k => MIRROR_PAIRS.some(p => p.cv === k || p.sub === k))) {
+                    setError("File loaded (" + acctKeys.length + " accounts found: " + acctKeys.slice(0, 5).join(", ") + ") but none match expected account numbers (15108-15205, 23203, 25001). Check this is the correct report.");
+                }
+            }
+            catch (err) {
+                setError("Error reading file: " + (err instanceof Error ? err.message : String(err)));
+            }
+        };
+        reader.readAsText(file);
+    }, []);
+    const onDrop = useCallback(e => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files[0])
+        handleFile(e.dataTransfer.files[0]); }, [handleFile]);
+    const availablePairs = useMemo(() => { if (!accounts)
+        return []; return MIRROR_PAIRS.filter(p => accounts[p.cv] || accounts[p.sub]); }, [accounts]);
+    const getSubTxns = (pair, accts) => {
+        const a = accts || accounts;
+        if (!a)
+            return [];
+        const subAcct = a[pair.sub];
+        const sub2Acct = pair.sub2 ? a[pair.sub2] : null;
+        const fromSub = subAcct ? (pair.subFilter ? subAcct.txns.filter(t => t.subsidiary === pair.subFilter) : subAcct.txns) : [];
+        const fromSub2 = sub2Acct ? (pair.subFilter ? sub2Acct.txns.filter(t => t.subsidiary === pair.subFilter) : sub2Acct.txns) : [];
+        return [...fromSub, ...fromSub2];
+    };
+    const getCVTxns = (pair, accts) => {
+        const a = accts || accounts;
+        if (!a)
+            return [];
+        const cvAcct = a[pair.cv];
+        const cv2Acct = pair.cv2 ? a[pair.cv2] : null;
+        const fromCV = cvAcct ? cvAcct.txns : [];
+        const fromCV2 = cv2Acct ? cv2Acct.txns : [];
+        return [...fromCV, ...fromCV2];
+    };
+    const matchResult = useMemo(() => {
+        if (!accounts || !selectedPair)
+            return null;
+        const cvAcct = accounts[selectedPair.cv];
+        const cv2Acct = selectedPair.cv2 ? accounts[selectedPair.cv2] : null;
+        const subAcct = accounts[selectedPair.sub];
+        const sub2Acct = selectedPair.sub2 ? accounts[selectedPair.sub2] : null;
+        const cvTxns = getCVTxns(selectedPair, accounts);
+        const subTxns = getSubTxns(selectedPair, accounts);
+        const result = matchAccountPair(cvTxns, subTxns);
+        const cvOpen = cvAcct ? cvAcct.openBal : null;
+        const subOpen = subAcct ? subAcct.openBal : null;
+        const openVariance = (cvOpen !== null && subOpen !== null) ? Math.abs(Math.abs(cvOpen) - Math.abs(subOpen)) : null;
+        const sub2Label = sub2Acct ? ` + ${selectedPair.sub2}` : "";
+        return Object.assign(Object.assign({}, result), { cvAcct, subAcct, sub2Acct, cvOpen, subOpen, openVariance, rollupMatches: result.rollupMatches || [], sub2Label });
+    }, [accounts, selectedPair]);
+    const handlePairSelect = pair => { setSelectedPair(pair); setExportSub(pair.subFilter || PAIR_TO_SUB[pair.cv] || ""); setSelectedJERows(new Set()); setDeletedJERows(new Set()); setSelectedUnmatched(new Set()); };
+    const pairKey = (p) => (p || selectedPair).cv + ":" + (p || selectedPair).sub + ":" + (((p || selectedPair).subFilter) || "");
+    const getPairRollups = () => new Set(confirmedRollups[pairKey()] || []);
+    const confirmRollup = (groupKey) => setConfirmedRollups(r => {
+        const pk = pairKey();
+        const cur = new Set(r[pk] || []);
+        cur.add(groupKey);
+        return Object.assign(Object.assign({}, r), { [pk]: Array.from(cur) });
+    });
+    const undoRollup = (groupKey) => setConfirmedRollups(r => {
+        const pk = pairKey();
+        const cur = new Set(r[pk] || []);
+        cur.delete(groupKey);
+        return Object.assign(Object.assign({}, r), { [pk]: Array.from(cur) });
+    });
+    const handleCreateManualRollup = () => {
+        if (selectedCVForRollup.size < 2 || !matchResult)
+            return;
+        const cvLines = matchResult.unmatchedCV.filter(t => selectedCVForRollup.has(t._id));
+        if (cvLines.length < 2)
+            return;
+        const cvSum = cvLines.reduce((s, t) => s + t.amount, 0);
+        const groupKey = "manual-" + Array.from(selectedCVForRollup).sort().join("-");
+        // Inject as a synthetic rollup into matchResult via a state override
+        setManualRollups(r => {
+            const pk = pairKey();
+            const cur = r[pk] || [];
+            // Remove any existing manual rollup that uses any of these lines
+            const filtered = cur.filter(rm => !rm.cvLines.some(c => selectedCVForRollup.has(c._id)));
+            return Object.assign(Object.assign({}, r), { [pk]: [...filtered, { cvLines, cvSum, groupKey, confirmed: false, sub: null, manual: true }] });
+        });
+        setSelectedCVForRollup(new Set());
+    };
+    const getPairManualRollups = () => manualRollups[pairKey()] || [];
+    const addManualRollup = (cvIds, subKey) => {
+        if (!matchResult)
+            return;
+        const cvLines = matchResult.unmatchedCV.filter(t => cvIds.includes("cv-" + t._id));
+        if (cvLines.length < 1)
+            return;
+        const cvSum = cvLines.reduce((s, t) => s + t.amount, 0);
+        const groupKey = "manual-" + cvIds.sort().join("-");
+        const subTxn = subKey === "none" ? null : matchResult.unmatchedSub.find(t => "sub-" + t._id === subKey) || null;
+        setManualRollups(r => {
+            const pk = pairKey();
+            const cur = (r[pk] || []).filter(rm => !rm.cvLines.some(c => cvIds.includes("cv-" + c._id)));
+            return Object.assign(Object.assign({}, r), { [pk]: [...cur, { cvLines, cvSum, groupKey, sub: subTxn, manual: true, confirmed: false }] });
+        });
+        setSelectedUnmatched(new Set());
+    };
+    const deleteManualRollup = (groupKey) => {
+        setManualRollups(r => {
+            const pk = pairKey();
+            return Object.assign(Object.assign({}, r), { [pk]: (r[pk] || []).filter(rm => rm.groupKey !== groupKey) });
+        });
+    };
+    const handleCombineRows = () => {
+        if (selectedJERows.size < 2)
+            return;
+        const keys = Array.from(selectedJERows);
+        // Find the txns for each key
+        const allTxns = [
+            ...(matchResult ? matchResult.unmatchedCV.map(t => (Object.assign(Object.assign({}, t), { _side: "cv" }))) : []),
+            ...(matchResult ? matchResult.unmatchedSub.map(t => (Object.assign(Object.assign({}, t), { _side: "sub" }))) : []),
+        ];
+        const selectedTxns = keys.map(k => allTxns.find(t => (t._side + "-" + t._id) === k)).filter(Boolean);
+        if (selectedTxns.length < 2)
+            return;
+        // Use first txn as the base, merge all legs
+        const baseTxn = selectedTxns[0];
+        const baseKey = baseTxn._side + "-" + baseTxn._id;
+        const allLegs = selectedTxns.flatMap(t => {
+            const k = t._side + "-" + t._id;
+            return jeLegs[pairKey() + "|" + k] || initLegs(t);
+        });
+        // Keep all debit legs as-is; consolidate credits into one per account
+        const mergedDebitLegs = allLegs.filter(l => l.type === "debit");
+        const mergedCreditLegs = allLegs.filter(l => l.type === "credit");
+        const mergedLegs = [...mergedDebitLegs, ...mergedCreditLegs];
+        // Save merged legs to base key, delete others
+        setJeLegs(j => {
+            const next = Object.assign({}, j);
+            next[pairKey() + "|" + baseKey] = mergedLegs;
+            keys.slice(1).forEach(k => { delete next[pairKey() + "|" + k]; });
+            return next;
+        });
+        // Mark non-base rows as deleted
+        setDeletedJERows(d => {
+            const next = new Set(d);
+            keys.slice(1).forEach(k => next.add(k));
+            return next;
+        });
+        setSelectedJERows(new Set());
+    };
+    const getLegs = (key, txn) => jeLegs[pairKey() + "|" + key] || initLegs(txn);
+    const setLegs = (key, legs) => setJeLegs(j => (Object.assign(Object.assign({}, j), { [pairKey() + "|" + key]: legs })));
+    const allRollupMatches = matchResult ? [
+        ...(matchResult.rollupMatches || []),
+        ...(manualRollups[pairKey()] || []),
+    ] : [];
+    const pendingRollups = allRollupMatches.filter(r => !getPairRollups().has(r.groupKey)).length;
+    const totalUnmatched = matchResult ? matchResult.unmatchedCV.length + matchResult.unmatchedSub.length + pendingRollups : 0;
+    const unmatchedExposure = matchResult ? matchResult.unmatchedCV.reduce((s, t) => s + Math.abs(t.amount), 0) + matchResult.unmatchedSub.reduce((s, t) => s + Math.abs(t.amount), 0) : 0;
+    const handleDownloadAll = () => {
+        const csv = buildAllJEsCsv(accounts, jeLegs, period);
+        if (!csv) {
+            alert("No unmatched transactions found across any pair.");
+            return;
+        }
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "JE_ALL_" + period.split(" ").join("_") + ".csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+    const handleDownload = () => {
+        const pk = selectedPair ? selectedPair.cv + ":" + selectedPair.sub + ":" + (selectedPair.subFilter || "") : "";
+        const csv = buildJECsv(matchResult ? matchResult.unmatchedCV : [], matchResult ? matchResult.unmatchedSub : [], jeLegs, period, selectedPair ? selectedPair.label : "", exportSub, pk + "|");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "JE_" + period.split(" ").join("_") + "_" + (selectedPair ? selectedPair.cv + "-" + selectedPair.sub : "export") + ".csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+    return React.createElement("div", { style: { background: T.bg, minHeight: "100vh", color: T.text, fontFamily: T.mono } },
+        React.createElement("div", { style: { background: T.surface, borderBottom: "1px solid " + T.border, padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontFamily: T.sans, fontSize: 17, fontWeight: 800, letterSpacing: "-0.02em", color: T.text } }, "SUBSIDIARY DUE TO/FROM RECON"),
+                React.createElement("div", { style: { fontSize: 9, color: T.textDim, letterSpacing: "0.15em", marginTop: 3, textTransform: "uppercase" } }, "NetSuite MEC Export - Cardone Ventures Consolidated")),
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } },
+                React.createElement("span", { style: { fontSize: 10, color: T.textDim } }, "PERIOD"),
+                React.createElement("input", { value: period, onChange: e => setPeriod(e.target.value), style: { background: "transparent", border: "1px solid " + T.border, borderRadius: 4, color: T.accent, fontFamily: T.mono, fontSize: 12, padding: "5px 10px", width: 100, outline: "none" } }),
+                fileName && React.createElement("span", { style: { fontSize: 10, color: T.green, background: T.greenDim, padding: "4px 10px", borderRadius: 4 } },
+                    "[OK]",
+                    " ",
+                    fileName),
+                accounts && React.createElement("button", { onClick: handleDownloadAll, style: { background: T.green, border: "none", borderRadius: 4, color: T.bg, fontFamily: T.mono, fontSize: 10, padding: "5px 14px", cursor: "pointer", fontWeight: 600, letterSpacing: "0.06em" } }, "DOWNLOAD ALL JEs"),
+                accounts && React.createElement("button", { onClick: () => { setAccounts(null); setFileName(null); setSelectedPair(null); setJeLegs({}); setConfirmedRollups({}); }, style: { background: "transparent", border: "1px solid " + T.border, borderRadius: 4, color: T.textDim, fontFamily: T.mono, fontSize: 10, padding: "5px 10px", cursor: "pointer" } }, "NEW FILE"))),
+        React.createElement("div", { style: { display: "flex", height: "calc(100vh - 65px)" } },
+            accounts && React.createElement("div", { style: { width: 240, background: T.surface, borderRight: "1px solid " + T.border, overflowY: "auto", flexShrink: 0 } },
+                React.createElement("div", { style: { padding: "12px 14px 8px", fontSize: 8, color: T.textDim, letterSpacing: "0.15em", textTransform: "uppercase", borderBottom: "1px solid " + T.border } },
+                    availablePairs.length,
+                    " Account Pairs"),
+                availablePairs.map((pair, i) => {
+                    const cvT = getCVTxns(pair, accounts);
+                    const subT = getSubTxns(pair, accounts);
+                    const q = matchAccountPair(cvT, subT);
+                    const issues = q.unmatchedCV.length + q.unmatchedSub.length + (q.rollupMatches ? q.rollupMatches.length : 0);
+                    const isSel = selectedPair && selectedPair.cv === pair.cv && selectedPair.sub === pair.sub && selectedPair.label === pair.label;
+                    return React.createElement("button", { key: i, className: "pbtn", onClick: () => handlePairSelect(pair), style: { width: "100%", textAlign: "left", padding: "10px 14px", background: isSel ? T.accentGlow : "transparent", border: "none", borderBottom: "1px solid " + T.border, borderLeft: isSel ? "2px solid " + T.accent : "2px solid transparent", cursor: "pointer" } },
+                        React.createElement("div", { style: { fontSize: 10, color: isSel ? T.accent : T.text, fontWeight: isSel ? 600 : 400, marginBottom: 3, fontFamily: T.mono } }, pair.label),
+                        React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" } },
+                            React.createElement("span", { style: { fontSize: 9, color: T.textDim } },
+                                pair.cv,
+                                "|",
+                                pair.sub,
+                                pair.sub2 ? "/" + pair.sub2 : "",
+                                pair.subFilter ? " [" + pair.subFilter.replace(", LLC", "").replace(", Inc.", "") + "]" : ""),
+                            issues > 0 && React.createElement("span", { style: { fontSize: 8, background: T.redDim, color: T.red, padding: "1px 5px", borderRadius: 3 } },
+                                issues,
+                                " open"),
+                            issues === 0 && (cvT.length + subT.length) > 0 && React.createElement("span", { style: { fontSize: 8, background: T.greenDim, color: T.green, padding: "1px 5px", borderRadius: 3 } }, "[OK]")));
+                })),
+            React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: accounts ? 0 : 24 } },
+                !accounts && React.createElement("div", { onDragOver: e => { e.preventDefault(); setDragging(true); }, onDragLeave: () => setDragging(false), onDrop: onDrop, style: { border: "2px dashed " + (dragging ? T.accent : T.border), borderRadius: 12, padding: "60px 40px", textAlign: "center", background: dragging ? T.accentGlow : T.surface, transition: "all 0.2s", maxWidth: 600, margin: "60px auto" } },
+                    React.createElement("div", { style: { fontFamily: T.sans, fontSize: 22, fontWeight: 800, marginBottom: 12, color: T.text } }, "DROP YOUR NETSUITE EXPORT"),
+                    React.createElement("div", { style: { fontSize: 11, color: T.textDim, lineHeight: 1.8, marginBottom: 24 } },
+                        "Upload the MEC - Subsidiary Due To/Froms .xls file",
+                        React.createElement("br", null),
+                        "NetSuite SpreadsheetML format"),
+                    React.createElement("label", { style: { cursor: "pointer", background: T.accent, color: T.bg, fontFamily: T.mono, fontSize: 12, padding: "10px 24px", borderRadius: 6, fontWeight: 600, letterSpacing: "0.06em" } },
+                        "CHOOSE FILE",
+                        React.createElement("input", { type: "file", accept: ".xls,.xml", onChange: e => handleFile(e.target.files[0]), style: { display: "none" } })),
+                    error && React.createElement("div", { style: { marginTop: 16, color: T.red, fontSize: 11 } }, error)),
+                accounts && matchResult && selectedPair && React.createElement("div", null,
+                    React.createElement("div", { style: { padding: "16px 24px", background: T.surfaceHigh, borderBottom: "1px solid " + T.border, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontFamily: T.sans, fontSize: 15, fontWeight: 800, color: T.text } }, selectedPair.label),
+                            React.createElement("div", { style: { fontSize: 9, color: T.textDim, marginTop: 2, letterSpacing: "0.1em" } },
+                                "CV acct ",
+                                selectedPair.cv,
+                                selectedPair.cv2 ? "/" + selectedPair.cv2 : "",
+                                " ",
+                                matchResult.cvAcct && "- " + matchResult.cvAcct.acctName.slice(0, 40),
+                                " | Sub acct ",
+                                selectedPair.sub,
+                                selectedPair.sub2 ? " + " + selectedPair.sub2 : "",
+                                " ",
+                                matchResult.subAcct && "- " + matchResult.subAcct.acctName.slice(0, 40),
+                                matchResult.sub2Acct && " / " + matchResult.sub2Acct.acctName.slice(0, 30))),
+                        React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } },
+                            React.createElement(Pill, { n: matchResult.matches.length + getPairRollups().size, color: T.green, label: "MATCHED" }),
+                            React.createElement(Pill, { n: totalUnmatched, color: totalUnmatched > 0 ? T.red : T.green, label: "OPEN" }),
+                            totalUnmatched > 0 && React.createElement(Pill, { n: fmt(unmatchedExposure), color: T.amber, label: "EXPOSURE" }))),
+                    (matchResult.cvOpen !== null || matchResult.subOpen !== null) && React.createElement("div", { style: { padding: "10px 24px", background: T.surface, borderBottom: "1px solid " + T.border, display: "flex", gap: 32, flexWrap: "wrap" } },
+                        React.createElement("div", { style: { fontSize: 10 } },
+                            React.createElement("span", { style: { color: T.textDim } }, "CV Opening: "),
+                            React.createElement("span", { style: { color: T.text, fontWeight: 600 } }, matchResult.cvOpen !== null ? fmt(matchResult.cvOpen) : " - ")),
+                        React.createElement("div", { style: { fontSize: 10 } },
+                            React.createElement("span", { style: { color: T.textDim } }, "Sub Opening: "),
+                            React.createElement("span", { style: { color: T.text, fontWeight: 600 } }, matchResult.subOpen !== null ? fmt(matchResult.subOpen) : " - ")),
+                        matchResult.openVariance !== null && React.createElement("div", { style: { fontSize: 10 } },
+                            React.createElement("span", { style: { color: T.textDim } }, "Variance: "),
+                            React.createElement("span", { style: { fontWeight: 700, color: matchResult.openVariance < 0.02 ? T.green : T.red } }, matchResult.openVariance < 0.02 ? "[OK] ALIGNED" : fmt(matchResult.openVariance) + " INVESTIGATE")),
+                        matchResult.cvAcct && React.createElement("div", { style: { fontSize: 10 } },
+                            React.createElement("span", { style: { color: T.textDim } }, "CV txns: "),
+                            React.createElement("span", { style: { color: T.text } }, matchResult.cvAcct.txns.length)),
+                        matchResult.subAcct && React.createElement("div", { style: { fontSize: 10 } },
+                            React.createElement("span", { style: { color: T.textDim } }, "Sub txns: "),
+                            React.createElement("span", { style: { color: T.text } }, matchResult.subAcct.txns.length))),
+                    React.createElement("div", { style: { display: "flex", borderBottom: "1px solid " + T.border, background: T.surface } }, [{ key: "unmatched", label: "UNMATCHED (" + totalUnmatched + ")", alert: totalUnmatched > 0 }, { key: "matched", label: "MATCHED (" + (matchResult.matches.length + getPairRollups().size) + ")", alert: false }, { key: "je", label: "JE WORKSHEET", alert: false }].map(t => React.createElement("button", { key: t.key, className: "tbtn", onClick: () => setActiveTab(t.key), style: { padding: "11px 18px", fontSize: 9, letterSpacing: "0.12em", color: activeTab === t.key ? (t.alert ? T.red : T.accent) : T.textDim, borderBottom: activeTab === t.key ? "2px solid " + (t.alert ? T.red : T.accent) : "2px solid transparent", marginBottom: -1 } }, t.label))),
+                    activeTab === "unmatched" && React.createElement("div", null, totalUnmatched === 0
+                        ? React.createElement("div", { style: { padding: 48, textAlign: "center", color: T.green, fontSize: 13, letterSpacing: "0.1em" } },
+                            "[OK]",
+                            " ALL TRANSACTIONS MATCHED")
+                        : React.createElement("div", null,
+                            selectedUnmatched.size >= 2 && React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", background: "#06b6d414", borderLeft: "3px solid #06b6d4", marginBottom: 4 } },
+                                React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: "#06b6d4" } },
+                                    selectedUnmatched.size,
+                                    " CV lines selected"),
+                                React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: T.textDim } }, "Match against sub line:"),
+                                React.createElement("select", { onChange: e => { if (e.target.value)
+                                        addManualRollup(Array.from(selectedUnmatched), e.target.value); }, style: { fontFamily: T.mono, fontSize: 9, padding: "3px 8px", background: T.surfaceHigh, border: "1px solid #06b6d4", borderRadius: 4, color: T.text, outline: "none", cursor: "pointer", minWidth: 220 } },
+                                    React.createElement("option", { value: "" }, "-- pick sub line --"),
+                                    matchResult.unmatchedSub.map((t, i) => (React.createElement("option", { key: i, value: "sub-" + t._id },
+                                        fmtDate(t.date),
+                                        " ",
+                                        t.docNum,
+                                        " ",
+                                        fmt(t.amount),
+                                        " ",
+                                        truncate(t.desc, 40)))),
+                                    React.createElement("option", { value: "none" }, "Mark as cleared (no sub match)")),
+                                React.createElement("button", { onClick: () => setSelectedUnmatched(new Set()), style: { fontFamily: T.mono, fontSize: 9, padding: "3px 8px", borderRadius: 4, background: "transparent", border: "1px solid " + T.border, color: T.textDim, cursor: "pointer" } }, "Clear")),
+                            getPairManualRollups().length > 0 && React.createElement("div", { style: { marginTop: 4, marginBottom: 4 } },
+                                React.createElement("div", { style: { padding: "8px 12px", background: "#06b6d418", borderLeft: "3px solid #06b6d4", fontSize: 10, color: "#06b6d4" } }, "MANUAL ROLLUPS"),
+                                getPairManualRollups().map((mr, i) => {
+                                    const cvLines = matchResult.unmatchedCV.filter(t => mr.cvKeys.includes("cv-" + t._id));
+                                    const subLine = mr.subKey === "none" ? null : matchResult.unmatchedSub.find(t => "sub-" + t._id === mr.subKey);
+                                    const cvSum = cvLines.reduce((s, t) => s + Math.abs(t.amount), 0);
+                                    const subAmt = subLine ? Math.abs(subLine.amount) : 0;
+                                    const balanced = mr.subKey === "none" || Math.abs(cvSum - subAmt) < 0.02;
+                                    return React.createElement("div", { key: i, style: { border: "1px solid " + T.border, borderTop: "none", borderLeft: "3px solid #06b6d4", background: mr.confirmed ? T.greenDim : "#06b6d408", padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } },
+                                        React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: "#06b6d4" } },
+                                            cvLines.length,
+                                            " CV lines"),
+                                        React.createElement("span", { style: { fontFamily: T.mono, fontSize: 10, color: T.green } }, fmt(cvSum)),
+                                        subLine && React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: T.textDim } },
+                                            "vs sub: ",
+                                            React.createElement("span", { style: { color: balanced ? T.green : T.red } }, fmt(subAmt))),
+                                        mr.subKey === "none" && React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: T.textDim } }, "no sub match"),
+                                        !mr.confirmed
+                                            ? React.createElement("button", { onClick: () => confirmManualRollup(mr.groupKey), style: { fontFamily: T.mono, fontSize: 9, padding: "4px 12px", borderRadius: 4, border: "none", cursor: "pointer", background: "#06b6d4", color: T.bg, fontWeight: 600 } }, "[OK] CONFIRM MATCH")
+                                            : React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: T.green } }, "[OK] Confirmed"),
+                                        React.createElement("button", { onClick: () => removeManualRollup(mr.groupKey), style: { fontFamily: T.mono, fontSize: 9, padding: "3px 8px", borderRadius: 4, background: "transparent", border: "1px solid " + T.border, color: T.textDim, cursor: "pointer", marginLeft: "auto" } }, "remove"));
+                                })),
+                            matchResult.unmatchedCV.length > 0 && React.createElement("div", null,
+                                React.createElement("div", { style: { padding: "8px 12px", background: T.amberDim, borderLeft: "3px solid " + T.amber, fontSize: 10, color: T.amber, display: "flex", justifyContent: "space-between" } },
+                                    React.createElement("span", null, "ON CV BOOKS - NOT ON SUB"),
+                                    React.createElement("span", null,
+                                        matchResult.unmatchedCV.length,
+                                        " items - ",
+                                        fmt(matchResult.unmatchedCV.reduce((s, t) => s + Math.abs(t.amount), 0)))),
+                                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "32px 1fr 130px 120px 200px", padding: "6px 12px", background: T.surfaceHigh, fontSize: 8, color: T.textDim } }, ["", "Description", "Amount", "Type", "Action"].map((h, i) => React.createElement("div", { key: i }, h))),
+                                matchResult.unmatchedCV.map((txn, i) => {
+                                    const uk = "cv-" + txn._id;
+                                    const inManual = getPairManualRollups().some(rm => rm.cvLines.some(c => c._id === txn._id));
+                                    if (inManual)
+                                        return null;
+                                    return React.createElement(UnmatchedTxn, { key: i, txn: txn, side: "cv", checked: selectedUnmatched.has(uk), onCheck: () => setSelectedUnmatched(s => { const n = new Set(s); n.has(uk) ? n.delete(uk) : n.add(uk); return n; }) });
+                                })),
+                            matchResult.unmatchedSub.length > 0 && React.createElement("div", { style: { marginTop: 8 } },
+                                React.createElement("div", { style: { padding: "8px 12px", background: T.purpleDim, borderLeft: "3px solid " + T.purple, fontSize: 10, color: T.purple, display: "flex", justifyContent: "space-between" } },
+                                    React.createElement("span", null, "ON SUB BOOKS - NOT ON CV"),
+                                    React.createElement("span", null,
+                                        matchResult.unmatchedSub.length,
+                                        " items - ",
+                                        fmt(matchResult.unmatchedSub.reduce((s, t) => s + Math.abs(t.amount), 0)))),
+                                matchResult.unmatchedSub.map((txn, i) => React.createElement(UnmatchedTxn, { key: i, txn: txn, side: "sub" }))),
+                            allRollupMatches.length > 0 && React.createElement("div", { style: { marginTop: 8 } },
+                                React.createElement("div", { style: { padding: "8px 12px", background: "#06b6d414", borderLeft: "3px solid #06b6d4", fontSize: 10, color: "#06b6d4", display: "flex", justifyContent: "space-between" } },
+                                    React.createElement("span", null, "ROLLUP MATCHES - multiple CV lines = one sub line (confirm to match)"),
+                                    React.createElement("span", null,
+                                        matchResult.rollupMatches.length,
+                                        " groups")),
+                                allRollupMatches.map((rm, i) => {
+                                    const isConf = getPairRollups().has(rm.groupKey);
+                                    const docLabel = rm.groupKey.startsWith("doc:") ? rm.groupKey.slice(4) : "";
+                                    const dateLabel = rm.cvLines[0] ? rm.cvLines[0].date : "";
+                                    return React.createElement("div", { key: i, style: { border: "1px solid " + T.border, borderTop: "none", borderLeft: "3px solid #06b6d4", background: isConf ? T.greenDim : "#06b6d408" } },
+                                        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr auto", padding: "9px 12px", borderBottom: "1px solid " + T.border, background: isConf ? "#10b98120" : "#06b6d410" } },
+                                            React.createElement("div", null,
+                                                React.createElement("div", { style: { fontFamily: T.mono, fontSize: 10, color: T.text, marginBottom: 2 } },
+                                                    docLabel && React.createElement("span", { style: { color: "#06b6d4", marginRight: 8 } }, docLabel),
+                                                    rm.cvLines.length,
+                                                    " CV lines = 1 sub line",
+                                                    React.createElement("span", { style: { marginLeft: 10, fontSize: 9, color: T.textDim } }, dateLabel)),
+                                                React.createElement("div", { style: { fontFamily: T.mono, fontSize: 9, color: T.textDim } },
+                                                    "CV sum: ",
+                                                    React.createElement("span", { style: { color: T.green } }, fmt(rm.cvSum)),
+                                                    React.createElement("span", { style: { margin: "0 8px" } }, "|"),
+                                                    "Sub: ",
+                                                    React.createElement("span", { style: { color: T.green } }, fmt(rm.sub.amount)),
+                                                    React.createElement("span", { style: { margin: "0 8px", color: Math.abs(rm.cvSum - rm.sub.amount) < 0.02 ? T.green : T.red } }, Math.abs(rm.cvSum - rm.sub.amount) < 0.02 ? "[OK] Match" : "Diff"),
+                                                    React.createElement("span", { style: { color: T.textDim } }, truncate(rm.sub.desc, 40)))),
+                                            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, !isConf
+                                                ? React.createElement("button", { onClick: () => confirmRollup(rm.groupKey), style: { fontFamily: T.mono, fontSize: 9, padding: "5px 14px", borderRadius: 4, border: "none", cursor: "pointer", background: "#06b6d4", color: T.bg, fontWeight: 600 } },
+                                                    "[OK]",
+                                                    " CONFIRM MATCH")
+                                                : React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
+                                                    React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: T.green } },
+                                                        "[OK]",
+                                                        " Confirmed"),
+                                                    React.createElement("button", { onClick: () => undoRollup(rm.groupKey), style: { fontFamily: T.mono, fontSize: 9, padding: "3px 8px", borderRadius: 4, background: "transparent", border: "1px solid " + T.border, color: T.textDim, cursor: "pointer" } }, "undo"),
+                                                    rm.manual && React.createElement("button", { onClick: () => setManualRollups(r => { const pk = pairKey(); return Object.assign(Object.assign({}, r), { [pk]: (r[pk] || []).filter(x => x.groupKey !== rm.groupKey) }); }), style: { fontFamily: T.mono, fontSize: 9, padding: "3px 8px", borderRadius: 4, background: "transparent", border: "1px solid " + T.red + "60", color: T.red, cursor: "pointer" } }, "delete")))),
+                                        !isConf && React.createElement("div", { style: { maxHeight: 140, overflowY: "auto", borderTop: "1px solid " + T.border } }, rm.cvLines.map((c, j) => React.createElement("div", { key: j, style: { display: "flex", gap: 12, padding: "5px 16px", borderBottom: "1px solid " + T.border, fontSize: 9, fontFamily: T.mono, color: T.textDim, background: j % 2 === 0 ? "transparent" : "#ffffff02" } },
+                                            React.createElement("span", { style: { color: T.green, width: 80 } }, fmt(c.amount)),
+                                            React.createElement("span", { style: { color: T.accent, width: 70 } }, c.docNum),
+                                            React.createElement("span", null, truncate(c.desc, 60))))));
+                                })))),
+                    activeTab === "matched" && React.createElement("div", { style: { background: T.surface, border: "1px solid " + T.border, borderRadius: 4 } },
+                        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 80px", padding: "8px 0", borderBottom: "1px solid " + T.borderMid, background: T.surfaceHigh } },
+                            React.createElement("div", { style: { padding: "0 12px", fontSize: 8, color: T.textDim } },
+                                "CV SIDE (acct ",
+                                selectedPair.cv,
+                                ")"),
+                            React.createElement("div", { style: { padding: "0 12px", fontSize: 8, color: T.textDim, borderLeft: "1px solid " + T.border } },
+                                "SUB SIDE (acct ",
+                                selectedPair.sub,
+                                ")"),
+                            React.createElement("div", { style: { padding: "0 8px", fontSize: 8, color: T.textDim } }, "CONF")),
+                        (matchResult.matches.length === 0 && getPairRollups().size === 0)
+                            ? React.createElement("div", { style: { padding: 32, textAlign: "center", color: T.textDim, fontSize: 11 } }, "No matched rows")
+                            : React.createElement("div", null,
+                                allRollupMatches.filter(rm => getPairRollups().has(rm.groupKey)).map((rm, ri) => (React.createElement("div", { key: "r" + ri, style: { display: "grid", gridTemplateColumns: "1fr 1fr 80px", borderBottom: "1px solid " + T.border, background: ri % 2 === 0 ? T.greenDim : "#10b98110" } },
+                                    React.createElement("div", { style: { padding: "10px 12px" } },
+                                        React.createElement("div", { style: { fontFamily: T.mono, fontSize: 10, color: T.text, marginBottom: 2 } },
+                                            rm.cvLines.length,
+                                            " CV lines - ",
+                                            rm.cvLines[0] ? rm.cvLines[0].docNum : ""),
+                                        React.createElement("div", { style: { fontFamily: T.mono, fontSize: 9, color: T.textDim } },
+                                            rm.cvLines[0] ? rm.cvLines[0].date : "",
+                                            " - Sum ",
+                                            fmt(rm.cvSum))),
+                                    React.createElement("div", { style: { borderLeft: "1px solid " + T.border } },
+                                        React.createElement(TxnCell, { txn: rm.sub })),
+                                    React.createElement("div", { style: { padding: "10px 8px", display: "flex", alignItems: "center" } },
+                                        React.createElement("span", { style: { fontFamily: T.mono, fontSize: 8, padding: "2px 6px", borderRadius: 3, background: "#06b6d418", color: "#06b6d4" } },
+                                            "[OK]",
+                                            " rollup"))))),
+                                matchResult.matches.map((m, i) => (React.createElement("div", { key: i, style: { display: "grid", gridTemplateColumns: "1fr 1fr 80px", borderBottom: "1px solid " + T.border, background: i % 2 === 0 ? "transparent" : "#ffffff03" } },
+                                    React.createElement(TxnCell, { txn: m.cv }),
+                                    React.createElement("div", { style: { borderLeft: "1px solid " + T.border } },
+                                        React.createElement(TxnCell, { txn: m.sub })),
+                                    React.createElement("div", { style: { padding: "10px 8px", display: "flex", alignItems: "center" } }, confBadge(m.conf))))))),
+                    activeTab === "je" ? (React.createElement("div", { style: { padding: 24 } },
+                        React.createElement("div", { style: { fontFamily: T.sans, fontSize: 14, fontWeight: 800, marginBottom: 4, color: T.text } }, "JOURNAL ENTRY WORKSHEET"),
+                        React.createElement("div", { style: { fontSize: 9, color: T.textDim, marginBottom: 20 } }, "Accounts from COA - Display Name for NetSuite import - Use + DR/CR split for multiple legs"),
+                        React.createElement("div", { style: { background: T.surface, border: "1px solid " + T.border, borderRadius: 8, padding: "14px 20px", marginBottom: 16, fontFamily: T.mono, fontSize: 11, lineHeight: 2 } },
+                            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16 } },
+                                React.createElement("div", null,
+                                    React.createElement("span", { style: { color: T.textDim } }, "Period: "),
+                                    React.createElement("span", { style: { color: T.accent } }, period)),
+                                React.createElement("div", null,
+                                    React.createElement("span", { style: { color: T.textDim } }, "Pair: "),
+                                    React.createElement("span", { style: { color: T.text } }, selectedPair.label)),
+                                React.createElement("div", null,
+                                    React.createElement("span", { style: { color: T.textDim } }, "Matched: "),
+                                    React.createElement("span", { style: { color: T.green } }, matchResult.matches.length)),
+                                React.createElement("div", null,
+                                    React.createElement("span", { style: { color: T.textDim } }, "JEs Needed: "),
+                                    React.createElement("span", { style: { color: totalUnmatched > 0 ? T.amber : T.green, fontWeight: 700 } }, totalUnmatched)))),
+                        totalUnmatched > 0 ? (React.createElement("div", { style: { marginBottom: 16 } },
+                            React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 8 } },
+                                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                                    React.createElement("span", { style: { fontSize: 9, color: T.textDim } }, "SUBSIDIARY:"),
+                                    React.createElement("select", { value: exportSub, onChange: e => setExportSub(e.target.value), style: { fontFamily: T.mono, fontSize: 9, padding: "5px 10px", background: T.surfaceHigh, border: "1px solid " + T.border, borderRadius: 4, color: exportSub ? T.text : T.textDim, outline: "none", cursor: "pointer", minWidth: 280 } },
+                                        React.createElement("option", { value: "" }, "-- select subsidiary --"),
+                                        SUBSIDIARIES.map(s => (React.createElement("option", { key: s, value: s, style: { background: T.surface, color: T.text } }, s))))),
+                                React.createElement("button", { onClick: handleDownload, style: { fontFamily: T.mono, fontSize: 10, padding: "7px 20px", borderRadius: 5, background: T.accent, color: T.bg, border: "none", cursor: "pointer", fontWeight: 600, letterSpacing: "0.06em", whiteSpace: "nowrap" } }, "DOWNLOAD CSV"),
+                                React.createElement("span", { style: { fontSize: 9, color: T.textDim, fontStyle: "italic" } }, "Setup - Import/Export - Import CSV Records - Transactions - Journal Entry")))) : null,
+                        totalUnmatched === 0
+                            ? React.createElement("div", { style: { textAlign: "center", padding: 48, color: T.green, fontSize: 12 } },
+                                "[OK]",
+                                " NO JOURNAL ENTRIES REQUIRED")
+                            : React.createElement("div", null,
+                                selectedJERows.size >= 2 && React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", marginBottom: 8, padding: "8px 12px", background: T.accentGlow, borderRadius: 6, border: "1px solid " + T.accent } },
+                                    React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: T.accent } },
+                                        selectedJERows.size,
+                                        " rows selected"),
+                                    React.createElement("button", { onClick: handleCombineRows, style: { fontFamily: T.mono, fontSize: 9, padding: "4px 14px", borderRadius: 4, background: T.accent, color: T.bg, border: "none", cursor: "pointer", fontWeight: 600, letterSpacing: "0.06em" } }, "COMBINE INTO ONE JE"),
+                                    React.createElement("span", { style: { fontFamily: T.mono, fontSize: 9, color: T.textDim } }, "Merges all legs into the first selected row"),
+                                    React.createElement("button", { onClick: () => setSelectedJERows(new Set()), style: { fontFamily: T.mono, fontSize: 9, padding: "3px 8px", borderRadius: 4, background: "transparent", border: "1px solid " + T.border, color: T.textDim, cursor: "pointer", marginLeft: "auto" } }, "Clear")),
+                                React.createElement("div", { style: { border: "1px solid " + T.border, borderRadius: "6px 6px 0 0", overflow: "visible" } },
+                                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "28px 1fr auto", padding: "8px 12px", background: T.surfaceHigh, borderBottom: "1px solid " + T.border } }, ["#", "Transaction - Legs", "Balance"].map((h, i) => React.createElement("div", { key: i, style: { fontSize: 8, color: T.textDim } }, h))),
+                                    matchResult.unmatchedCV
+                                        .filter(txn => !deletedJERows.has("cv-" + txn._id))
+                                        .map((txn, i) => {
+                                        const rowKey = "cv-" + txn._id;
+                                        return React.createElement(JERow, { key: rowKey, txn: txn, jeNum: i + 1, side: "cv", pairLabel: selectedPair.label, coaSearch: coaSearch, setCoaSearch: setCoaSearch, coaFocus: coaFocus, setCoaFocus: setCoaFocus, legs: getLegs(rowKey, txn), onLegsChange: (newLegs) => setLegs(rowKey, newLegs), checked: selectedJERows.has(rowKey), onCheck: () => setSelectedJERows(s => { const n = new Set(s); n.has(rowKey) ? n.delete(rowKey) : n.add(rowKey); return n; }), onDelete: () => setDeletedJERows(d => new Set([...d, rowKey])) });
+                                    }),
+                                    matchResult.unmatchedSub
+                                        .filter(txn => !deletedJERows.has("sub-" + txn._id))
+                                        .map((txn, i) => {
+                                        const rowKey = "sub-" + txn._id;
+                                        return React.createElement(JERow, { key: rowKey, txn: txn, jeNum: matchResult.unmatchedCV.length + i + 1, side: "sub", pairLabel: selectedPair.label, coaSearch: coaSearch, setCoaSearch: setCoaSearch, coaFocus: coaFocus, setCoaFocus: setCoaFocus, legs: getLegs(rowKey, txn), onLegsChange: (newLegs) => setLegs(rowKey, newLegs), checked: selectedJERows.has(rowKey), onCheck: () => setSelectedJERows(s => { const n = new Set(s); n.has(rowKey) ? n.delete(rowKey) : n.add(rowKey); return n; }), onDelete: () => setDeletedJERows(d => new Set([...d, rowKey])) });
+                                    }))))) : null),
+                accounts && !selectedPair && React.createElement("div", { style: { padding: 48, textAlign: "center", color: T.textDim, fontSize: 11 } }, "Select an account pair from the left sidebar"))));
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(IntercompanyRecon));
+
+  </script>
+
+<script>const TOOL_KEY='intercompany-recon'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
+</body>
+</html>
