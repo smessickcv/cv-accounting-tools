@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subsidiary AP Manager</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: #1a1a2e; color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 56px; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 30;
+    }
+    .header-left { display: flex; align-items: center; gap: 32px; }
+    .brand { font-size: 16px; font-weight: 700; letter-spacing: 0.3px; white-space: nowrap; }
+    nav { display: flex; gap: 2px; }
+    .nav-tab {
+      padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer;
+      color: #8892b0; border: none; background: none; transition: all 0.15s; white-space: nowrap;
+    }
+    .nav-tab:hover { color: #fff; background: rgba(255,255,255,0.08); }
+    .nav-tab.active { color: #fff; background: rgba(255,255,255,0.15); }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .user-pill { display: none; align-items: center; gap: 7px; background: rgba(255,255,255,0.1); border-radius: 20px; padding: 4px 10px 4px 5px; }
+    .user-pill img { width: 22px; height: 22px; border-radius: 50%; }
+    .user-pill span { font-size: 11px; color: #e2e8f0; }
+    .last-updated { font-size: 11px; color: #6b7280; }
+    .btn-hdr { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 5px 12px; border-radius: 5px; font-size: 11px; cursor: pointer; }
+    .btn-hdr:hover { background: rgba(255,255,255,0.2); }
+    a.btn-hdr { text-decoration: none; }
+
+    /* ── Sign-in ── */
+    #signin-section { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 56px); padding: 40px; }
+    .signin-card { background: #fff; border-radius: 14px; padding: 44px 48px; box-shadow: 0 4px 24px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
+    .signin-logo { font-size: 44px; margin-bottom: 14px; }
+    .signin-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .signin-card p { font-size: 13px; color: #6b7280; margin-bottom: 26px; line-height: 1.6; }
+    .btn-google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 11px 20px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 14px; font-weight: 600; color: #374151; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .btn-google:hover { background: #f9fafb; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+    .btn-google svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .signin-note { margin-top: 14px; font-size: 11px; color: #9ca3af; }
+    .signin-error { display: none; margin-top: 14px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 7px; padding: 9px 13px; font-size: 12px; color: #b91c1c; text-align: left; }
+
+    /* ── Loading ── */
+    #loading { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 50; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+    #loading.show { display: flex; }
+    .spinner { width: 34px; height: 34px; border: 3px solid #e5e7eb; border-top-color: #4f8ef7; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { font-size: 13px; color: #6b7280; }
+
+    /* ── Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 60; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 28px; width: 90%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .modal .modal-sub { font-size: 12px; color: #6b7280; margin-bottom: 20px; }
+    .modal-invoice-info { background: #f9fafb; border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; font-size: 12px; }
+    .modal-invoice-info div { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .modal-invoice-info div:last-child { margin-bottom: 0; }
+    .modal-invoice-info strong { color: #374151; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* ── App content ── */
+    #app { display: none; }
+    .tab-content { display: none; padding: 20px 24px; }
+    .tab-content.active { display: block; }
+
+    /* ── Shared form styles ── */
+    .form-card { background: #fff; border-radius: 10px; padding: 24px 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); max-width: 780px; }
+    .form-card h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .form-card .form-sub { font-size: 12px; color: #6b7280; margin-bottom: 22px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 6px;
+      font-size: 13px; color: #1a1a2e; background: #fff; font-family: Arial, sans-serif;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #4f8ef7; box-shadow: 0 0 0 3px rgba(79,142,247,0.12); }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+    .form-footer { margin-top: 20px; display: flex; gap: 10px; align-items: center; }
+    .btn-primary { background: #1a1a2e; color: #fff; border: none; padding: 10px 22px; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 600; }
+    .btn-primary:hover { background: #2d2d5e; }
+    .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+    .btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; padding: 10px 18px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .btn-secondary:hover { background: #f9fafb; }
+    .form-success { display: none; color: #065f46; background: #d1fae5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin-top: 12px; }
+    .form-error-msg { display: none; color: #b91c1c; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin-top: 12px; }
+
+    /* ── Dashboard ── */
+    .controls-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .controls-bar label { font-size: 12px; font-weight: 600; color: #4b5563; }
+    .controls-bar select { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; background: #fff; }
+    .data-info { font-size: 11px; color: #9ca3af; }
+    .scorecards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+    @media (max-width: 900px) { .scorecards { grid-template-columns: repeat(2,1fr); } }
+    .scorecard { background: #fff; border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-top: 4px solid; position: relative; }
+    .scorecard.current { border-color: #4f8ef7; } .scorecard.days30 { border-color: #f59e0b; }
+    .scorecard.days60  { border-color: #a855f7; } .scorecard.days61  { border-color: #ef4444; }
+    .scorecard .label  { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+    .scorecard .amount { font-size: 24px; font-weight: 700; }
+    .scorecard .count  { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+    .scorecard .badge  { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .scorecard.current .badge { background: #eff6ff; } .scorecard.days30 .badge { background: #fffbeb; }
+    .scorecard.days60  .badge { background: #faf5ff; } .scorecard.days61 .badge { background: #fef2f2; }
+    .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 18px; }
+    @media (max-width: 1100px) { .charts-row { grid-template-columns: 1fr; } }
+    .card { background: #fff; border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .card h3 { font-size: 11px; font-weight: 700; color: #374151; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .bar-chart-container { height: 260px; }
+    .donut-chart-container { height: 220px; }
+
+    /* ── Tables ── */
+    .table-card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 18px; }
+    .table-card-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px 9px; border-bottom: 1px solid #f3f4f6; }
+    .table-card-header h3 { font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; }
+    .table-search { padding: 5px 10px; border: 1px solid #e5e7eb; border-radius: 5px; font-size: 12px; width: 180px; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th { background: #f9fafb; text-align: right; padding: 8px 12px; font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+    thead th:first-child { text-align: left; }
+    tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
+    tbody tr:hover { background: #f9fafb; }
+    tbody tr.total-row { border-bottom: none; font-weight: 700; background: #f9fafb; }
+    tbody td { padding: 8px 12px; color: #374151; text-align: right; white-space: nowrap; }
+    tbody td:first-child { text-align: left; }
+    .amt-current { color: #1d4ed8; } .amt-30 { color: #d97706; }
+    .amt-60 { color: #7c3aed; }      .amt-61 { color: #dc2626; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Status badges ── */
+    .badge-status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+    .badge-paid    { background: #d1fae5; color: #065f46; }
+    .badge-current { background: #eff6ff; color: #1d4ed8; }
+    .badge-30      { background: #fffbeb; color: #92400e; }
+    .badge-60      { background: #faf5ff; color: #6b21a8; }
+    .badge-61      { background: #fef2f2; color: #b91c1c; }
+
+    /* ── Payment Queue ── */
+    .pq-controls { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+    .pq-date-input { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; }
+    .pq-summary { font-size: 12px; color: #6b7280; }
+    .pq-subsidiary { margin-bottom: 20px; }
+    .pq-sub-header { font-size: 13px; font-weight: 700; color: #1a1a2e; padding: 10px 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
+    .pq-sub-header .sub-total { font-size: 14px; color: #1d4ed8; }
+    .pq-table { border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; overflow: hidden; }
+    .pq-table table { font-size: 12px; }
+    .pq-empty { text-align: center; padding: 40px; color: #9ca3af; font-size: 13px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+    /* ── Action buttons ── */
+    .btn-action { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; }
+    .btn-mark-paid { background: #d1fae5; color: #065f46; }
+    .btn-mark-paid:hover { background: #a7f3d0; }
+    .btn-set-date  { background: #eff6ff; color: #1d4ed8; }
+    .btn-set-date:hover { background: #dbeafe; }
+    .date-input-inline { padding: 3px 7px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 11px; background: #fff; }
+    .saving-indicator { font-size: 10px; color: #9ca3af; margin-left: 4px; }
+
+    /* ── All Invoices filters ── */
+    .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+    .filter-bar select, .filter-bar input[type=text] { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; }
+    .filter-bar label { font-size: 12px; font-weight: 600; color: #4b5563; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header id="main-header" style="display:none">
+  <div class="header-left">
+    <div class="brand">Subsidiary AP Manager</div>
+    <nav id="main-nav">
+      <button class="nav-tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+      <button class="nav-tab" onclick="switchTab('add-invoice')">➕ Add Invoice</button>
+      <button class="nav-tab" onclick="switchTab('payment-queue')">💳 Payment Queue</button>
+      <button class="nav-tab" onclick="switchTab('all-invoices')">📋 All Invoices</button>
+    </nav>
+  </div>
+  <div class="header-right">
+    <div class="user-pill" id="user-pill"><img id="user-avatar" src="" alt=""><span id="user-name"></span></div>
+    <span class="last-updated" id="last-updated"></span>
+    <button class="btn-hdr" onclick="reloadData()">🔄 Refresh</button>
+    <a class="btn-hdr" id="sheet-link" href="#" target="_blank">📄 View Sheet</a>
+    <button class="btn-hdr" onclick="signOut()">Sign out</button>
+  </div>
+</header>
+
+<!-- ── Sign-in ── -->
+<div id="signin-section">
+  <div class="signin-card">
+    <div class="signin-logo">📊</div>
+    <h2>Subsidiary AP Manager</h2>
+    <p>Sign in with your Google account to access invoices and payment tools. Only users with sheet access can sign in.</p>
+    <button class="btn-google" onclick="signIn()">
+      <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Sign in with Google
+    </button>
+    <div class="signin-note">Access is controlled by the Google Sheet's sharing settings.</div>
+    <div class="signin-error" id="signin-error"></div>
+  </div>
+</div>
+
+<!-- ── Loading ── -->
+<div id="loading"><div class="spinner"></div><p id="loading-msg">Loading…</p></div>
+
+<!-- ── Mark Paid Modal ── -->
+<div class="modal-overlay" id="paid-modal">
+  <div class="modal">
+    <h3>Mark Invoice as Paid</h3>
+    <p class="modal-sub">Confirm payment details below.</p>
+    <div class="modal-invoice-info" id="modal-invoice-info"></div>
+    <div class="form-group">
+      <label>Paid Date</label>
+      <input type="date" id="modal-paid-date">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closePaidModal()">Cancel</button>
+      <button class="btn-primary" onclick="confirmMarkPaid()">✓ Confirm Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── App ── -->
+<div id="app">
+
+  <!-- DASHBOARD -->
+  <div class="tab-content active" id="tab-dashboard">
+    <div class="controls-bar">
+      <label>Subsidiary:</label>
+      <select id="db-sub-filter"><option value="ALL">All Subsidiaries</option></select>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#4b5563;">
+        <input type="checkbox" id="db-hide-paid" checked> Hide paid
+      </label>
+      <span class="data-info" id="db-data-info"></span>
+    </div>
+    <div class="scorecards">
+      <div class="scorecard current"><div class="badge">✅</div><div class="label">Current</div><div class="amount" id="sc-current">—</div><div class="count" id="sc-current-cnt"></div></div>
+      <div class="scorecard days30"><div class="badge">⚠️</div><div class="label">1–30 Days Past Due</div><div class="amount" id="sc-30">—</div><div class="count" id="sc-30-cnt"></div></div>
+      <div class="scorecard days60"><div class="badge">🔶</div><div class="label">31–60 Days Past Due</div><div class="amount" id="sc-60">—</div><div class="count" id="sc-60-cnt"></div></div>
+      <div class="scorecard days61"><div class="badge">🔴</div><div class="label">61+ Days Past Due</div><div class="amount" id="sc-61">—</div><div class="count" id="sc-61-cnt"></div></div>
+    </div>
+    <div class="charts-row">
+      <div class="card"><h3>Aging by Subsidiary</h3><div class="bar-chart-container"><canvas id="bar-chart"></canvas></div></div>
+      <div class="card"><h3>Aging Breakdown</h3><div class="donut-chart-container"><canvas id="donut-chart"></canvas></div></div>
+    </div>
+    <div class="table-card">
+      <div class="table-card-header"><h3>Summary by Subsidiary</h3></div>
+      <div class="table-scroll"><table><thead><tr><th>Subsidiary</th><th>Current</th><th>1–30 Days</th><th>31–60 Days</th><th>61+ Days</th><th>Total</th></tr></thead><tbody id="summary-tbody"></tbody></table></div>
+    </div>
+    <div class="two-col">
+      <div class="table-card">
+        <div class="table-card-header"><h3>Top Vendors by Amount</h3></div>
+        <div class="table-scroll"><table><thead><tr><th>Vendor</th><th>Amount</th><th>Invoices</th></tr></thead><tbody id="vendor-tbody"></tbody></table></div>
+      </div>
+      <div class="table-card">
+        <div class="table-card-header"><h3>Most Overdue (61+ Days)</h3></div>
+        <div class="table-scroll"><table><thead><tr><th>Vendor</th><th>Subsidiary</th><th>Days</th><th>Amount</th></tr></thead><tbody id="overdue-tbody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD INVOICE -->
+  <div class="tab-content" id="tab-add-invoice">
+    <div class="form-card">
+      <h2>Add New Invoice</h2>
+      <p class="form-sub">Fill in the details below. The invoice will be added to the Google Sheet immediately.</p>
+      <form id="invoice-form" onsubmit="submitInvoice(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Subsidiary *</label>
+            <select id="inv-subsidiary" required><option value="">Select subsidiary…</option></select>
+          </div>
+          <div class="form-group">
+            <label>Vendor *</label>
+            <input type="text" id="inv-vendor" required placeholder="Vendor name">
+          </div>
+          <div class="form-group">
+            <label>Invoice / Document Number</label>
+            <input type="text" id="inv-docnum" placeholder="INV-0001">
+          </div>
+          <div class="form-group">
+            <label>Amount ($) *</label>
+            <input type="number" id="inv-amount" required step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label>Invoice Date *</label>
+            <input type="date" id="inv-invoice-date" required>
+          </div>
+          <div class="form-group">
+            <label>Due Date *</label>
+            <input type="date" id="inv-due-date" required>
+          </div>
+          <div class="form-group">
+            <label>Payment Release Date</label>
+            <input type="date" id="inv-release-date">
+          </div>
+          <div class="form-group">
+            <label>Payment Method</label>
+            <select id="inv-payment-method">
+              <option value="">Select…</option>
+              <option>Check</option>
+              <option>ACH</option>
+              <option>Wire</option>
+              <option>Credit Card</option>
+              <option>Zelle</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Notes</label>
+            <textarea id="inv-notes" placeholder="Optional notes about this invoice…"></textarea>
+          </div>
+        </div>
+        <div class="form-footer">
+          <button type="submit" class="btn-primary" id="inv-submit-btn">Add Invoice</button>
+          <button type="button" class="btn-secondary" onclick="resetInvoiceForm()">Clear</button>
+        </div>
+        <div class="form-success" id="inv-success">✓ Invoice added successfully!</div>
+        <div class="form-error-msg" id="inv-error"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- PAYMENT QUEUE -->
+  <div class="tab-content" id="tab-payment-queue">
+    <div class="pq-controls">
+      <label style="font-size:13px;font-weight:600;color:#4b5563;">Payment Date:</label>
+      <input type="date" class="pq-date-input" id="pq-date">
+      <button class="btn-primary" onclick="renderPaymentQueue()">View Queue</button>
+      <span class="pq-summary" id="pq-summary"></span>
+    </div>
+    <div id="pq-content"></div>
+  </div>
+
+  <!-- ALL INVOICES -->
+  <div class="tab-content" id="tab-all-invoices">
+    <div class="filter-bar">
+      <label>Subsidiary:</label>
+      <select id="ai-sub-filter"><option value="ALL">All</option></select>
+      <label>Status:</label>
+      <select id="ai-status-filter">
+        <option value="ALL">All</option>
+        <option value="unpaid">Unpaid only</option>
+        <option value="paid">Paid only</option>
+      </select>
+      <input type="text" id="ai-search" placeholder="Search vendor / doc #…" style="width:200px">
+      <span class="data-info" id="ai-count"></span>
+    </div>
+    <div class="table-card">
+      <div class="table-card-header"><h3>All Invoices</h3></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th style="text-align:left">Vendor</th>
+            <th style="text-align:left">Subsidiary</th>
+            <th>Doc #</th>
+            <th>Invoice Date</th>
+            <th>Due Date</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Release Date</th>
+            <th>Paid Date</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody id="all-invoices-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────
+const CLIENT_ID  = '469332837470-co0kr12th589curpgjleloj45t39fi7o.apps.googleusercontent.com';
+const SHEET_ID   = '1M7BpY05U-q1wk5xhdEaeVJX4L0cDm_33pjmMP6bUQxI';
+const SHEET_TAB  = 'Monthly Bills List';
+const HEADER_ROW = 3;   // Row 3 has headers
+const DATA_START = 4;   // Data starts row 4
+const BASE_URL   = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
+
+// ── STATE ─────────────────────────────────────────────────────────
+let accessToken  = null;
+let headers      = [];
+let colMap       = {};   // header name → 0-based column index
+let sheetRows    = [];   // [{_row: 4, Subsidiary: 'HRE', ...}, ...]
+let barChart     = null;
+let donutChart   = null;
+let pendingPaid  = null; // row object queued for mark-paid modal
+
+// ── INIT ──────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  document.getElementById('sheet-link').href =
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
+  document.getElementById('pq-date').value = isoToday();
+  document.getElementById('inv-invoice-date').value = isoToday();
+  document.getElementById('config-banner').style.display = 'none';
+
+  if (typeof google !== 'undefined') initAuth();
+  document.querySelector('script[src*="gsi/client"]')
+    ?.addEventListener('load', initAuth);
+});
+
+let tokenClient = null;
+function initAuth() {
+  if (tokenClient) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: handleToken,
+  });
+}
+
+function signIn() {
+  if (!tokenClient) { if (typeof google !== 'undefined') initAuth(); else { showSigninError('Google Sign-In not loaded.'); return; } }
+  tokenClient.requestAccessToken({ prompt: 'select_account' });
+}
+
+async function handleToken(resp) {
+  if (resp.error) { showSigninError('Sign-in failed: ' + resp.error); return; }
+  accessToken = resp.access_token;
+  try { const u = await gFetch('https://www.googleapis.com/oauth2/v3/userinfo'); showUserPill(u); } catch (_) {}
+  await initSheet();
+  setInterval(reloadData, 45000); // auto-refresh every 45s
+}
+
+function showUserPill(u) {
+  document.getElementById('user-name').textContent = u.name || u.email;
+  if (u.picture) document.getElementById('user-avatar').src = u.picture;
+  document.getElementById('user-pill').style.display = 'flex';
+}
+
+function signOut() {
+  google.accounts.oauth2.revoke(accessToken, () => {
+    accessToken = null; sheetRows = []; headers = []; colMap = {};
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('main-header').style.display = 'none';
+    document.getElementById('signin-section').style.display = 'flex';
+    document.getElementById('user-pill').style.display = 'none';
+    if (barChart) { barChart.destroy(); barChart = null; }
+    if (donutChart) { donutChart.destroy(); donutChart = null; }
+  });
+}
+
+// ── SHEET READ / WRITE ────────────────────────────────────────────
+async function gFetch(url, opts = {}) {
+  const res = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), Authorization: `Bearer ${accessToken}` } });
+  if (res.status === 401) { signIn(); throw new Error('Token expired'); }
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+  return res.json();
+}
+
+async function initSheet() {
+  showLoading('Loading sheet data…');
+  try {
+    const range = encodeURIComponent(`'${SHEET_TAB}'!A${HEADER_ROW}:Z1000`);
+    const data  = await gFetch(`${BASE_URL}/values/${range}`);
+    parseSheet(data.values || []);
+
+    // Ensure "Payment Release Date" column exists
+    if (colMap['Payment Release Date'] === undefined) {
+      await addColumnHeader('Payment Release Date');
+    }
+
+    populateSubsidiaryDropdowns();
+    document.getElementById('signin-section').style.display = 'none';
+    document.getElementById('main-header').style.display = 'flex';
+    document.getElementById('app').style.display = 'block';
+    hideLoading();
+    renderAll();
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    hideLoading();
+    showSigninError('Could not load sheet: ' + err.message);
+  }
+}
+
+function parseSheet(values) {
+  if (!values || values.length < 1) return;
+  headers = values[0].map(h => h.trim());
+  colMap  = {};
+  headers.forEach((h, i) => colMap[h] = i);
+
+  sheetRows = values.slice(1).map((row, i) => {
+    const obj = { _row: i + DATA_START };
+    headers.forEach((h, j) => obj[h] = (row[j] || '').trim());
+    return obj;
+  }).filter(r => r['Subsidiary'] && r['Subsidiary'].toLowerCase() !== 'null');
+}
+
+async function addColumnHeader(colName) {
+  const nextCol = colLetter(headers.length);
+  const cell    = encodeURIComponent(`'${SHEET_TAB}'!${nextCol}${HEADER_ROW}`);
+  await gFetch(`${BASE_URL}/values/${cell}?valueInputOption=USER_ENTERED`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [[colName]] })
+  });
+  headers.push(colName);
+  colMap[colName] = headers.length - 1;
+}
+
+async function reloadData() {
+  try {
+    const range = encodeURIComponent(`'${SHEET_TAB}'!A${HEADER_ROW}:Z1000`);
+    const data  = await gFetch(`${BASE_URL}/values/${range}`);
+    parseSheet(data.values || []);
+    populateSubsidiaryDropdowns();
+    renderAll();
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch (_) {}
+}
+
+async function updateCell(sheetRow, colName, value) {
+  const colIdx = colMap[colName];
+  if (colIdx === undefined) { console.warn('Column not found:', colName); return; }
+  const cell = encodeURIComponent(`'${SHEET_TAB}'!${colLetter(colIdx)}${sheetRow}`);
+  await gFetch(`${BASE_URL}/values/${cell}?valueInputOption=USER_ENTERED`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [[value]] })
+  });
+}
+
+async function appendRow(rowValues) {
+  const range = encodeURIComponent(`'${SHEET_TAB}'!A${DATA_START}`);
+  await gFetch(`${BASE_URL}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [rowValues] })
+  });
+}
+
+// ── SUBMIT INVOICE ────────────────────────────────────────────────
+async function submitInvoice(e) {
+  e.preventDefault();
+  const btn = document.getElementById('inv-submit-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  document.getElementById('inv-success').style.display = 'none';
+  document.getElementById('inv-error').style.display   = 'none';
+
+  try {
+    const row = new Array(headers.length).fill('');
+    const set = (col, val) => { if (colMap[col] !== undefined) row[colMap[col]] = val; };
+    set('Subsidiary',           document.getElementById('inv-subsidiary').value);
+    set('Vendor',               document.getElementById('inv-vendor').value);
+    set('Document Number',      document.getElementById('inv-docnum').value);
+    set('Amount ($)',           document.getElementById('inv-amount').value);
+    set('Invoice Date',         document.getElementById('inv-invoice-date').value);
+    set('Due Date',             document.getElementById('inv-due-date').value);
+    set('Payment Release Date', document.getElementById('inv-release-date').value);
+    set('Payment Method',       document.getElementById('inv-payment-method').value);
+    set('NOTES',                document.getElementById('inv-notes').value);
+    set('Notes',                document.getElementById('inv-notes').value);
+
+    await appendRow(row);
+    document.getElementById('inv-success').style.display = 'block';
+    resetInvoiceForm();
+    await reloadData();
+  } catch (err) {
+    const el = document.getElementById('inv-error');
+    el.textContent = 'Failed to save: ' + err.message;
+    el.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Add Invoice';
+}
+
+function resetInvoiceForm() {
+  document.getElementById('invoice-form').reset();
+  document.getElementById('inv-invoice-date').value = isoToday();
+}
+
+// ── MARK PAID ─────────────────────────────────────────────────────
+function openPaidModal(rowObj) {
+  pendingPaid = rowObj;
+  document.getElementById('modal-paid-date').value = isoToday();
+  document.getElementById('modal-invoice-info').innerHTML = `
+    <div><strong>Vendor</strong><span>${rowObj['Vendor'] || '—'}</span></div>
+    <div><strong>Subsidiary</strong><span>${rowObj['Subsidiary'] || '—'}</span></div>
+    <div><strong>Amount</strong><span>${fmt(parseFloat((rowObj['Amount ($)']||'0').replace(/[$,]/g,'')))}</span></div>
+    <div><strong>Due Date</strong><span>${rowObj['Due Date'] || '—'}</span></div>
+  `;
+  document.getElementById('paid-modal').classList.add('open');
+}
+function closePaidModal() { document.getElementById('paid-modal').classList.remove('open'); pendingPaid = null; }
+
+async function confirmMarkPaid() {
+  if (!pendingPaid) return;
+  const paidDate = document.getElementById('modal-paid-date').value;
+  const row = pendingPaid;
+  closePaidModal();
+  showLoading('Saving…');
+  try {
+    await updateCell(row._row, 'Paid',      'Yes');
+    await updateCell(row._row, 'Paid Date', paidDate);
+    await reloadData();
+  } catch (err) { alert('Save failed: ' + err.message); }
+  hideLoading();
+}
+
+// ── SET RELEASE DATE ──────────────────────────────────────────────
+async function setReleaseDate(rowObj, value) {
+  try {
+    await updateCell(rowObj._row, 'Payment Release Date', value);
+    rowObj['Payment Release Date'] = value; // optimistic
+    renderPaymentQueue();
+  } catch (err) { alert('Failed to save date: ' + err.message); }
+}
+
+// ── TAB NAVIGATION ────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'payment-queue') renderPaymentQueue();
+  if (name === 'all-invoices')  renderAllInvoices();
+}
+
+function renderAll() {
+  renderDashboard();
+  // Other tabs render on demand
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────
+function populateSubsidiaryDropdowns() {
+  const subs = [...new Set(sheetRows.map(r => r['Subsidiary']))].sort();
+  ['db-sub-filter','ai-sub-filter'].forEach(id => {
+    const sel = document.getElementById(id);
+    const prev = sel.value;
+    sel.innerHTML = '<option value="ALL">All Subsidiaries</option>';
+    subs.forEach(s => sel.innerHTML += `<option value="${s}">${s}</option>`);
+    if (prev && subs.includes(prev)) sel.value = prev;
+  });
+  // Add invoice subsidiary dropdown
+  const invSel = document.getElementById('inv-subsidiary');
+  const invPrev = invSel.value;
+  invSel.innerHTML = '<option value="">Select subsidiary…</option>';
+  subs.forEach(s => invSel.innerHTML += `<option value="${s}">${s}</option>`);
+  if (invPrev) invSel.value = invPrev;
+
+  const aiSel = document.getElementById('ai-sub-filter');
+  if (aiSel.onchange) return;
+  aiSel.onchange = renderAllInvoices;
+  document.getElementById('ai-status-filter').onchange = renderAllInvoices;
+  document.getElementById('ai-search').oninput = renderAllInvoices;
+  document.getElementById('db-sub-filter').onchange = renderDashboard;
+  document.getElementById('db-hide-paid').onchange   = renderDashboard;
+}
+
+function getDbFiltered() {
+  const sub = document.getElementById('db-sub-filter').value;
+  const hp  = document.getElementById('db-hide-paid').checked;
+  return sheetRows.filter(r => {
+    if (sub !== 'ALL' && r['Subsidiary'] !== sub) return false;
+    if (hp && isPaid(r)) return false;
+    return true;
+  });
+}
+
+function renderDashboard() {
+  const rows = getDbFiltered();
+  const totals = { current: 0, days30: 0, days60: 0, days61: 0 };
+  const counts  = { current: 0, days30: 0, days60: 0, days61: 0 };
+  rows.forEach(r => { const b = bucket(days(r)); totals[b] += amt(r); counts[b]++; });
+
+  document.getElementById('sc-current').textContent = fmt(totals.current);
+  document.getElementById('sc-30').textContent      = fmt(totals.days30);
+  document.getElementById('sc-60').textContent      = fmt(totals.days60);
+  document.getElementById('sc-61').textContent      = fmt(totals.days61);
+  document.getElementById('sc-current-cnt').textContent = plural(counts.current, 'invoice');
+  document.getElementById('sc-30-cnt').textContent      = plural(counts.days30,  'invoice');
+  document.getElementById('sc-60-cnt').textContent      = plural(counts.days60,  'invoice');
+  document.getElementById('sc-61-cnt').textContent      = plural(counts.days61,  'invoice');
+  const total = Object.values(totals).reduce((a,b) => a+b, 0);
+  document.getElementById('db-data-info').textContent = `${rows.length} invoices · Total: ${fmt(total)}`;
+
+  renderBarChart(rows); renderDonut(totals);
+  renderSummaryTable(rows); renderVendorTable(rows); renderOverdueTable(rows);
+}
+
+function renderBarChart(rows) {
+  const bySub = {};
+  rows.forEach(r => { const s = r['Subsidiary']; if (!bySub[s]) bySub[s] = {current:0,days30:0,days60:0,days61:0}; bySub[s][bucket(days(r))] += amt(r); });
+  const labels = Object.keys(bySub).sort();
+  if (barChart) { barChart.destroy(); barChart = null; }
+  barChart = new Chart(document.getElementById('bar-chart'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Current',    data: labels.map(s => bySub[s].current), backgroundColor: '#4f8ef7' },
+      { label: '1–30 Days',  data: labels.map(s => bySub[s].days30),  backgroundColor: '#f59e0b' },
+      { label: '31–60 Days', data: labels.map(s => bySub[s].days60),  backgroundColor: '#a855f7' },
+      { label: '61+ Days',   data: labels.map(s => bySub[s].days61),  backgroundColor: '#ef4444' },
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{position:'bottom',labels:{font:{size:11},padding:12}}, tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw)}`}} },
+      scales: { x:{grid:{display:false},ticks:{font:{size:12}}}, y:{grid:{color:'#f3f4f6'},ticks:{font:{size:11},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'K':v)}} }
+    }
+  });
+}
+
+function renderDonut(totals) {
+  if (donutChart) { donutChart.destroy(); donutChart = null; }
+  donutChart = new Chart(document.getElementById('donut-chart'), {
+    type: 'doughnut',
+    data: { labels:['Current','1–30 Days','31–60 Days','61+ Days'], datasets:[{data:[totals.current,totals.days30,totals.days60,totals.days61],backgroundColor:['#4f8ef7','#f59e0b','#a855f7','#ef4444'],borderWidth:2,borderColor:'#fff'}] },
+    options: { responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins: { legend:{position:'bottom',labels:{font:{size:11},padding:8}}, tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)}`}} }
+    }
+  });
+}
+
+function renderSummaryTable(rows) {
+  const bySub = {};
+  rows.forEach(r => { const s=r['Subsidiary']; if(!bySub[s]) bySub[s]={current:0,days30:0,days60:0,days61:0}; bySub[s][bucket(days(r))]+=amt(r); });
+  const subs = Object.keys(bySub).sort();
+  let t = {current:0,days30:0,days60:0,days61:0};
+  const body = subs.map(s => {
+    const d=bySub[s], row=d.current+d.days30+d.days60+d.days61;
+    t.current+=d.current; t.days30+=d.days30; t.days60+=d.days60; t.days61+=d.days61;
+    return `<tr><td>${s}</td><td class="amt-current">${fmt(d.current)}</td><td class="amt-30">${fmt(d.days30)}</td><td class="amt-60">${fmt(d.days60)}</td><td class="amt-61">${fmt(d.days61)}</td><td><strong>${fmt(row)}</strong></td></tr>`;
+  }).join('');
+  const grand = t.current+t.days30+t.days60+t.days61;
+  document.getElementById('summary-tbody').innerHTML = body +
+    `<tr class="total-row"><td>TOTAL</td><td class="amt-current">${fmt(t.current)}</td><td class="amt-30">${fmt(t.days30)}</td><td class="amt-60">${fmt(t.days60)}</td><td class="amt-61">${fmt(t.days61)}</td><td>${fmt(grand)}</td></tr>`;
+}
+
+function renderVendorTable(rows) {
+  const byV = {};
+  rows.forEach(r => { const v=r['Vendor']||'Unknown'; if(!byV[v]) byV[v]={amount:0,count:0}; byV[v].amount+=amt(r); byV[v].count++; });
+  document.getElementById('vendor-tbody').innerHTML = Object.entries(byV).sort((a,b)=>b[1].amount-a[1].amount).slice(0,10)
+    .map(([v,d]) => `<tr><td>${v}</td><td>${fmt(d.amount)}</td><td>${d.count}</td></tr>`).join('');
+}
+
+function renderOverdueTable(rows) {
+  const od = rows.filter(r=>days(r)>60).sort((a,b)=>days(b)-days(a)).slice(0,10);
+  document.getElementById('overdue-tbody').innerHTML = od.map(r =>
+    `<tr><td>${r['Vendor']||'—'}</td><td>${r['Subsidiary']}</td><td style="color:#dc2626;font-weight:600">${Math.round(days(r))}</td><td>${fmt(amt(r))}</td></tr>`
+  ).join('') || '<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:12px">No overdue invoices 🎉</td></tr>';
+}
+
+// ── PAYMENT QUEUE ─────────────────────────────────────────────────
+function renderPaymentQueue() {
+  const selectedDate = document.getElementById('pq-date').value;
+  const queueRows = sheetRows.filter(r =>
+    !isPaid(r) && r['Payment Release Date'] === selectedDate
+  );
+
+  const bySub = {};
+  queueRows.forEach(r => {
+    const s = r['Subsidiary'];
+    if (!bySub[s]) bySub[s] = [];
+    bySub[s].push(r);
+  });
+
+  const content = document.getElementById('pq-content');
+  const totalAmt = queueRows.reduce((s, r) => s + amt(r), 0);
+  document.getElementById('pq-summary').textContent =
+    queueRows.length ? `${queueRows.length} invoice${queueRows.length!==1?'s':''} · ${fmt(totalAmt)} total` : '';
+
+  if (!queueRows.length) {
+    content.innerHTML = `<div class="pq-empty">No payments scheduled for ${selectedDate || 'this date'}.<br><small style="margin-top:6px;display:block">Set a Payment Release Date on invoices in the All Invoices tab.</small></div>`;
+    return;
+  }
+
+  content.innerHTML = Object.keys(bySub).sort().map(sub => {
+    const rows = bySub[sub];
+    const subTotal = rows.reduce((s, r) => s + amt(r), 0);
+    const rowsHtml = rows.map(r => `
+      <tr>
+        <td style="text-align:left">${r['Vendor']||'—'}</td>
+        <td style="text-align:left">${r['Document Number']||'—'}</td>
+        <td>${r['Due Date']||'—'}</td>
+        <td>${r['Payment Method']||'—'}</td>
+        <td>${fmt(amt(r))}</td>
+        <td><button class="btn-action btn-mark-paid" onclick="openPaidModal(sheetRowByIndex(${r._row}))">Mark Paid</button></td>
+      </tr>`).join('');
+    return `<div class="pq-subsidiary">
+      <div class="pq-sub-header"><span>${sub}</span><span class="sub-total">${fmt(subTotal)}</span></div>
+      <div class="pq-table"><table>
+        <thead><tr><th style="text-align:left">Vendor</th><th style="text-align:left">Doc #</th><th>Due Date</th><th>Method</th><th>Amount</th><th>Action</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+}
+
+// ── ALL INVOICES ──────────────────────────────────────────────────
+function renderAllInvoices() {
+  const sub    = document.getElementById('ai-sub-filter').value;
+  const status = document.getElementById('ai-status-filter').value;
+  const search = document.getElementById('ai-search').value.toLowerCase();
+
+  let rows = sheetRows.filter(r => {
+    if (sub !== 'ALL' && r['Subsidiary'] !== sub) return false;
+    if (status === 'unpaid' && isPaid(r)) return false;
+    if (status === 'paid'   && !isPaid(r)) return false;
+    if (search && !`${r['Vendor']} ${r['Document Number']}`.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('ai-count').textContent = `${rows.length} invoices`;
+
+  document.getElementById('all-invoices-tbody').innerHTML = rows.map(r => {
+    const d = days(r), paid = isPaid(r);
+    const statusBadge = paid
+      ? '<span class="badge-status badge-paid">Paid</span>'
+      : `<span class="badge-status ${bucketClass(d)}">${bucketLabel(d)}</span>`;
+    const releaseDate = r['Payment Release Date'] || '';
+    const paidDate    = r['Paid Date'] || '';
+    const actionBtn   = paid
+      ? `<span style="font-size:11px;color:#9ca3af">✓ Paid</span>`
+      : `<button class="btn-action btn-mark-paid" onclick="openPaidModal(sheetRowByIndex(${r._row}))">Mark Paid</button>`;
+
+    return `<tr>
+      <td style="text-align:left">${r['Vendor']||'—'}</td>
+      <td style="text-align:left">${r['Subsidiary']}</td>
+      <td>${r['Document Number']||'—'}</td>
+      <td>${r['Invoice Date']||'—'}</td>
+      <td>${r['Due Date']||'—'}</td>
+      <td>${fmt(amt(r))}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <input type="date" class="date-input-inline" value="${releaseDate}"
+          onchange="setReleaseDate(sheetRowByIndex(${r._row}), this.value)"
+          ${paid ? 'disabled' : ''}>
+      </td>
+      <td>${paidDate || '—'}</td>
+      <td>${actionBtn}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:16px">No invoices match the current filter.</td></tr>';
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────
+function sheetRowByIndex(rowNum) { return sheetRows.find(r => r._row === rowNum); }
+function isPaid(r) { return ['yes','true','x','1','✓'].includes((r['Paid']||'').toLowerCase()); }
+function amt(r)   { return parseFloat((r['Amount ($)']||'0').replace(/[$,]/g,'')) || 0; }
+function days(r)  { return parseFloat((r['Past Due (Days)']||'0').replace(/,/g,'')) || 0; }
+function bucket(d) { return d<=0?'current':d<=30?'days30':d<=60?'days60':'days61'; }
+function bucketClass(d)  { return d<=0?'badge-current':d<=30?'badge-30':d<=60?'badge-60':'badge-61'; }
+function bucketLabel(d)  { return d<=0?'Current':d<=30?'1–30 Days':d<=60?'31–60 Days':'61+ Days'; }
+function fmt(n)    { return n?'$'+Math.round(n).toLocaleString('en-US'):'$—'; }
+function plural(n, w) { return `${n} ${w}${n!==1?'s':''}`; }
+function isoToday() { return new Date().toISOString().split('T')[0]; }
+function colLetter(idx) {
+  let l=''; idx++;
+  while(idx>0){ let r=(idx-1)%26; l=String.fromCharCode(65+r)+l; idx=Math.floor((idx-1)/26); }
+  return l;
+}
+function showLoading(msg) { document.getElementById('loading-msg').textContent=msg; document.getElementById('loading').classList.add('show'); }
+function hideLoading()    { document.getElementById('loading').classList.remove('show'); }
+function showSigninError(msg) { const el=document.getElementById('signin-error'); el.textContent=msg; el.style.display='block'; hideLoading(); }
+</script>
+</body>
+</html>
