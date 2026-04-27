@@ -530,7 +530,8 @@ async function updateCell(sheetRow, colName, value) {
 }
 
 async function appendRow(rowValues) {
-  const range = encodeURIComponent(`'${SHEET_TAB}'!A${DATA_START}`);
+  // Use full data range so API finds the last populated row and appends at the bottom
+  const range = encodeURIComponent(`'${SHEET_TAB}'!A${HEADER_ROW}:Z1000`);
   await gFetch(`${BASE_URL}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -598,7 +599,7 @@ async function confirmMarkPaid() {
   closePaidModal();
   showLoading('Saving…');
   try {
-    await updateCell(row._row, 'Paid',      'Yes');
+    await updateCell(row._row, 'Paid',      'TRUE');
     await updateCell(row._row, 'Paid Date', paidDate);
     await reloadData();
   } catch (err) { alert('Save failed: ' + err.message); }
@@ -840,7 +841,7 @@ function renderAllInvoices() {
 
 // ── HELPERS ───────────────────────────────────────────────────────
 function sheetRowByIndex(rowNum) { return sheetRows.find(r => r._row === rowNum); }
-function isPaid(r) { return ['yes','true','x','1','✓'].includes((r['Paid']||'').toLowerCase()); }
+function isPaid(r) { const v=(r['Paid']||'').toLowerCase().trim(); return v==='true'||v==='yes'||v==='1'||v==='✓'||v==='x'; }
 function amt(r)   { return parseFloat((r['Amount ($)']||'0').replace(/[$,]/g,'')) || 0; }
 function days(r)  { return parseFloat((r['Past Due (Days)']||'0').replace(/,/g,'')) || 0; }
 function bucket(d) { return d<=0?'current':d<=30?'days30':d<=60?'days60':'days61'; }
