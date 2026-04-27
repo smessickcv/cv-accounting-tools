@@ -379,12 +379,13 @@
 
 <script>
 // ── CONFIG ────────────────────────────────────────────────────────
-const CLIENT_ID  = '469332837470-co0kr12th589curpgjleloj45t39fi7o.apps.googleusercontent.com';
-const SHEET_ID   = '1M7BpY05U-q1wk5xhdEaeVJX4L0cDm_33pjmMP6bUQxI';
-const SHEET_TAB  = 'Monthly Bills List';
-const HEADER_ROW = 3;   // Row 3 has headers
-const DATA_START = 4;   // Data starts row 4
-const BASE_URL   = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
+const CLIENT_ID        = '469332837470-co0kr12th589curpgjleloj45t39fi7o.apps.googleusercontent.com';
+const SHEET_ID         = '1M7BpY05U-q1wk5xhdEaeVJX4L0cDm_33pjmMP6bUQxI';
+const SHEET_TAB        = 'Monthly Bills List';
+const HEADER_ROW       = 3;   // Row 3 has headers
+const DATA_START       = 4;   // Data starts row 4
+const BASE_URL         = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
+const RELEASE_DATE_COL = 'Approved for Payment'; // Column J — stores payment release date
 
 // ── STATE ─────────────────────────────────────────────────────────
 let accessToken  = null;
@@ -463,12 +464,6 @@ async function initSheet() {
     const range = encodeURIComponent(`'${SHEET_TAB}'!A${HEADER_ROW}:Z1000`);
     const data  = await gFetch(`${BASE_URL}/values/${range}`);
     parseSheet(data.values || []);
-
-    // Ensure "Payment Release Date" column exists
-    if (colMap['Payment Release Date'] === undefined) {
-      await addColumnHeader('Payment Release Date');
-    }
-
     populateSubsidiaryDropdowns();
     document.getElementById('signin-section').style.display = 'none';
     document.getElementById('main-header').style.display = 'flex';
@@ -556,7 +551,7 @@ async function submitInvoice(e) {
     set('Amount ($)',           document.getElementById('inv-amount').value);
     set('Invoice Date',         document.getElementById('inv-invoice-date').value);
     set('Due Date',             document.getElementById('inv-due-date').value);
-    set('Payment Release Date', document.getElementById('inv-release-date').value);
+    set(RELEASE_DATE_COL,       document.getElementById('inv-release-date').value);
     set('Payment Method',       document.getElementById('inv-payment-method').value);
     set('NOTES',                document.getElementById('inv-notes').value);
     set('Notes',                document.getElementById('inv-notes').value);
@@ -609,8 +604,8 @@ async function confirmMarkPaid() {
 // ── SET RELEASE DATE ──────────────────────────────────────────────
 async function setReleaseDate(rowObj, value) {
   try {
-    await updateCell(rowObj._row, 'Payment Release Date', value);
-    rowObj['Payment Release Date'] = value; // optimistic
+    await updateCell(rowObj._row, RELEASE_DATE_COL, value);
+    rowObj[RELEASE_DATE_COL] = value; // optimistic update
     renderPaymentQueue();
   } catch (err) { alert('Failed to save date: ' + err.message); }
 }
@@ -751,7 +746,7 @@ function renderOverdueTable(rows) {
 function renderPaymentQueue() {
   const selectedDate = document.getElementById('pq-date').value;
   const queueRows = sheetRows.filter(r =>
-    !isPaid(r) && r['Payment Release Date'] === selectedDate
+    !isPaid(r) && r[RELEASE_DATE_COL] === selectedDate
   );
 
   const bySub = {};
@@ -814,7 +809,7 @@ function renderAllInvoices() {
     const statusBadge = paid
       ? '<span class="badge-status badge-paid">Paid</span>'
       : `<span class="badge-status ${bucketClass(d)}">${bucketLabel(d)}</span>`;
-    const releaseDate = r['Payment Release Date'] || '';
+    const releaseDate = r[RELEASE_DATE_COL] || '';
     const paidDate    = r['Paid Date'] || '';
     const actionBtn   = paid
       ? `<span style="font-size:11px;color:#9ca3af">✓ Paid</span>`
