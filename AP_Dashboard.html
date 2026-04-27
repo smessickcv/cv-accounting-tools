@@ -606,7 +606,7 @@ async function confirmMarkPaid() {
 async function setReleaseDate(rowObj, value) {
   try {
     await updateCell(rowObj._row, RELEASE_DATE_COL, value);
-    rowObj[RELEASE_DATE_COL] = value; // optimistic update
+    rowObj[RELEASE_DATE_COL] = value; // optimistic — stored as YYYY-MM-DD until next reload
     renderPaymentQueue();
   } catch (err) { alert('Failed to save date: ' + err.message); }
 }
@@ -747,7 +747,7 @@ function renderOverdueTable(rows) {
 function renderPaymentQueue() {
   const selectedDate = document.getElementById('pq-date').value;
   const queueRows = sheetRows.filter(r =>
-    !isPaid(r) && r[RELEASE_DATE_COL] === selectedDate
+    !isPaid(r) && toInputDate(r[RELEASE_DATE_COL]) === selectedDate
   );
 
   const bySub = {};
@@ -810,8 +810,8 @@ function renderAllInvoices() {
     const statusBadge = paid
       ? '<span class="badge-status badge-paid">Paid</span>'
       : `<span class="badge-status ${bucketClass(d)}">${bucketLabel(d)}</span>`;
-    const releaseDate = r[RELEASE_DATE_COL] || '';
-    const paidDate    = r[PAID_DATE_COL] || '';
+    const releaseDate = toInputDate(r[RELEASE_DATE_COL] || '');
+    const paidDate    = r[PAID_DATE_COL] ? toInputDate(r[PAID_DATE_COL]) : '';
     const actionBtn   = paid
       ? `<span style="font-size:11px;color:#9ca3af">✓ Paid</span>`
       : `<button class="btn-action btn-mark-paid" onclick="openPaidModal(sheetRowByIndex(${r._row}))">Mark Paid</button>`;
@@ -838,6 +838,18 @@ function renderAllInvoices() {
 // ── HELPERS ───────────────────────────────────────────────────────
 function sheetRowByIndex(rowNum) { return sheetRows.find(r => r._row === rowNum); }
 function isPaid(r) { const v=(r['Paid']||'').toLowerCase().trim(); return v==='true'||v==='yes'||v==='1'||v==='✓'||v==='x'; }
+
+// Convert any date string to YYYY-MM-DD for <input type="date">
+// Handles: M/D/YYYY, MM/DD/YYYY, YYYY-MM-DD, and Google Sheets serial numbers
+function toInputDate(str) {
+  if (!str || str === '—') return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str; // already correct
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {     // M/D/YYYY
+    const [m, d, y] = str.split('/');
+    return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  return str;
+}
 function amt(r)   { return parseFloat((r['Amount ($)']||'0').replace(/[$,]/g,'')) || 0; }
 function days(r)  { return parseFloat((r['Past Due (Days)']||'0').replace(/,/g,'')) || 0; }
 function bucket(d) { return d<=0?'current':d<=30?'days30':d<=60?'days60':'days61'; }
