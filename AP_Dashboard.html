@@ -385,7 +385,8 @@ const SHEET_TAB        = 'Monthly Bills List';
 const HEADER_ROW       = 3;   // Row 3 has headers
 const DATA_START       = 4;   // Data starts row 4
 const BASE_URL         = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
-const RELEASE_DATE_COL = 'Approved for Payment'; // Column J — stores payment release date
+const RELEASE_DATE_COL = 'Paid Date';   // Column J — scheduled payment release date
+const PAID_DATE_COL    = 'Date Paid';   // Written when marking an invoice paid
 
 // ── STATE ─────────────────────────────────────────────────────────
 let accessToken  = null;
@@ -594,8 +595,8 @@ async function confirmMarkPaid() {
   closePaidModal();
   showLoading('Saving…');
   try {
-    await updateCell(row._row, 'Paid',      'TRUE');
-    await updateCell(row._row, 'Paid Date', paidDate);
+    await updateCell(row._row, 'Paid',       'TRUE');
+    await updateCell(row._row, PAID_DATE_COL, paidDate);
     await reloadData();
   } catch (err) { alert('Save failed: ' + err.message); }
   hideLoading();
@@ -810,7 +811,7 @@ function renderAllInvoices() {
       ? '<span class="badge-status badge-paid">Paid</span>'
       : `<span class="badge-status ${bucketClass(d)}">${bucketLabel(d)}</span>`;
     const releaseDate = r[RELEASE_DATE_COL] || '';
-    const paidDate    = r['Paid Date'] || '';
+    const paidDate    = r[PAID_DATE_COL] || '';
     const actionBtn   = paid
       ? `<span style="font-size:11px;color:#9ca3af">✓ Paid</span>`
       : `<button class="btn-action btn-mark-paid" onclick="openPaidModal(sheetRowByIndex(${r._row}))">Mark Paid</button>`;
