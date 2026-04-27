@@ -538,6 +538,7 @@ function updateDBStatus(){
   else{bc.textContent='👤 Customers: Not loaded';bc.className='badge badge-warn';if(cs){cs.textContent='Not loaded';cs.className='db-status';}}
   if(it){bi.textContent=`📦 ${it.length} Items`;bi.className='badge badge-ok';if(is){is.textContent=`✅ ${it.length} items`;is.className='db-status loaded';}}
   else{bi.textContent='📦 Items: Not loaded';bi.className='badge badge-warn';if(is){is.textContent='Not loaded';is.className='db-status';}}
+  populateItemsDatalist();
 }
 
 // ── ADD MISSING CUSTOMERS TO DB ──────────────────────────────
@@ -1231,12 +1232,24 @@ function buildResultsHTML({stats,downloadBtn,rows,cols}){
   return html;
 }
 
+// ── ITEMS DATALIST (shared by all rules tables) ───────────────
+function populateItemsDatalist(){
+  const dl=document.getElementById('items-datalist'); if(!dl)return;
+  const items=(getItems()||[]).filter(i=>i.inactive!=='Yes');
+  dl.innerHTML=items.map(i=>`<option value="${i.internalId}">${i.internalId} – ${esc(i.name)}</option>`).join('');
+}
+function itemDisplayVal(itemId, items){
+  if(!itemId) return '';
+  const found=(items||[]).find(i=>String(i.internalId)===String(itemId));
+  return found ? `${found.internalId} – ${found.name}` : String(itemId);
+}
+
 // ── STRIPE RULES UI ──────────────────────────────────────────
 function renderRulesTable(){
   const rules=getRules(), items=getItems()||[];
   const tbody=document.getElementById('rules-tbody'); if(!tbody)return;
   tbody.innerHTML=rules.map((r,idx)=>{
-    const opts=items.filter(i=>i.inactive!=='Yes').slice(0,500).map(i=>`<option value="${i.internalId}" ${i.internalId==r.itemId?'selected':''}>${i.internalId} – ${i.name}</option>`).join('');
+    const curItem=itemDisplayVal(r.itemId,items);
     return`<tr>
       <td>${idx+1}</td>
       <td><select onchange="updateRule(${r.id},'field',this.value)">
@@ -1252,7 +1265,7 @@ function renderRulesTable(){
         <option value="startswith" ${r.cond==='startswith'?'selected':''}>starts with</option>
       </select></td>
       <td><input type="text" class="inp-sm" value="${esc(r.val||'')}" onchange="updateRule(${r.id},'val',this.value)"></td>
-      <td><select onchange="updateRule(${r.id},'itemId',this.value)">${opts}</select></td>
+      <td><input type="text" class="inp-sm" list="items-datalist" value="${esc(curItem)}" placeholder="Item ID or search…" style="width:200px" onchange="updateRule(${r.id},'itemId',this.value.replace(/ – .*$/,'').trim())"></td>
       <td style="text-align:center"><input type="checkbox" ${r.autoInclude?'checked':''} onchange="updateRule(${r.id},'autoInclude',this.checked)"></td>
       <td><button class="btn btn-danger" style="padding:2px 7px;font-size:11px" onclick="deleteRule(${r.id})">✕</button></td>
     </tr>`;
@@ -1267,7 +1280,6 @@ function renderShopifyRulesTable(){
   const rules=getShopifyRules(), items=getItems()||[];
   const tbody=document.getElementById('shopify-rules-tbody'); if(!tbody)return;
   if(!rules.length){tbody.innerHTML='<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:12px">No rules yet — all SKUs resolved via items DB</td></tr>';return;}
-  const opts=items.filter(i=>i.inactive!=='Yes').slice(0,500).map(i=>`<option value="${i.internalId}">${i.internalId} – ${i.name}</option>`).join('');
   tbody.innerHTML=rules.map((r,idx)=>`<tr>
     <td>${idx+1}</td>
     <td><select onchange="updateShopifyRule(${r.id},'cond',this.value)">
@@ -1276,7 +1288,7 @@ function renderShopifyRulesTable(){
       <option value="startswith" ${r.cond==='startswith'?'selected':''}>starts with</option>
     </select></td>
     <td><input type="text" class="inp-sm" style="width:140px" value="${esc(r.val||'')}" placeholder="e.g. CVPERFZIP" onchange="updateShopifyRule(${r.id},'val',this.value)"></td>
-    <td><select onchange="updateShopifyRule(${r.id},'itemId',this.value)"><option value="">— select —</option>${opts.replace(`value="${r.itemId}"`,`value="${r.itemId}" selected`)}</select></td>
+    <td><input type="text" class="inp-sm" list="items-datalist" value="${esc(itemDisplayVal(r.itemId,items))}" placeholder="Item ID or search…" style="width:200px" onchange="updateShopifyRule(${r.id},'itemId',this.value.replace(/ – .*$/,'').trim())"></td>
     <td><button class="btn btn-danger" style="padding:2px 7px;font-size:11px" onclick="deleteShopifyRule(${r.id})">✕</button></td>
   </tr>`).join('');
 }
@@ -1296,7 +1308,6 @@ function renderSquareRulesTable(){
   const rules=getSquareRules(), items=getItems()||[];
   const tbody=document.getElementById('square-rules-tbody'); if(!tbody)return;
   if(!rules.length){tbody.innerHTML='<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:12px">No rules yet — all items resolved via fuzzy name matching</td></tr>';return;}
-  const opts=items.filter(i=>i.inactive!=='Yes').slice(0,500).map(i=>`<option value="${i.internalId}">${i.internalId} – ${i.name}</option>`).join('');
   tbody.innerHTML=rules.map((r,idx)=>`<tr>
     <td>${idx+1}</td>
     <td><select onchange="updateSquareRule(${r.id},'cond',this.value)">
@@ -1305,7 +1316,7 @@ function renderSquareRulesTable(){
       <option value="startswith" ${r.cond==='startswith'?'selected':''}>starts with</option>
     </select></td>
     <td><input type="text" class="inp-sm" style="width:160px" value="${esc(r.val||'')}" placeholder="e.g. CV Performance Zip" onchange="updateSquareRule(${r.id},'val',this.value)"></td>
-    <td><select onchange="updateSquareRule(${r.id},'itemId',this.value)"><option value="">— select —</option>${opts.replace(`value="${r.itemId}"`,`value="${r.itemId}" selected`)}</select></td>
+    <td><input type="text" class="inp-sm" list="items-datalist" value="${esc(itemDisplayVal(r.itemId,items))}" placeholder="Item ID or search…" style="width:200px" onchange="updateSquareRule(${r.id},'itemId',this.value.replace(/ – .*$/,'').trim())"></td>
     <td><button class="btn btn-danger" style="padding:2px 7px;font-size:11px" onclick="deleteSquareRule(${r.id})">✕</button></td>
   </tr>`).join('');
 }
@@ -1488,6 +1499,7 @@ function toast(msg,type){ const w=document.getElementById('toasts'),el=document.
 })();
 </script>
 
+<datalist id="items-datalist"></datalist>
 <script>const TOOL_KEY='ns-import'; const TOOL_VERSION='1.0';</script>
 <script src="version-check.js"></script>
 </body>
