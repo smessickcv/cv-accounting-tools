@@ -216,7 +216,7 @@
 <body>
 
 <header class="site-header">
-  <h1>Payroll JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.0</span></h1>
+  <h1>Payroll JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.1</span></h1>
   <p>10X HVAC of CA, LLC — Gundlach's</p>
 </header>
 
@@ -640,7 +640,7 @@ function parseHrReport(rows) {
 async function parsePrismPdf(file) {
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
     let text = '';
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
@@ -933,11 +933,23 @@ function buildSummaryText(jeLines, imbalance, warnings, invoiceDetail, wages, un
 // UI helpers
 // ============================================================
 function setLoading(msg) {
-  document.getElementById('loading').style.display = 'flex';
+  const el = document.getElementById('loading');
+  el.style.display = 'flex';
+  el.style.color = '';
+  const spinner = el.querySelector('.spinner');
+  if (spinner) { spinner.style.display = ''; }
   document.getElementById('loading-msg').textContent = msg || 'Processing…';
 }
 function clearLoading() {
   document.getElementById('loading').style.display = 'none';
+}
+function showError(msg) {
+  const el = document.getElementById('loading');
+  el.style.display = 'flex';
+  el.style.color = '#dc2626';
+  const spinner = el.querySelector('.spinner');
+  if (spinner) { spinner.style.display = 'none'; }
+  document.getElementById('loading-msg').textContent = '❌ ' + msg;
 }
 
 function renderResults(result) {
@@ -1126,8 +1138,7 @@ async function generate() {
     renderResults(lastResult);
 
   } catch(err) {
-    clearLoading();
-    alert('Error: ' + err.message);
+    showError(err.message || String(err));
     console.error(err);
   }
 
@@ -1209,7 +1220,7 @@ document.getElementById('btn-txt').addEventListener('click', () => {
 });
 </script>
 
-<script>const TOOL_KEY='payroll-je-hvac'; const TOOL_VERSION='1.0';</script>
+<script>const TOOL_KEY='payroll-je-hvac'; const TOOL_VERSION='1.1';</script>
 <script src="version-check.js"></script>
 </body>
 </html>
