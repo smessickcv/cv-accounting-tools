@@ -216,7 +216,7 @@
 <body>
 
 <header class="site-header">
-  <h1>Payroll JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.4</span></h1>
+  <h1>Payroll JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.5</span></h1>
   <p>10X HVAC of CA, LLC — Gundlach's</p>
 </header>
 
@@ -649,19 +649,38 @@ async function parsePrismPdf(file) {
       text += content.items.map(item => item.str).join(' ') + '\n';
     }
 
-    let invNum = '?', invDate = '?', invTotal = 0;
+    let invNum = '?', invDate = '?', invTotal = 0, parseNote = '';
 
-    let m = text.match(/Vensure HR Invoice\s+(\d+)/);
+    // Invoice number
+    let m = text.match(/Vensure HR Invoice\s+(\d+)/i);
+    if (!m) m = text.match(/Invoice\s*#?\s*:?\s*(\d{5,})/i);
     if (m) invNum = m[1];
 
-    m = text.match(/Date\s+(\d{2}\/\d{2}\/\d{4})/);
+    // Date
+    m = text.match(/(\d{2}\/\d{2}\/\d{4})/);
     if (m) invDate = m[1];
 
-    m = text.match(/TOTAL INVOICE\s+([\d,]+\.?\d*)/);
-    if (!m) m = text.match(/TOTAL\s+INVOICE\s+([\d,]+\.?\d*)/);
-    if (m) invTotal = parseFloat(m[1].replace(/,/g, ''));
+    // Total — try many patterns in order of specificity
+    const totalPatterns = [
+      /TOTAL\s+INVOICE\s*:?\s*([\d,]+\.\d{2})/i,
+      /Invoice\s+Total\s*:?\s*([\d,]+\.\d{2})/i,
+      /GRAND\s+TOTAL\s*:?\s*([\d,]+\.\d{2})/i,
+      /TOTAL\s+DUE\s*:?\s*([\d,]+\.\d{2})/i,
+      /Amount\s+Due\s*:?\s*([\d,]+\.\d{2})/i,
+      /TOTAL\s*:?\s*([\d,]+\.\d{2})/i,
+    ];
+    for (const pat of totalPatterns) {
+      m = text.match(pat);
+      if (m) { invTotal = parseFloat(m[1].replace(/,/g, '')); break; }
+    }
 
-    return { fileName: file.name, invNum, invDate, invTotal };
+    // If still 0, attach a snippet of the extracted text to help diagnose
+    if (invTotal === 0) {
+      parseNote = 'Could not find total. Extracted text (first 400 chars): ' +
+                  text.replace(/\s+/g, ' ').trim().substring(0, 400);
+    }
+
+    return { fileName: file.name, invNum, invDate, invTotal, parseNote };
   } catch(e) {
     return { fileName: file.name, invNum: '?', invDate: '?', invTotal: 0, error: e.message };
   }
@@ -775,7 +794,7 @@ function buildJe(wages, contributions, employee401k, employeeHealth,
   const accrued = acctTotals['Accrued Payroll'] || 0;
   je.push({ account: 'Accrued Payroll',
             dr: accrued > 0 ? accrued : 0,
-            cr: accrued < 0 ? accrued : 0,
+            cr: accrued < 0 ? Math.abs(accrued) : 0,
             note: '' });
 
   je.push({ account: 'Retirement',
@@ -998,18 +1017,23 @@ function renderResults(result) {
     for (const inv of invoiceDetail) {
       sumInv += inv.invTotal;
       const tr = document.createElement('tr');
+      const noteHtml = inv.error
+        ? `<span style="color:var(--danger)">⚠ Parse error: ${escHtml(inv.error)}</span>`
+        : inv.parseNote
+          ? `<span style="color:var(--warning)">⚠ ${escHtml(inv.parseNote)}</span>`
+          : escHtml(inv.fileName);
       tr.innerHTML = `
         <td>${escHtml(inv.invNum)}</td>
         <td>${escHtml(inv.invDate)}</td>
-        <td class="num">${fmt(inv.invTotal)}</td>
-        <td class="muted-cell">${escHtml(inv.fileName)}</td>`;
+        <td class="num">${inv.invTotal ? fmt(inv.invTotal) : '<span style="color:var(--danger)">$0 — not found</span>'}</td>
+        <td class="muted-cell">${noteHtml}</td>`;
       invTbody.appendChild(tr);
     }
     const totTr = document.createElement('tr');
     totTr.className = 'total-row';
     totTr.innerHTML = `<td colspan="2">TOTAL</td><td class="num">${fmt(sumInv)}</td><td></td>`;
     invTbody.appendChild(totTr);
-    document.getElementById('invoice-card').style.display = '';
+    document.getElementById('invoice-card').style.display = 'block';
   } else {
     document.getElementById('invoice-card').style.display = 'none';
   }
@@ -1221,7 +1245,7 @@ document.getElementById('btn-txt').addEventListener('click', () => {
 });
 </script>
 
-<script>const TOOL_KEY='payroll-je-hvac'; const TOOL_VERSION='1.4';</script>
+<script>const TOOL_KEY='payroll-je-hvac'; const TOOL_VERSION='1.5';</script>
 <script src="version-check.js"></script>
 </body>
 </html>
