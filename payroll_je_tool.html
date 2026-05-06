@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Payroll JE Generator — 10X HVAC of CA</title>
 
-  <!-- SheetJS -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- SheetJS (free CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- pdf.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
@@ -216,7 +216,7 @@
 <body>
 
 <header class="site-header">
-  <h1>Payroll JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.1</span></h1>
+  <h1>Payroll JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.2</span></h1>
   <p>10X HVAC of CA, LLC — Gundlach's</p>
 </header>
 
@@ -1083,7 +1083,7 @@ async function generate() {
   try {
     // -- Read HR report --
     const hrArrayBuffer = await hrFile.arrayBuffer();
-    const wb = XLSX.read(hrArrayBuffer, { type: 'array', cellDates: false });
+    const wb = XLSX.read(new Uint8Array(hrArrayBuffer), { type: 'array', cellDates: false });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
@@ -1220,7 +1220,7 @@ document.getElementById('btn-txt').addEventListener('click', () => {
 });
 </script>
 
-<script>const TOOL_KEY='payroll-je-hvac'; const TOOL_VERSION='1.1';</script>
+<script>const TOOL_KEY='payroll-je-hvac'; const TOOL_VERSION='1.2';</script>
 <script src="version-check.js"></script>
 </body>
 </html>
