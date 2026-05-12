@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10X Roofing — Revenue Share JE Generator v1.1</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg:#f5f4f0;--surface:#fff;--surface2:#f0ede8;--border:#dedad4;--border2:#ccc8c0;
+    --text:#1a1916;--text2:#6b6760;--text3:#9e9b96;--accent:#1a1916;
+    --green:#2d6a4f;--green-bg:#eaf4ee;--green-text:#1b4332;--green-bd:#a7d7b8;
+    --red:#b91c1c;--red-bg:#fef2f2;--red-text:#7f1d1d;--red-bd:#fca5a5;
+    --amber-bg:#fffbeb;--amber-text:#78350f;--amber-bd:#fcd34d;
+    --blue-bg:#eff6ff;--blue-text:#1e3a5f;--blue-bd:#bfdbfe;
+    --r:10px;--r-sm:6px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Georgia',serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2.5rem 1.5rem}
+  .page{max-width:760px;margin:0 auto}
+  header{margin-bottom:2rem}
+  .wordmark{font-size:11px;font-family:'Courier New',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:.5rem}
+  h1{font-size:26px;font-weight:normal;letter-spacing:-.02em;line-height:1.2}
+  .subtitle{font-size:13px;color:var(--text2);margin-top:.3rem;font-style:italic}
+  hr.div{border:none;border-top:1px solid var(--border);margin:1.75rem 0}
+
+  .dz{border:1.5px dashed var(--border2);border-radius:var(--r);padding:2rem 1.5rem;text-align:center;cursor:pointer;background:var(--surface);transition:border-color .15s,background .15s;position:relative}
+  .dz:hover,.dz.drag{border-color:var(--accent);background:var(--surface2)}
+  .dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .dz-icon{font-size:24px;color:var(--text3);margin-bottom:.5rem}
+  .dz-label{font-size:14px;color:var(--text);margin-bottom:.25rem}
+  .dz-sub{font-size:11px;font-family:'Courier New',monospace;color:var(--text3);letter-spacing:.03em}
+
+  .badge{display:flex;align-items:center;gap:8px;border-radius:var(--r-sm);padding:.55rem .9rem;font-size:12px;font-family:'Courier New',monospace;margin-top:.5rem;border:1px solid}
+  .badge-green{background:var(--green-bg);color:var(--green-text);border-color:var(--green-bd)}
+  .badge-amber{background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber-bd)}
+
+  .sec-hdr{display:flex;align-items:baseline;gap:10px;margin-bottom:.4rem}
+  .sec-title{font-size:11px;font-family:'Courier New',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
+  .sec-hint{font-size:12px;color:var(--text3);font-style:italic}
+
+  .excl-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:.75rem}
+  .excl-box-hdr{display:flex;align-items:center;justify-content:space-between;padding:.65rem 1rem;border-bottom:1px solid var(--border);background:var(--surface2)}
+  .excl-box-title{font-size:11px;font-family:'Courier New',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--text2)}
+  .excl-count{font-size:11px;font-family:'Courier New',monospace;color:var(--text3)}
+  .excl-scroll{max-height:200px;overflow-y:auto}
+  .excl-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:.45rem 1rem;border-bottom:.5px solid var(--border);font-size:12px;font-family:'Courier New',monospace;color:var(--text2)}
+  .excl-row:last-child{border-bottom:none}
+  .excl-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .excl-nsid{color:var(--text3);font-size:11px;white-space:nowrap}
+  .btn-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:2px 4px;border-radius:3px;line-height:1}
+  .btn-del:hover{color:var(--red);background:var(--red-bg)}
+  .excl-add{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;padding:.65rem 1rem;border-top:1px solid var(--border);background:var(--surface2)}
+  .excl-add input{padding:6px 9px;font-size:12px;font-family:'Courier New',monospace;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);color:var(--text);outline:none}
+  .excl-add input:focus{border-color:var(--accent)}
+  .btn-add{padding:6px 14px;font-size:12px;font-family:'Courier New',monospace;background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);cursor:pointer;white-space:nowrap}
+  .btn-add:hover{opacity:.85}
+  .excl-empty{padding:1rem;text-align:center;font-size:12px;font-family:'Courier New',monospace;color:var(--text3)}
+
+  .fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:1.25rem 0}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field.full{grid-column:1/-1}
+  label{font-size:10px;font-family:'Courier New',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--text2)}
+  input[type=text]{padding:8px 11px;font-size:14px;font-family:'Georgia',serif;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);color:var(--text);outline:none;transition:border-color .15s}
+  input[type=text]:focus{border-color:var(--accent)}
+  input[type=text]::placeholder{color:var(--text3)}
+
+  .btn-run{width:100%;padding:11px;font-size:14px;font-family:'Georgia',serif;font-style:italic;background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);cursor:pointer;transition:opacity .15s}
+  .btn-run:hover{opacity:.85}
+  .btn-run:disabled{opacity:.35;cursor:not-allowed}
+
+  .err{background:var(--red-bg);border:1px solid var(--red-bd);border-radius:var(--r-sm);padding:.7rem .9rem;font-size:12px;color:var(--red-text);margin-top:.6rem;font-family:'Courier New',monospace}
+  .warn{background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r-sm);padding:.7rem .9rem;font-size:12px;color:var(--amber-text);margin-top:.6rem;line-height:1.5}
+  .info{background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:var(--r-sm);padding:.7rem .9rem;font-size:12px;color:var(--blue-text);margin-top:.6rem;font-family:'Courier New',monospace}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:1.25rem 0 .75rem}
+  .stat{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:.75rem .9rem}
+  .stat-label{font-size:10px;font-family:'Courier New',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+  .stat-val{font-size:20px;font-weight:normal;color:var(--text);font-family:'Georgia',serif}
+  .stat-val.ok{color:var(--green)}
+  .stat-val.no{color:var(--red)}
+
+  .dl-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:.75rem 0}
+  .btn-dl{padding:10px;font-size:12px;font-family:'Courier New',monospace;letter-spacing:.04em;border-radius:var(--r-sm);cursor:pointer;border:1px solid;text-align:center;transition:opacity .12s,background .12s}
+  .btn-dl-p{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn-dl-p:hover{opacity:.85}
+  .btn-dl-s{background:var(--surface);color:var(--text);border-color:var(--border2)}
+  .btn-dl-s:hover{background:var(--surface2)}
+
+  .tag{display:inline-block;font-size:10px;font-family:'Courier New',monospace;padding:2px 8px;border-radius:20px;border:1px solid;margin-bottom:.6rem}
+  .tag-warn{background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber-bd)}
+  .tag-ok{background:var(--green-bg);color:var(--green-text);border-color:var(--green-bd)}
+
+  .tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .tbl th{text-align:left;font-family:'Courier New',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);padding:4px 8px;border-bottom:1px solid var(--border);font-weight:normal}
+  .tbl td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2);font-family:'Courier New',monospace;font-size:11px}
+  .tbl td:last-child{text-align:right}
+
+  footer{margin-top:2.5rem;font-size:10px;font-family:'Courier New',monospace;color:var(--text3);text-align:center;letter-spacing:.05em}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="wordmark">10X Roofing · Finance</div>
+    <h1>Revenue Share JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.1</span></h1>
+    <p class="subtitle">Intercompany journal entry &amp; customer update import builder</p>
+  </header>
+
+  <div class="dz" id="dz">
+    <div class="dz-icon">&#8615;</div>
+    <div class="dz-label">Drop finance data file here</div>
+    <div class="dz-sub">.xlsx or .csv &nbsp;·&nbsp; Sub Level COA · Netsuite ID · Customer:Project</div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+  </div>
+  <div id="fileBadge" style="display:none"></div>
+  <div id="colInfo" style="display:none"></div>
+  <div id="unmappedWarn" style="display:none"></div>
+  <div id="errorBox" style="display:none"></div>
+
+  <hr class="div">
+
+  <div class="sec-hdr">
+    <span class="sec-title">Exclusions</span>
+    <span class="sec-hint">Persists across sessions — add or remove any time</span>
+  </div>
+  <div class="excl-box">
+    <div class="excl-box-hdr">
+      <span class="excl-box-title">Excluded entries</span>
+      <span class="excl-count" id="exclCount">0 rules</span>
+      <div style="display:flex;gap:6px;margin-left:auto">
+        <button class="btn-sm" onclick="exportExclusions()" style="font-size:10px;padding:3px 8px">&#128190; Export</button>
+        <label class="btn-sm" style="font-size:10px;padding:3px 8px;cursor:pointer">&#128228; Import<input type="file" accept=".json" style="display:none" onchange="importExclusions(this.files[0]);this.value=''"></label>
+      </div>
+    </div>
+    <div class="excl-scroll" id="exclList"></div>
+    <div class="excl-add">
+      <input type="text" id="addCoa" placeholder="COA prefix or full name (e.g. 40440)">
+      <input type="text" id="addNsid" placeholder="Netsuite ID (e.g. 12819)">
+      <button class="btn-add" onclick="addExclusion()">+ Add</button>
+    </div>
+  </div>
+
+  <hr class="div">
+
+  <div class="fields">
+    <div class="field">
+      <label>Period label</label>
+      <input type="text" id="periodLabel" placeholder="e.g. February 2026">
+    </div>
+    <div class="field">
+      <label>Period end date (M/D/YYYY)</label>
+      <input type="text" id="endDate" placeholder="e.g. 2/28/2026">
+    </div>
+    <div class="field full">
+      <label>External ID</label>
+      <input type="text" id="externalId" placeholder="e.g. 10XROOFING-REVSHARE-FEB26">
+    </div>
+  </div>
+
+  <button class="btn-run" id="runBtn" disabled>Generate imports</button>
+  <div id="resultsArea" style="display:none"></div>
+
+  <footer>All processing happens locally in your browser &mdash; no data leaves this page</footer>
+</div>
+
+<script>
+// ── Account maps ─────────────────────────────────────────────────────────────
+const CREDIT_ACCT = {
+  "40110":"55101 Partnership Revenue Share : 10X360",
+  "40142":"55105 Partnership Revenue Share : Elite Edge (Nine Figure Boardroom)",
+  "40410":"55106 Partnership Revenue Share : Platform Review",
+  "40440":"55108 Partnership Revenue Share : Cardone University",
+  "40475":"55109 Partnership Revenue Share : 10X Buy/Sell",
+  "40510":"55107 Partnership Revenue Share : BMLP Online Program",
+  "40710":"55108 Partnership Revenue Share : Cardone University",
+};
+const DEBIT_ACCT = {
+  "40110":"40110 Events : 10X360",
+  "40142":"40142 Events : Elite Edge (Nine Figure Boardroom)",
+  "40410":"40410 Consulting Programs : Platform Review",
+  "40440":"40440 - Private Coaching",
+  "40475":"40475 - 10X Buy/Sell",
+  "40510":"40510 BMLP : BMLP Online Program",
+  "40710":"40710 Affiliate Programs : Cardone University Revenue",
+};
+const CLASS_MAP = {
+  "40110":"CV Events : 10X360","40142":"CV Events : Elite Edge",
+  "40410":"Consulting Programs : Platform Review","40440":"Affiliate Programs : Cardone U",
+  "40475":"10X Buy/Sell","40510":"BMLP","40710":"Affiliate Programs : Cardone U",
+};
+const IC_PAYABLE    = "22206 Accrued Payables : Partnership Revenue Share";
+const IC_RECEIVABLE = "12002 Partnership Revenue Share Receivable";
+const STORAGE_KEY   = "je_exclusions_v1";
+
+const DEFAULT_EXCLUSIONS = [];
+
+let parsedRows = [];
+let exclRules  = [];
+
+// ── Exclusions persistence ───────────────────────────────────────────────────
+function loadExclusions() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    exclRules = stored ? JSON.parse(stored) : [];
+  } catch(e) { exclRules = []; }
+  renderExclusions();
+}
+
+function exportExclusions() {
+  const blob = new Blob([JSON.stringify({exclusions: exclRules}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'rev-share-je_exclusions.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function importExclusions(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (Array.isArray(data.exclusions)) {
+        exclRules = data.exclusions;
+        saveExclusions();
+        renderExclusions();
+      } else { alert('Invalid format. Expected {"exclusions": [...]}'); }
+    } catch(err) { alert('Invalid JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+function saveExclusions() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(exclRules)); } catch(e) {}
+}
+function renderExclusions() {
+  const list  = document.getElementById('exclList');
+  const count = document.getElementById('exclCount');
+  count.textContent = exclRules.length + ' rule' + (exclRules.length !== 1 ? 's' : '');
+  if (!exclRules.length) {
+    list.innerHTML = '<div class="excl-empty">No exclusions — add one below</div>';
+    return;
+  }
+  list.innerHTML = exclRules.map((r,i) => `
+    <div class="excl-row">
+      <span title="${r.coa}">${r.coa_prefix} &mdash; ${r.customer || r.ns_id}</span>
+      <span class="excl-nsid">NS:&nbsp;${r.ns_id}</span>
+      <button class="btn-del" onclick="removeExclusion(${i})" title="Remove">&#10005;</button>
+    </div>`).join('');
+}
+function addExclusion() {
+  const coaRaw = document.getElementById('addCoa').value.trim();
+  const nsRaw  = document.getElementById('addNsid').value.trim();
+  if (!coaRaw || !nsRaw) { alert('Enter both a COA and a Netsuite ID.'); return; }
+  const ns = parseInt(nsRaw);
+  if (isNaN(ns)) { alert('Netsuite ID must be a number.'); return; }
+  const m = coaRaw.match(/(\d{5})/);
+  if (!m) { alert('COA must contain a 5-digit prefix (e.g. 40440).'); return; }
+  const prefix = m[1];
+  if (exclRules.some(r => r.coa_prefix === prefix && r.ns_id === ns)) {
+    alert('This combination already exists.'); return;
+  }
+  exclRules.push({coa: coaRaw, coa_prefix: prefix, ns_id: ns, customer:''});
+  saveExclusions();
+  renderExclusions();
+  document.getElementById('addCoa').value  = '';
+  document.getElementById('addNsid').value = '';
+}
+function removeExclusion(i) {
+  exclRules.splice(i, 1);
+  saveExclusions();
+  renderExclusions();
+}
+
+// ── File drop ────────────────────────────────────────────────────────────────
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover',  e=>{e.preventDefault();dz.classList.add('drag')});
+dz.addEventListener('dragleave', ()=>dz.classList.remove('drag'));
+dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('drag');handleFile(e.dataTransfer.files[0])});
+document.getElementById('fileInput').addEventListener('change', e=>handleFile(e.target.files[0]));
+
+// Re-parse when end date changes so column detection updates
+document.getElementById('endDate').addEventListener('blur', ()=>{
+  const fi = document.getElementById('fileInput');
+  if (fi.files && fi.files[0] && parsedRows.length) handleFile(fi.files[0]);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  document.getElementById('fileBadge').innerHTML = `<div class="badge badge-green">&#10003;&nbsp; ${file.name}</div>`;
+  document.getElementById('fileBadge').style.display = 'block';
+  document.getElementById('resultsArea').style.display = 'none';
+  showMsg('colInfo', null);
+  showMsg('unmappedWarn', null);
+  showMsg('errorBox', null);
+  document.getElementById('runBtn').disabled = true;
+
+  readWb(file, wb => {
+    try {
+      const result = extractRows(wb);
+      parsedRows = result.rows;
+      if (!parsedRows.length) throw new Error("No rows found for the selected period. Check the end date matches a date column in the file, and that the '10X Roofing Revenue Recognition' section exists.");
+      showMsg('colInfo', 'info', 'Pulling from: ' + result.colLabel);
+      checkUnmapped(parsedRows);
+      document.getElementById('runBtn').disabled = false;
+    } catch(err) { showMsg('errorBox','err', err.message); }
+  });
+}
+
+function readWb(file, cb) {
+  const r = new FileReader();
+  r.onload = e => {
+    const isCsv = file.name.toLowerCase().endsWith('.csv');
+    const wb = isCsv
+      ? XLSX.read(new TextDecoder('utf-8').decode(new Uint8Array(e.target.result)), {type:'string', raw:true})
+      : XLSX.read(e.target.result, {type:'array'});
+    cb(wb);
+  };
+  r.readAsArrayBuffer(file);
+}
+
+// ── Core parser ──────────────────────────────────────────────────────────────
+function parseMoney(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const s = String(v).replace(/[$,\s\u2212\u2013]/g,'').replace(/−/,'-');
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+// Returns "M/YYYY" from a date string like "2/1/2026", "2/28/2026", or "2/1/26"
+function monthYearKey(str) {
+  const m = String(str).trim().match(/^(\d{1,2})\/\d{1,2}\/(\d{2,4})$/);
+  if (!m) return null;
+  const yr = m[2].length === 2 ? '20' + m[2] : m[2];
+  return `${parseInt(m[1])}/${yr}`;
+}
+
+function extractRows(wb) {
+  const endDateRaw = document.getElementById('endDate').value.trim();
+  const edMatch = endDateRaw.match(/^(\d{1,2})\/\d{1,2}\/(\d{4})$/);
+  const targetKey = edMatch ? `${parseInt(edMatch[1])}/${edMatch[2]}` : null;
+
+  for (const sheetName of wb.SheetNames) {
+    const ws   = wb.Sheets[sheetName];
+    // Read raw — preserves exact cell values without XLSX type coercion
+    const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+    if (data.length < 3) continue;
+
+    // Find the row index containing "Sub Level COA"
+    let hdrIdx = -1;
+    for (let r = 0; r < Math.min(data.length, 6); r++) {
+      if (data[r].some(c => String(c).includes('Sub Level COA'))) { hdrIdx = r; break; }
+    }
+    if (hdrIdx < 0) continue;
+
+    const secRow = hdrIdx > 0 ? data[hdrIdx - 1] : null;  // section label row above headers
+    const hdrRow = data[hdrIdx];
+
+    // ── Find required field columns ─────────────────────────────────────────
+    const exactIdx = (...needles) => {
+      for (const n of needles) {
+        const i = hdrRow.findIndex(h => String(h).trim().toLowerCase() === n.toLowerCase());
+        if (i >= 0) return i;
+      }
+      // fallback: partial match
+      return hdrRow.findIndex(h => needles.some(n => String(h).toLowerCase().includes(n.toLowerCase())));
+    };
+    const colCOA  = exactIdx('Sub Level COA', 'Sub Level');
+    const colNSID = exactIdx('Netsuite ID', 'NetSuite ID', 'NS ID');
+    const colCust = exactIdx('Customer:Project');
+    if (colCOA < 0 || colNSID < 0 || colCust < 0) continue;
+
+    // ── Find the amount column ──────────────────────────────────────────────
+    // Method: scan section row to find the START of "10X Roofing Revenue Recognition",
+    // then within that section find the column whose date header matches the target month/year.
+    // We track the EXACT column index — no fallback to other sections or Revenue to Book.
+    let colAmt = -1;
+    let colLabel = '';
+
+    if (secRow && targetKey) {
+      // Build section ranges: each section label marks its start; next label marks end
+      let currentSec = '';
+      let secStart   = -1;
+      const sections = []; // [{name, start, end}]
+
+      for (let c = 0; c < secRow.length; c++) {
+        const label = String(secRow[c]).trim();
+        if (label) {
+          if (currentSec && secStart >= 0) sections.push({name: currentSec, start: secStart, end: c - 1});
+          currentSec = label;
+          secStart   = c;
+        }
+      }
+      if (currentSec && secStart >= 0) sections.push({name: currentSec, start: secStart, end: secRow.length - 1});
+
+      // Find "10X Roofing Revenue Recognition" section
+      const revRecSec = sections.find(s => s.name.toLowerCase().includes('10x roofing revenue recognition')
+                                        || s.name.toLowerCase().includes('revenue recognition'));
+      if (revRecSec) {
+        // Within that section, find the column whose date header matches targetKey
+        for (let c = revRecSec.start; c <= revRecSec.end; c++) {
+          const k = monthYearKey(String(hdrRow[c]));
+          if (k && k === targetKey) {
+            colAmt   = c;
+            colLabel = String(hdrRow[c]) + ' (10X Roofing Revenue Recognition, col ' + (c + 1) + ')';
+            break;
+          }
+        }
+      }
+    }
+
+    // No section row (single-row header file) — find any date col matching target in header
+    if (colAmt < 0 && targetKey) {
+      for (let c = hdrRow.length - 1; c >= 0; c--) {
+        if (monthYearKey(String(hdrRow[c])) === targetKey) {
+          colAmt   = c;
+          colLabel = String(hdrRow[c]) + ' (date-matched, col ' + (c + 1) + ')';
+          break;
+        }
+      }
+    }
+
+    if (colAmt < 0) {
+      throw new Error(
+        targetKey
+          ? `No column found matching period ${targetKey} in the "10X Roofing Revenue Recognition" section. Check the end date (${endDateRaw}).`
+          : 'Enter a period end date so the correct column can be identified.'
+      );
+    }
+
+    // ── Read data rows ──────────────────────────────────────────────────────
+    const rows = [];
+    for (let r = hdrIdx + 1; r < data.length; r++) {
+      const row  = data[r];
+      const coa  = String(row[colCOA]  || '').trim();
+      const nsid = String(row[colNSID] || '').trim();
+      const cust = String(row[colCust] || '').trim();
+
+      if (!coa || !nsid || !cust) continue;
+      const pfx = coa.match(/^(\d{5})/);
+      if (!pfx) continue;
+
+      // Read ONLY the targeted column — no fallback to other columns
+      const amt = parseMoney(row[colAmt]);
+      if (amt === null || amt === 0) continue;  // zero or empty = not booked this period
+
+      rows.push({coa_prefix: pfx[1], coa_full: coa, ns_id: parseInt(nsid) || 0, customer: cust, je_amount: amt});
+    }
+
+    if (rows.length || colAmt >= 0) return {rows, colLabel};
+  }
+
+  return {rows: [], colLabel: ''};
+}
+
+function checkUnmapped(rows) {
+  const u = [...new Set(rows.map(r=>r.coa_prefix).filter(p=>!CREDIT_ACCT[p]))];
+  if (u.length) showMsg('unmappedWarn','warn',`Unmapped COA(s): ${u.join(', ')} — will use raw COA as account name.`);
+  else showMsg('unmappedWarn', null);
+}
+
+function showMsg(id, cls, text) {
+  const el = document.getElementById(id);
+  if (!cls) { el.style.display='none'; return; }
+  el.className = cls;
+  el.textContent = text || '';
+  el.style.display = 'block';
+}
+
+// ── Generate ─────────────────────────────────────────────────────────────────
+document.getElementById('runBtn').addEventListener('click', () => {
+  const period  = document.getElementById('periodLabel').value.trim();
+  const endDate = document.getElementById('endDate').value.trim();
+  const extId   = document.getElementById('externalId').value.trim();
+  if (!period || !endDate || !extId) { showMsg('errorBox','err','Fill in all three fields.'); return; }
+
+  document.getElementById('runBtn').textContent = 'Generating…';
+  document.getElementById('runBtn').disabled    = true;
+
+  setTimeout(() => {
+    try {
+      // Build exclusion lookup
+      const exclMap = {};
+      for (const r of exclRules) {
+        if (!exclMap[r.coa_prefix]) exclMap[r.coa_prefix] = new Set();
+        exclMap[r.coa_prefix].add(r.ns_id);
+      }
+
+      const included = [], excluded = [];
+      for (const r of parsedRows) {
+        (exclMap[r.coa_prefix] && exclMap[r.coa_prefix].has(r.ns_id) ? excluded : included).push(r);
+      }
+
+      const total = included.reduce((s,r) => s + r.je_amount, 0);
+      const memo  = `10X Roofing 20% Revenue Share ${period}`;
+      const HDRS  = ['External ID','Date','Memo','Subsidiary','Line Account','Line Debit','Line Credit',
+                     'Line Memo','Line Entity','Line Department','Line Class','Line Due To/From Subsidiary'];
+
+      const mkRow = (sub,acct,dr,cr,entity,prefix,due) => ({
+        'External ID': extId, 'Date': endDate, 'Memo': memo, 'Subsidiary': sub,
+        'Line Account': acct,
+        'Line Debit':   dr !== null ? dr.toFixed(2) : '',
+        'Line Credit':  cr !== null ? cr.toFixed(2) : '',
+        'Line Memo': memo, 'Line Entity': entity, 'Line Department': 'General Corporate',
+        'Line Class': entity ? (CLASS_MAP[prefix] || '') : '',
+        'Line Due To/From Subsidiary': due,
+      });
+
+      const jeRows = [];
+      for (const r of included) jeRows.push(mkRow(11, CREDIT_ACCT[r.coa_prefix]||r.coa_full, null, r.je_amount, r.customer, r.coa_prefix, 17));
+      jeRows.push(mkRow(11, IC_PAYABLE,    total, null,  '', null, 17));
+      jeRows.push(mkRow(17, IC_RECEIVABLE, null,  total, '', null, 11));
+      for (const r of included) jeRows.push(mkRow(17, DEBIT_ACCT[r.coa_prefix]||r.coa_full, r.je_amount, null, r.customer, r.coa_prefix, 11));
+
+      const seen = {};
+      for (const r of included) if (!seen[r.ns_id]) seen[r.ns_id] = 1;
+      const custRows = Object.keys(seen).sort((a,b)=>a-b).map(id=>({'Internal ID':id,'Subsidiary':17}));
+
+      const jeFile   = buildCsv(HDRS, jeRows);
+      const custFile = buildCsv(['Internal ID','Subsidiary'], custRows);
+
+      showMsg('errorBox', null);
+      renderResults({included, excluded, total, jeRows, custRows, jeFile, custFile, extId});
+    } catch(err) { showMsg('errorBox','err','Error: ' + err.message); }
+    finally {
+      document.getElementById('runBtn').textContent = 'Generate imports';
+      document.getElementById('runBtn').disabled    = false;
+    }
+  }, 40);
+});
+
+// ── CSV & download ────────────────────────────────────────────────────────────
+function buildCsv(headers, rows) {
+  const esc = v => { const s = String(v??''); return (s.includes(',')||s.includes('"')||s.includes('\n')) ? `"${s.replace(/"/g,'""')}"` : s; };
+  return '\uFEFF' + [headers.map(esc).join(','), ...rows.map(r=>headers.map(h=>esc(r[h]??'')).join(','))].join('\r\n');
+}
+function downloadCsv(content, filename) {
+  const blob = new Blob([content], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// ── Results ───────────────────────────────────────────────────────────────────
+function renderResults({included, excluded, total, jeRows, custRows, jeFile, custFile, extId}) {
+  const balanced = Math.abs(included.reduce((s,r)=>s+r.je_amount,0) - total) < 0.01;
+  let exclHtml = '';
+  if (excluded.length) exclHtml = `
+    <div style="font-size:11px;font-family:'Courier New',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin:1.25rem 0 .5rem">Excluded (${excluded.length})</div>
+    <table class="tbl"><thead><tr><th>COA</th><th>NS ID</th><th>Customer</th><th>Amount</th></tr></thead>
+    <tbody>${excluded.map(r=>`<tr><td>${r.coa_full}</td><td>${r.ns_id}</td><td>${r.customer}</td><td>${r.je_amount.toFixed(2)}</td></tr>`).join('')}</tbody></table>`;
+
+  document.getElementById('resultsArea').innerHTML = `
+    <hr class="div">
+    <div class="stats">
+      <div class="stat"><div class="stat-label">JE lines</div><div class="stat-val">${jeRows.length}</div></div>
+      <div class="stat"><div class="stat-label">Customers</div><div class="stat-val">${custRows.length}</div></div>
+      <div class="stat"><div class="stat-label">Total</div><div class="stat-val" style="font-size:15px">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+      <div class="stat"><div class="stat-label">Balanced</div><div class="stat-val ${balanced?'ok':'no'}">${balanced?'Yes':'No'}</div></div>
+    </div>
+    <div>${excluded.length ? `<span class="tag tag-warn">${excluded.length} excluded</span>` : `<span class="tag tag-ok">No exclusions applied</span>`}</div>
+    <div class="dl-row">
+      <button class="btn-dl btn-dl-p" id="dlJe">&#8615;&nbsp; JE import CSV</button>
+      <button class="btn-dl btn-dl-s" id="dlCust">&#8615;&nbsp; Customer update CSV</button>
+    </div>
+    ${exclHtml}`;
+  document.getElementById('resultsArea').style.display = 'block';
+  document.getElementById('dlJe').addEventListener('click',   () => downloadCsv(jeFile,   `je_import_${extId}.csv`));
+  document.getElementById('dlCust').addEventListener('click', () => downloadCsv(custFile, `customer_update_${extId}.csv`));
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadExclusions();
+</script>
+
+<script>const TOOL_KEY='rev-share-je'; const TOOL_VERSION='1.1';</script>
+<script src="version-check.js"></script>
+</body>
+</html>
