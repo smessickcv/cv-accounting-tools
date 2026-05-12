@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>10X Roofing — Revenue Share JE Generator</title>
+<title>10X Roofing — Revenue Share JE Generator v1.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
@@ -104,7 +104,7 @@
 
   <header>
     <div class="wordmark">10X Roofing · Finance</div>
-    <h1>Revenue Share JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.0</span></h1>
+    <h1>Revenue Share JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.1</span></h1>
     <p class="subtitle">Intercompany journal entry &amp; customer update import builder</p>
   </header>
 
@@ -311,7 +311,7 @@ function readWb(file, cb) {
   r.onload = e => {
     const isCsv = file.name.toLowerCase().endsWith('.csv');
     const wb = isCsv
-      ? XLSX.read(new TextDecoder('utf-8').decode(new Uint8Array(e.target.result)), {type:'string', raw:false})
+      ? XLSX.read(new TextDecoder('utf-8').decode(new Uint8Array(e.target.result)), {type:'string', raw:true})
       : XLSX.read(e.target.result, {type:'array'});
     cb(wb);
   };
@@ -326,10 +326,12 @@ function parseMoney(v) {
   return isNaN(n) ? null : n;
 }
 
-// Returns "M/YYYY" from a date string like "2/1/2026" or "2/28/2026"
+// Returns "M/YYYY" from a date string like "2/1/2026", "2/28/2026", or "2/1/26"
 function monthYearKey(str) {
-  const m = String(str).trim().match(/^(\d{1,2})\/\d{1,2}\/(\d{4})$/);
-  return m ? `${parseInt(m[1])}/${m[2]}` : null;
+  const m = String(str).trim().match(/^(\d{1,2})\/\d{1,2}\/(\d{2,4})$/);
+  if (!m) return null;
+  const yr = m[2].length === 2 ? '20' + m[2] : m[2];
+  return `${parseInt(m[1])}/${yr}`;
 }
 
 function extractRows(wb) {
@@ -572,7 +574,7 @@ function renderResults({included, excluded, total, jeRows, custRows, jeFile, cus
 loadExclusions();
 </script>
 
-<script>const TOOL_KEY='rev-share-je'; const TOOL_VERSION='1.0';</script>
+<script>const TOOL_KEY='rev-share-je'; const TOOL_VERSION='1.1';</script>
 <script src="version-check.js"></script>
 </body>
 </html>
