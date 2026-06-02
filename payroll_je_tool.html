@@ -211,12 +211,71 @@
       animation: spin .7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Employee lookup button ---- */
+    .btn-emp {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; color: var(--primary);
+      border: 1.5px solid var(--border);
+      padding: 10px 18px; border-radius: 7px;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .btn-emp:hover { border-color: var(--accent); background: #eff6ff; }
+
+    /* ---- Modal ---- */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,.55);
+      align-items: flex-start; justify-content: center;
+      padding: 40px 16px; z-index: 50; overflow-y: auto;
+    }
+    .modal {
+      background: var(--card); border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.25);
+      width: 100%; max-width: 680px; padding: 24px;
+    }
+    .modal h2 { font-size: 1.1rem; color: var(--primary); margin-bottom: 6px; }
+    .modal .modal-hint { font-size: 0.85rem; color: var(--muted); margin-bottom: 16px; }
+    .modal table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    .modal th { padding: 6px 8px; }
+    .modal td { padding: 5px 8px; border-bottom: none; vertical-align: top; }
+    .modal input[type="text"], .modal select {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.88rem; color: var(--text); outline: none;
+    }
+    .modal input:focus, .modal select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #dbeafe; }
+    .emp-row-del {
+      background: none; border: none; color: var(--danger);
+      font-size: 1rem; cursor: pointer; padding: 6px 8px;
+    }
+    .btn-link {
+      background: none; border: none; color: var(--accent);
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 4px 0;
+    }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+    .btn-primary {
+      background: var(--accent); color: #fff; border: none;
+      padding: 10px 22px; border-radius: 7px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary {
+      background: #fff; color: var(--muted); border: 1.5px solid var(--border);
+      padding: 10px 22px; border-radius: 7px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-secondary:hover { background: #f8fafc; }
+    .emp-saved-section { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .emp-saved-row {
+      display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 10px;
+      padding: 7px 4px; border-bottom: 1px solid var(--border); font-size: 0.85rem;
+    }
+    .emp-del { background: none; border: none; color: var(--danger); font-size: 0.82rem; font-weight: 600; cursor: pointer; }
   </style>
 </head>
 <body>
 
 <header class="site-header">
-  <h1>Payroll JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.5</span></h1>
+  <h1>Payroll JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.6</span></h1>
   <p>10X HVAC of CA, LLC — Gundlach's</p>
 </header>
 
@@ -261,6 +320,18 @@
         <input type="number" id="prism-override" placeholder="Leave blank to use PDFs" min="0" step="0.01" />
         <div class="helper">Leave blank to use invoice PDFs</div>
       </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">4. Employee Cost-Center Lookup</div>
+    <button class="btn-emp" id="btn-manage-emp" type="button">
+      <span>👥</span> Manage employees
+    </button>
+    <div class="helper" style="margin-top:8px;">
+      Add new employees and assign their cost center. Saved entries persist on this
+      computer and are applied automatically. A box also pops up whenever the report
+      contains an employee that isn't in the lookup yet.
     </div>
   </div>
 
@@ -356,6 +427,42 @@
 
 </main>
 
+<!-- ======== EMPLOYEE LOOKUP MODAL ======== -->
+<div class="modal-overlay" id="emp-modal-overlay">
+  <div class="modal">
+    <h2>Employee Cost-Center Lookup</h2>
+    <div class="modal-hint" id="emp-modal-hint"></div>
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left;font-size:0.72rem;color:var(--muted);">Employee (as in Vensure)</th>
+          <th style="text-align:left;font-size:0.72rem;color:var(--muted);">Cost center</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="emp-add-rows"></tbody>
+    </table>
+    <button class="btn-link" id="emp-add-another" type="button">＋ Add another employee</button>
+
+    <div class="emp-saved-section">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
+        <div class="card-title" style="margin-bottom:0;">Saved custom employees</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-link" id="emp-export" type="button">⬇ Export JSON</button>
+          <button class="btn-link" id="emp-import" type="button">⬆ Import JSON</button>
+          <input type="file" id="emp-import-file" accept=".json,application/json" style="display:none" />
+        </div>
+      </div>
+      <div id="emp-saved-list"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="emp-cancel" type="button">Cancel</button>
+      <button class="btn-primary" id="emp-save" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // pdf.js worker
@@ -366,54 +473,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 // ============================================================
 // CONFIGURATION CONSTANTS
 // ============================================================
-const EMPLOYEE_COST_CENTER = {
-  "ABOYTES ERNESTO": "HVAC Direct-R",
-  "ALVAREZ JARED D": "HVAC Direct-R",
-  "ARAMBULA JOAB P": "HVAC Direct-R",
-  "BURNS BRENT S": "HVAC Sales",
-  "CASTANEDA MATTHEU E": "HVAC Direct-R",
-  "CRISANTOS JESUS J": "HVAC Direct-R",
-  "CRUZ HECTOR": "HVAC Direct-R",
-  "CRUZ THOMAS L": "HVAC Direct-R",
-  "ELKINS ALEXANDER THOMAS": "HVAC Direct-R",
-  "GONZALEZ II ANTHONY S": "Plumbing Direct",
-  "ANTHONY GONZALEZ II S": "Plumbing Direct",
-  "GONZALEZ JAVIER A": "HVAC Direct-R",
-  "HAMON GERALD W": "HVAC Direct-R",
-  "HERNANDEZ TRINITY R": "Admin/Managers",
-  "JENKINS STEPHEN M": "HVAC Sales",
-  "JUAREZ PHILLIP JOAQUIN": "HVAC Direct-R",
-  "KIRKLAND MICHAEL J": "Plumbing Direct",
-  "LOHAN MALIA J": "Admin/Managers",
-  "LOPEZ JOSHUA D": "HVAC Direct-R",
-  "LUNA ADRIAN A": "HVAC Direct-R",
-  "MARINEZ CHRISTOPHER A": "HVAC Direct-R",
-  "MAXWELL ANNE M": "Admin/Managers",
-  "MAYER MICHAEL": "HVAC Direct-R",
-  "MCCLANAHAN KALEB": "Plumbing Direct",
-  "MILNER DANIEL L": "Admin/Managers",
-  "O'TOOLE DANIEL T": "HVAC Direct-R",
-  "PADILLA FABIAN": "HVAC Direct-C",
-  "PARMELEE TERESA R": "Admin/Managers",
-  "PEREZ STEVE R": "HVAC Direct-R",
-  "PHILLIPS-HORNE JOSHUA J": "HVAC Direct-R",
-  "PORTERFIELD TREVOR L": "HVAC Direct-R",
-  "RASAVONG JR PHAT": "HVAC Direct-R",
-  "RODRIGUEZ JACOB": "HVAC Direct-R",
-  "RODRIGUEZ MARGARITA S": "Admin/Managers",
-  "RODRIGUEZ OSCAR": "HVAC Direct-R",
-  "ROGERS JONAH ORLAND": "HVAC Direct-R",
-  "ROYAL BAILEY DANIEL": "HVAC Direct-R",
-  "SANCHEZ JERRY A": "HVAC Direct-R",
-  "SEARLS LUIS": "HVAC Direct-R",
-  "SMITH BRANDON M": "Admin/Managers",
-  "TORRES JOSE ENRIQUE": "HVAC Direct-C",
-  "VASQUEZ ISMAEL R": "HVAC Direct-R",
-  "WOOD MARTY L": "HVAC Direct-R",
-  "ALVEAR EDDIE": "HVAC Direct-R",
-  "LISH MEGAN J": "Admin/Managers",
-  "FRANCOIS HENRY L": "HVAC Direct-R",
-};
+// NOTE: This built-in roster is intentionally EMPTY in the public/deployed
+// build so no employee names ship in the page source. Employees are added at
+// runtime via the "Manage employees" box and stored privately in this browser
+// (localStorage). To seed in bulk on your own machine, use Import in that box
+// with your private employees_seed.json (do NOT commit that file).
+const EMPLOYEE_COST_CENTER = {};
 
 const COST_CENTER_ACCOUNT = {
   "HVAC Direct-C":   "51200 HVAC-C Direct Labor",
@@ -493,6 +558,24 @@ const CONTRIBUTION_ACCOUNT = {
 let hrFile = null;
 let pdfFiles = [];
 let lastResult = null;   // { jeLines, imbalance, warnings, invoiceDetail, wages, unknownEmps, monthYear, periodDesc }
+
+// ---- Custom employee overrides (persist in this browser via localStorage) ----
+// These merge OVER the built-in EMPLOYEE_COST_CENTER so the user can add new
+// hires themselves without editing the file. EFFECTIVE_LOOKUP is what the
+// parser/JE builder actually read.
+const EMP_OVERRIDE_KEY = 'payroll-je-hvac:emp-overrides';
+function loadEmpOverrides() {
+  try { return JSON.parse(localStorage.getItem(EMP_OVERRIDE_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+function saveEmpOverrides() {
+  try { localStorage.setItem(EMP_OVERRIDE_KEY, JSON.stringify(EMP_OVERRIDES)); } catch (e) {}
+}
+let EMP_OVERRIDES = loadEmpOverrides();
+let EFFECTIVE_LOOKUP = Object.assign({}, EMPLOYEE_COST_CENTER, EMP_OVERRIDES);
+function rebuildLookup() {
+  EFFECTIVE_LOOKUP = Object.assign({}, EMPLOYEE_COST_CENTER, EMP_OVERRIDES);
+}
 
 // ============================================================
 // UTILITY
@@ -574,8 +657,8 @@ function parseHrReport(rows) {
     }
     if (!empName) continue;
 
-    // Track unknown employees
-    if (!(empName in EMPLOYEE_COST_CENTER) && !unknownEmps.includes(empName)) {
+    // Track unknown employees (against built-in + user-saved overrides)
+    if (!(empName in EFFECTIVE_LOOKUP) && !unknownEmps.includes(empName)) {
       unknownEmps.push(empName);
     }
 
@@ -642,11 +725,30 @@ async function parsePrismPdf(file) {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+
+    // Reconstruct text in visual reading order across ALL pages (the entire
+    // front page included). pdf.js returns text items in content-stream order,
+    // which is NOT always reading order -- on some invoice layouts the whole
+    // label column is emitted before the number column, so "TOTAL INVOICE"
+    // ends up nowhere near its amount and no pattern matches. We bucket items
+    // into lines by Y position (top-to-bottom) and sort each line by X
+    // (left-to-right), the way pdfplumber does, so every label stays beside
+    // its dollar amount.
     let text = '';
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
       const content = await page.getTextContent();
-      text += content.items.map(item => item.str).join(' ') + '\n';
+      const lines = {};
+      for (const item of content.items) {
+        if (!item.str || !item.str.trim()) continue;
+        const y = Math.round(item.transform[5]);   // vertical position (baseline)
+        const x = item.transform[4];               // horizontal position
+        (lines[y] = lines[y] || []).push({ x, s: item.str });
+      }
+      const ys = Object.keys(lines).map(Number).sort((a, b) => b - a); // top first
+      for (const y of ys) {
+        text += lines[y].sort((a, b) => a.x - b.x).map(o => o.s).join(' ') + '\n';
+      }
     }
 
     let invNum = '?', invDate = '?', invTotal = 0, parseNote = '';
@@ -667,6 +769,7 @@ async function parsePrismPdf(file) {
       /GRAND\s+TOTAL\s*:?\s*([\d,]+\.\d{2})/i,
       /TOTAL\s+DUE\s*:?\s*([\d,]+\.\d{2})/i,
       /Amount\s+Due\s*:?\s*([\d,]+\.\d{2})/i,
+      /SUB[-\s]?TOTAL\s*\.*\s*:?\s*([\d,]+\.\d{2})/i,
       /TOTAL\s*:?\s*([\d,]+\.\d{2})/i,
     ];
     for (const pat of totalPatterns) {
@@ -674,10 +777,13 @@ async function parsePrismPdf(file) {
       if (m) { invTotal = parseFloat(m[1].replace(/,/g, '')); break; }
     }
 
-    // If still 0, attach a snippet of the extracted text to help diagnose
+    // If still 0, attach a snippet of the extracted text to help diagnose.
+    // Note: the FULL document text was searched (all pages, in reading order);
+    // the snippet below is only the first 400 chars, shown for troubleshooting.
     if (invTotal === 0) {
-      parseNote = 'Could not find total. Extracted text (first 400 chars): ' +
-                  text.replace(/\s+/g, ' ').trim().substring(0, 400);
+      const flat = text.replace(/\s+/g, ' ').trim();
+      parseNote = `Could not find a total on any of this invoice's ${pdf.numPages} page(s). ` +
+                  `Searched ${flat.length} chars; first 400 shown: ` + flat.substring(0, 400);
     }
 
     return { fileName: file.name, invNum, invDate, invTotal, parseNote };
@@ -698,7 +804,7 @@ function buildJe(wages, contributions, employee401k, employeeHealth,
   const sortedEmps = Object.keys(wages).sort();
   for (const emp of sortedEmps) {
     const amt = wages[emp];
-    const cc = EMPLOYEE_COST_CENTER[emp];
+    const cc = EFFECTIVE_LOOKUP[emp];
     if (cc) {
       const acct = COST_CENTER_ACCOUNT[cc];
       if (acct) {
@@ -920,7 +1026,7 @@ function buildSummaryText(jeLines, imbalance, warnings, invoiceDetail, wages, un
 
   if (unknownEmps && unknownEmps.length > 0) {
     lines.push(dash65);
-    lines.push('  [!] EMPLOYEES NOT IN LOOKUP -- add to EMPLOYEE_COST_CENTER');
+    lines.push('  [!] EMPLOYEES NOT IN LOOKUP -- add them via the "Manage employees" box');
     lines.push(dash65);
     for (const emp of unknownEmps) lines.push(`  ${emp}`);
     lines.push('');
@@ -1162,6 +1268,12 @@ async function generate() {
     clearLoading();
     renderResults(lastResult);
 
+    // If the report contains employees we don't recognize, pop the box so the
+    // user can assign cost centers. After saving, the JE recomputes itself.
+    if (hrData.unknownEmps && hrData.unknownEmps.length > 0) {
+      openEmpModal(hrData.unknownEmps);
+    }
+
   } catch(err) {
     showError(err.message || String(err));
     console.error(err);
@@ -1243,9 +1355,142 @@ document.getElementById('btn-txt').addEventListener('click', () => {
     : 'payroll_je_summary.txt';
   downloadText(txt, fname);
 });
+
+// ============================================================
+// EMPLOYEE LOOKUP MODAL
+// ============================================================
+function ccOptions(selected) {
+  return Object.keys(COST_CENTER_ACCOUNT).map(cc =>
+    `<option value="${escHtml(cc)}"${cc === selected ? ' selected' : ''}>${escHtml(cc)} — ${escHtml(COST_CENTER_ACCOUNT[cc])}</option>`
+  ).join('');
+}
+
+function addEmpRow(name, cc) {
+  const tbody = document.getElementById('emp-add-rows');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="emp-name-in" value="${escHtml(name || '')}" placeholder="LAST FIRST M" style="text-transform:uppercase"></td>
+    <td><select class="emp-cc-in"><option value="">— select cost center —</option>${ccOptions(cc)}</select></td>
+    <td><button type="button" class="emp-row-del" title="Remove row">✕</button></td>`;
+  tr.querySelector('.emp-row-del').addEventListener('click', () => tr.remove());
+  tbody.appendChild(tr);
+}
+
+function renderSavedEmps() {
+  const wrap = document.getElementById('emp-saved-list');
+  const names = Object.keys(EMP_OVERRIDES).sort();
+  if (!names.length) {
+    wrap.innerHTML = '<div class="muted-cell">None yet. Employees you add here are saved on this computer.</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  for (const n of names) {
+    const row = document.createElement('div');
+    row.className = 'emp-saved-row';
+    row.innerHTML = `<span>${escHtml(n)}</span><span class="muted-cell">${escHtml(EMP_OVERRIDES[n])}</span>`;
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'emp-del';
+    del.textContent = 'Remove';
+    del.addEventListener('click', () => {
+      delete EMP_OVERRIDES[n];
+      saveEmpOverrides();
+      rebuildLookup();
+      renderSavedEmps();
+    });
+    row.appendChild(del);
+    wrap.appendChild(row);
+  }
+}
+
+function openEmpModal(prefillNames) {
+  const tbody = document.getElementById('emp-add-rows');
+  tbody.innerHTML = '';
+  if (prefillNames && prefillNames.length) {
+    prefillNames.forEach(n => addEmpRow(n, ''));
+    document.getElementById('emp-modal-hint').textContent =
+      `${prefillNames.length} employee(s) in the report aren't in the lookup yet. Assign a cost center to each and Save — they'll be remembered for next time.`;
+  } else {
+    addEmpRow('', '');
+    document.getElementById('emp-modal-hint').textContent =
+      'Add an employee and assign their cost center. Saved entries persist on this computer and apply automatically.';
+  }
+  renderSavedEmps();
+  document.getElementById('emp-modal-overlay').style.display = 'flex';
+}
+
+function closeEmpModal() {
+  document.getElementById('emp-modal-overlay').style.display = 'none';
+}
+
+function saveEmpModal() {
+  const rows = document.querySelectorAll('#emp-add-rows tr');
+  let added = 0;
+  const missing = [];
+  for (const tr of rows) {
+    const name = tr.querySelector('.emp-name-in').value.trim().toUpperCase();
+    const cc = tr.querySelector('.emp-cc-in').value;
+    if (name && cc) { EMP_OVERRIDES[name] = cc; added++; }
+    else if (name && !cc) { missing.push(name); }
+  }
+  if (missing.length) {
+    alert('Pick a cost center for: ' + missing.join(', '));
+    return;
+  }
+  saveEmpOverrides();
+  rebuildLookup();
+  closeEmpModal();
+  // Recompute the JE so newly-classified wages flow through immediately.
+  if (added > 0 && hrFile) { generate(); }
+}
+
+function exportEmps() {
+  const json = JSON.stringify(EMP_OVERRIDES, null, 2);
+  downloadText(json, 'employees_seed.json');
+}
+
+function importEmps(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try { data = JSON.parse(reader.result); }
+    catch (e) { alert('That file is not valid JSON.'); return; }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      alert('Expected a JSON object of { "EMPLOYEE NAME": "Cost Center" }.');
+      return;
+    }
+    // Only accept names mapped to a known cost center; keep existing entries.
+    let ok = 0, skipped = 0;
+    for (const [name, cc] of Object.entries(data)) {
+      const N = String(name).trim().toUpperCase();
+      if (N && cc in COST_CENTER_ACCOUNT) { EMP_OVERRIDES[N] = cc; ok++; }
+      else skipped++;
+    }
+    saveEmpOverrides();
+    rebuildLookup();
+    renderSavedEmps();
+    alert(`Imported ${ok} employee(s).` + (skipped ? ` Skipped ${skipped} with an unrecognized cost center.` : ''));
+    if (ok > 0 && hrFile) generate();
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('btn-manage-emp').addEventListener('click', () => openEmpModal());
+document.getElementById('emp-add-another').addEventListener('click', () => addEmpRow('', ''));
+document.getElementById('emp-save').addEventListener('click', saveEmpModal);
+document.getElementById('emp-cancel').addEventListener('click', closeEmpModal);
+document.getElementById('emp-export').addEventListener('click', exportEmps);
+document.getElementById('emp-import').addEventListener('click', () => document.getElementById('emp-import-file').click());
+document.getElementById('emp-import-file').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) importEmps(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('emp-modal-overlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('emp-modal-overlay')) closeEmpModal();
+});
 </script>
 
-<script>const TOOL_KEY='payroll-je-hvac'; const TOOL_VERSION='1.5';</script>
+<script>const TOOL_KEY='payroll-je-hvac'; const TOOL_VERSION='1.6';</script>
 <script src="version-check.js"></script>
 </body>
 </html>
