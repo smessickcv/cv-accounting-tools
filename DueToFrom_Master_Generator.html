@@ -210,7 +210,6 @@ const PAIRS = [
   {label:"10X HVAC",                 cv:["15108"],         sub:["25001","15152"], entity:"10X HVAC, LLC",                                    kind:"shared"},
   {label:"10X Buy/Sell",             cv:["15109","22209"], sub:["25001","15152"], entity:"10X Buy/Sell, LLC",                                kind:"shared"},
   {label:"10X BA Franchising",       cv:["15113"],         sub:["25001","15152"], entity:"10X Business Advisor Franchising, LLC",            kind:"shared"},
-  {label:"Gundlachs",                cv:["15114"],         sub:["25001","15152"], entity:"Gundlach Heating, Cooling, Plumbing & Electrical", kind:"shared"},
   {label:"5225 N Scottsdale",        cv:["15116"],         sub:["25001","15152"], entity:"5225 N Scottsdale, LLC",                           kind:"shared"},
   {label:"10X Global Staffing",      cv:["15121"],         sub:["25001","15152"], entity:"10X Global Staffing, LLC",                         kind:"shared"},
   {label:"10X Roofing (Due To)",     cv:["15129"],         sub:["25001","15152"], entity:"10X Roofing Management, LLC",                      kind:"shared"},
@@ -220,6 +219,8 @@ const PAIRS = [
   {label:"10X Farms & Ranch",        cv:["15146"],         sub:["25001","15152"], entity:"10X Farms & Ranch, LLC",                           kind:"shared"},
   {label:"15111 N Pima",             cv:["15147"],         sub:["25001","15152"], entity:"15111 N Pima Road, LLC",                           kind:"shared"},
   {label:"HRE",                      cv:["15150"],         sub:["25001","15152"], entity:"Heather Rae Essentials LLC",                       kind:"shared"},
+  {label:"52CV Ventures",            cv:["15142"],         sub:["25001","15152"], entity:"52CV Ventures, LLC",                               kind:"shared"},
+  {label:"10X 24-7 Services",        cv:["15156"],         sub:["25001","15152"], entity:"10X 24/7 Services, LLC",                           kind:"shared"},
   {label:"10X Roofing (N/R<>N/P)",  cv:["15164"],         sub:["23203"],         entity:"10X Roofing Management, LLC",                      kind:"dedicated"},
   {label:"HRE (Prom N/R<>N/P)",     cv:["15204"],         sub:["23206"],         entity:"Heather Rae Essentials LLC",                       kind:"dedicated"},
   {label:"CardoMax (Prom N/R<>N/P)",cv:["15205"],         sub:["23207"],         entity:"CardoMax, LLC",                                    kind:"dedicated"},
@@ -511,7 +512,7 @@ function parseExport(ab) {
       const side    = rawSub === 'Cardone Ventures, LLC' ? 'CV' : 'Sub';
       // For CV-side rows NetSuite reports "Cardone Ventures, LLC" as the subsidiary.
       // Derive the actual counterparty entity from the CV account number instead.
-      const sub     = side === 'CV' ? (CV_ACCT_ENTITY[curNum] || rawSub) : rawSub;
+      const sub     = side === 'CV' ? (CV_ACCT_ENTITY[curNum] || `⚠ UNMAPPED CV ACCT ${curNum}`) : rawSub;
       const dateStr = fmtDate(r[2]);
       if (!dateStr) continue; // skip rows without a date
       transactions.push({
