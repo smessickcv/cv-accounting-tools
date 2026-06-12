@@ -1,5 +1,5 @@
 {
-  "updated": "2026-05-12",
+  "updated": "2026-06-12",
   "tools": {
     "ns-import":             "1.1",
     "bofa-netsuite":         "1.0",
@@ -12,8 +12,8 @@
     "loan-calculator":       "1.7",
     "rev-share-je":          "1.1",
     "shopify-netsuite":      "1.5",
-    "importrange-builder":   "1.0",
-    "netsuite-processor":    "1.0",
+    "importrange-builder":   "1.1",
+    "netsuite-processor":    "1.1",
     "payroll-je-generator":  "1.0"
   }
 }
