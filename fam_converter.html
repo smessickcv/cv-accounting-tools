@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FAM Report Converter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #003399;
+    --navy-dark: #002270;
+    --navy-light: #e8edf7;
+    --surface: #F7F8FC;
+    --white: #ffffff;
+    --border: #DDE3EE;
+    --text: #1a1f36;
+    --muted: #8A94A6;
+    --success: #1A7F5A;
+    --success-bg: #edf7f3;
+    --error: #C0392B;
+    --error-bg: #fdf0ee;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; background: var(--surface); color: var(--text); -webkit-font-smoothing: antialiased; }
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+
+  header {
+    background: var(--navy); padding: 0 40px; height: 56px;
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
+  .logo-mark {
+    width: 28px; height: 28px; background: white; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  header h1 { font-size: 14px; font-weight: 600; color: white; letter-spacing: 0.01em; }
+  header span { font-size: 13px; color: rgba(255,255,255,0.45); font-weight: 400; margin-left: 4px; }
+
+  main { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 48px 24px 80px; }
+
+  .card { width: 100%; max-width: 620px; display: flex; flex-direction: column; gap: 20px; }
+
+  .card-header h2 { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+  .card-header p { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin-top: 4px; }
+
+  /* Drop zone */
+  .dropzone {
+    border: 2px dashed var(--border); border-radius: 16px; background: var(--white);
+    padding: 44px 32px; display: flex; flex-direction: column; align-items: center; gap: 14px;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    position: relative; overflow: hidden; text-align: center;
+  }
+  .dropzone:hover, .dropzone.drag-over { border-color: var(--navy); background: var(--navy-light); }
+  .dropzone.drag-over { transform: scale(1.005); }
+  .dropzone.has-files { border-style: solid; border-color: var(--navy); background: var(--navy-light); }
+  .dropzone.done { border-color: var(--success); border-style: solid; background: var(--success-bg); cursor: default; pointer-events: none; }
+  .dropzone.processing { border-color: var(--navy); border-style: solid; cursor: default; pointer-events: none; }
+  .dropzone.processing::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(0,51,153,0.05) 50%, transparent 100%);
+    animation: shimmer 1.4s infinite;
+  }
+  @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+  .dz-icon {
+    width: 48px; height: 48px; border-radius: 14px; background: var(--navy-light);
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s; flex-shrink: 0;
+  }
+  .dropzone:hover .dz-icon, .dropzone.drag-over .dz-icon, .dropzone.has-files .dz-icon { background: rgba(0,51,153,0.14); }
+  .dropzone.done .dz-icon { background: rgba(26,127,90,0.12); }
+
+  .dz-label { font-size: 15px; font-weight: 600; color: var(--text); }
+  .dz-sub { font-size: 13px; color: var(--muted); }
+  .dz-sub strong { color: var(--navy); font-weight: 600; }
+
+  #file-input { display: none; }
+
+  /* File list */
+  .file-list { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 4px; }
+
+  .file-chip {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    background: white; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 12.5px;
+  }
+  .file-chip .chip-icon { flex-shrink: 0; }
+  .file-chip .chip-name { font-family: var(--mono); font-weight: 500; color: var(--text); flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-chip .chip-type { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; }
+  .chip-type.register { background: var(--navy-light); color: var(--navy); }
+  .chip-type.summary { background: #f0f7ee; color: #2d6a4f; }
+  .chip-type.unknown { background: #fef3c7; color: #92400e; }
+  .file-chip .chip-remove { cursor: pointer; color: var(--muted); flex-shrink: 0; border: none; background: none; padding: 0; line-height: 1; display: flex; align-items: center; }
+  .file-chip .chip-remove:hover { color: var(--error); }
+  .file-chip.done .chip-name { color: var(--success); }
+  .file-chip.error .chip-name { color: var(--error); }
+
+  .add-more {
+    display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+    font-size: 13px; font-weight: 500; color: var(--navy); cursor: pointer;
+    border: 1px dashed var(--border); border-radius: 8px; background: transparent;
+    transition: border-color 0.15s, background 0.15s; width: 100%; justify-content: center;
+  }
+  .add-more:hover { border-color: var(--navy); background: var(--navy-light); }
+
+  /* Status */
+  .status-bar {
+    display: none; background: var(--white); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 18px; gap: 10px; align-items: flex-start; flex-direction: column;
+  }
+  .status-bar.visible { display: flex; }
+  .status-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .status-dot.processing { background: var(--navy); animation: pulse 1s infinite; }
+  .status-dot.success { background: var(--success); }
+  .status-dot.error { background: var(--error); }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .status-text { font-size: 13.5px; color: var(--text); font-weight: 500; flex: 1; }
+  .status-meta { font-family: var(--mono); font-size: 11.5px; color: var(--muted); line-height: 1.8; width: 100%; }
+  .status-meta span { display: block; }
+
+  /* Buttons */
+  .btn-primary {
+    display: none; width: 100%; padding: 13px 24px; background: var(--navy); color: white;
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; border: none;
+    border-radius: 10px; cursor: pointer; transition: background 0.15s, transform 0.1s;
+    align-items: center; justify-content: center; gap: 8px; letter-spacing: 0.005em;
+  }
+  .btn-primary:hover { background: var(--navy-dark); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary.visible { display: flex; }
+
+  .btn-convert {
+    width: 100%; padding: 13px 24px; background: var(--navy); color: white;
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; border: none;
+    border-radius: 10px; cursor: pointer; transition: background 0.15s, transform 0.1s;
+    display: none; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-convert:hover { background: var(--navy-dark); transform: translateY(-1px); }
+  .btn-convert:active { transform: translateY(0); }
+  .btn-convert.visible { display: flex; }
+  .btn-convert:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .reset-link {
+    display: none; text-align: center; font-size: 13px; color: var(--muted);
+    cursor: pointer; text-decoration: underline; text-underline-offset: 2px; transition: color 0.1s;
+  }
+  .reset-link:hover { color: var(--text); }
+  .reset-link.visible { display: block; }
+
+  .format-note {
+    display: flex; gap: 10px; padding: 12px 16px; background: var(--white);
+    border: 1px solid var(--border); border-radius: 10px; font-size: 12.5px;
+    color: var(--muted); line-height: 1.5; align-items: flex-start;
+  }
+  .format-note svg { flex-shrink: 0; margin-top: 1px; }
+
+  .tab-preview {
+    display: flex; gap: 6px; flex-wrap: wrap; width: 100%; margin-top: 2px;
+  }
+  .tab-pill {
+    font-size: 11px; font-family: var(--mono); padding: 3px 9px;
+    border-radius: 20px; background: white; border: 1px solid var(--border); color: var(--muted);
+  }
+  .tab-pill.active { background: var(--navy-light); border-color: var(--navy); color: var(--navy); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="2" width="5" height="5" rx="1" fill="#003399"/>
+      <rect x="9" y="2" width="5" height="5" rx="1" fill="#003399"/>
+      <rect x="2" y="9" width="5" height="5" rx="1" fill="#003399"/>
+      <rect x="9" y="9" width="5" height="5" rx="1" fill="#003399" opacity="0.35"/>
+    </svg>
+  </div>
+  <h1>FAM Report Converter <span>NetSuite → Excel</span></h1>
+</header>
+
+<main>
+  <div class="card">
+    <div class="card-header">
+      <h2>Convert FAM Reports</h2>
+      <p>Drop one or more NetSuite FAM XML files. Each becomes a separate tab in one Excel workbook. Converted entirely in your browser.</p>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <div class="dz-icon" id="dz-icon">
+        <svg id="icon-default" width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M5 3h9l5 5v13a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="#003399" stroke-width="1.5" fill="none"/>
+          <path d="M14 3v5h5" stroke="#003399" stroke-width="1.5" stroke-linecap="round"/>
+          <text x="6" y="19" font-family="JetBrains Mono,monospace" font-size="5" font-weight="600" fill="#003399">XML</text>
+        </svg>
+        <svg id="icon-success" width="24" height="24" viewBox="0 0 24 24" fill="none" style="display:none">
+          <path d="M4 13l5 5 11-11" stroke="#1A7F5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <div id="dz-text-block">
+        <div class="dz-label" id="dz-label">Drop XML files here</div>
+        <div class="dz-sub" id="dz-sub">or <strong>click to browse</strong> — mix Register and Summary reports</div>
+      </div>
+
+      <div class="file-list" id="file-list" style="display:none"></div>
+
+      <button class="add-more" id="add-more" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2v9M2 6.5h9" stroke="#003399" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Add more files
+      </button>
+    </div>
+
+    <input type="file" id="file-input" accept=".xml" multiple>
+
+    <button class="btn-convert" id="btn-convert">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M2 7.5h11M9 3.5l4 4-4 4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Convert to Excel
+    </button>
+
+    <div class="status-bar" id="status-bar">
+      <div class="status-row">
+        <div class="status-dot" id="status-dot"></div>
+        <div class="status-text" id="status-text"></div>
+      </div>
+      <div id="status-meta-wrap">
+        <div class="status-meta" id="status-meta"></div>
+        <div class="tab-preview" id="tab-preview"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btn-download">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M7.5 2v8M4.5 7l3 3 3-3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M1.5 12h12" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Download Excel
+    </button>
+
+    <a class="reset-link" id="reset-link">Start over</a>
+
+    <div class="format-note">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <circle cx="7" cy="7" r="6" stroke="#8A94A6" stroke-width="1.2"/>
+        <path d="M7 6v4M7 4.5v.5" stroke="#8A94A6" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+      <span>Accepts <strong>Register Report (FPR4059)</strong> and <strong>Summary Report (FPR4060)</strong>. Each file becomes its own tab. The output filename is derived from the first file dropped.</span>
+    </div>
+  </div>
+</main>
+
+<script>
+const dropzone    = document.getElementById('dropzone');
+const fileInput   = document.getElementById('file-input');
+const dzLabel     = document.getElementById('dz-label');
+const dzSub       = document.getElementById('dz-sub');
+const dzTextBlock = document.getElementById('dz-text-block');
+const fileListEl  = document.getElementById('file-list');
+const addMoreBtn  = document.getElementById('add-more');
+const btnConvert  = document.getElementById('btn-convert');
+const statusBar   = document.getElementById('status-bar');
+const statusDot   = document.getElementById('status-dot');
+const statusText  = document.getElementById('status-text');
+const statusMeta  = document.getElementById('status-meta');
+const tabPreview  = document.getElementById('tab-preview');
+const btnDownload = document.getElementById('btn-download');
+const resetLink   = document.getElementById('reset-link');
+const iconDefault = document.getElementById('icon-default');
+const iconSuccess = document.getElementById('icon-success');
+
+let files = [];           // { file, type, tabName }
+let resultBlob = null;
+let resultFilename = '';
+let converted = false;
+
+// ── Drag & drop ──────────────────────────────────────────────────────────────
+dropzone.addEventListener('dragover', e => { e.preventDefault(); if (!converted) dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  if (converted) return;
+  addFiles(Array.from(e.dataTransfer.files));
+});
+dropzone.addEventListener('click', e => {
+  if (converted) return;
+  if (e.target.closest('.chip-remove') || e.target.closest('.add-more')) return;
+  fileInput.click();
+});
+addMoreBtn.addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+fileInput.addEventListener('change', () => {
+  addFiles(Array.from(fileInput.files));
+  fileInput.value = '';
+});
+
+function detectType(xmlText) {
+  // Register report has 17-column asset rows; Summary has 9-column rows and section headers COST/DEPRECIATION
+  if (/COST<\/p>/.test(xmlText) && /DEPRECIATION<\/p>/.test(xmlText) && /NET BOOK VALUE/.test(xmlText)) return 'summary';
+  if (/FAM\d{6}/.test(xmlText)) return 'register';
+  // Fallback: count max td in a tr
+  const match = xmlText.match(/<tr[^>]*>([\s\S]*?)<\/tr>/g) || [];
+  let maxTds = 0;
+  match.forEach(tr => { const c = (tr.match(/<td/g) || []).length; if (c > maxTds) maxTds = c; });
+  if (maxTds >= 15) return 'register';
+  if (maxTds >= 8) return 'summary';
+  return 'unknown';
+}
+
+function makeTabName(file, type, existing) {
+  const base = file.name.replace(/\.xml$/i, '').replace(/[:\\/?*\[\]]/g, '-').slice(0, 28);
+  let name = base;
+  let i = 2;
+  while (existing.has(name)) { name = base.slice(0, 25) + ' ' + i++; }
+  existing.add(name);
+  return name;
+}
+
+async function addFiles(newFiles) {
+  const xmlFiles = newFiles.filter(f => f.name.toLowerCase().endsWith('.xml'));
+  if (!xmlFiles.length) return;
+
+  const existingNames = new Set(files.map(f => f.tabName));
+
+  for (const file of xmlFiles) {
+    const text = await file.text();
+    const type = detectType(text);
+    const tabName = makeTabName(file, type, existingNames);
+    files.push({ file, type, tabName, text });
+  }
+
+  renderFileList();
+}
+
+function renderFileList() {
+  if (!files.length) return;
+
+  dzTextBlock.style.display = 'none';
+  fileListEl.style.display = 'flex';
+  addMoreBtn.style.display = 'flex';
+  dropzone.classList.add('has-files');
+  btnConvert.classList.add('visible');
+
+  fileListEl.innerHTML = '';
+  files.forEach((f, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'file-chip';
+    chip.innerHTML = `
+      <svg class="chip-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M3 1.5h5.5L11 4v8a.5.5 0 01-.5.5h-7A.5.5 0 013 12V1.5z" stroke="#8A94A6" stroke-width="1.1" fill="none"/>
+        <path d="M8.5 1.5V4H11" stroke="#8A94A6" stroke-width="1.1"/>
+      </svg>
+      <span class="chip-name">${f.file.name}</span>
+      <span class="chip-type ${f.type}">${f.type === 'register' ? 'Register' : f.type === 'summary' ? 'Summary' : 'Unknown'}</span>
+      <button class="chip-remove" data-idx="${idx}" title="Remove">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 3l7 7M10 3L3 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+    `;
+    chip.querySelector('.chip-remove').addEventListener('click', e => {
+      e.stopPropagation();
+      files.splice(idx, 1);
+      if (!files.length) {
+        resetToEmpty();
+      } else {
+        renderFileList();
+      }
+    });
+    fileListEl.appendChild(chip);
+  });
+}
+
+function resetToEmpty() {
+  files = [];
+  dropzone.className = 'dropzone';
+  dzTextBlock.style.display = '';
+  fileListEl.style.display = 'none';
+  fileListEl.innerHTML = '';
+  addMoreBtn.style.display = 'none';
+  btnConvert.classList.remove('visible');
+  statusBar.classList.remove('visible');
+  btnDownload.classList.remove('visible');
+  resetLink.classList.remove('visible');
+  iconDefault.style.display = '';
+  iconSuccess.style.display = 'none';
+  resultBlob = null;
+  converted = false;
+}
+
+resetLink.addEventListener('click', resetToEmpty);
+
+btnDownload.addEventListener('click', () => {
+  if (!resultBlob) return;
+  const url = URL.createObjectURL(resultBlob);
+  const a = document.createElement('a');
+  a.href = url; a.download = resultFilename; a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ── Convert ──────────────────────────────────────────────────────────────────
+btnConvert.addEventListener('click', async () => {
+  if (!files.length) return;
+  converted = true;
+  dropzone.classList.remove('has-files');
+  dropzone.classList.add('processing');
+  addMoreBtn.style.display = 'none';
+  btnConvert.classList.remove('visible');
+
+  statusBar.classList.add('visible');
+  statusDot.className = 'status-dot processing';
+  statusText.textContent = 'Converting\u2026';
+  statusMeta.innerHTML = '';
+  tabPreview.innerHTML = '';
+
+  try {
+    const wb = XLSX.utils.book_new();
+    const summary = [];
+
+    for (const f of files) {
+      statusText.textContent = `Processing ${f.file.name}\u2026`;
+      await new Promise(r => setTimeout(r, 30)); // let UI paint
+
+      if (f.type === 'register') {
+        const { rows, period, assetCount } = parseRegister(f.text);
+        const ws = buildRegisterSheet(rows, period);
+        XLSX.utils.book_append_sheet(wb, ws, f.tabName);
+        summary.push({ name: f.tabName, type: 'Register', detail: `${assetCount} assets · ${period}` });
+      } else if (f.type === 'summary') {
+        const { sections, period } = parseSummary(f.text);
+        const ws = buildSummarySheet(sections, period);
+        XLSX.utils.book_append_sheet(wb, ws, f.tabName);
+        const rowCount = sections.reduce((a, s) => a + s.rows.length, 0);
+        summary.push({ name: f.tabName, type: 'Summary', detail: `${rowCount} rows · ${period}` });
+      } else {
+        summary.push({ name: f.tabName, type: '?', detail: 'Unrecognized format — skipped' });
+      }
+    }
+
+    const firstBase = files[0].file.name.replace(/\.xml$/i, '');
+    resultFilename = (files.length > 1 ? 'FAM_Reports' : firstBase) + '.xlsx';
+    const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    resultBlob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    // Done
+    dropzone.classList.remove('processing');
+    dropzone.classList.add('done');
+    iconDefault.style.display = 'none';
+    iconSuccess.style.display = '';
+
+    statusDot.className = 'status-dot success';
+    statusText.textContent = `${files.length} file${files.length > 1 ? 's' : ''} converted → ${resultFilename}`;
+    statusMeta.innerHTML = summary.map(s => `<span>${s.name}  <span style="opacity:.6">${s.detail}</span></span>`).join('');
+    tabPreview.innerHTML = summary.map(s =>
+      `<span class="tab-pill active">${s.name}</span>`
+    ).join('');
+
+    btnDownload.querySelector('svg').nextSibling.textContent = ` Download ${resultFilename}`;
+    btnDownload.classList.add('visible');
+    resetLink.classList.add('visible');
+
+  } catch (err) {
+    dropzone.classList.remove('processing');
+    statusDot.className = 'status-dot error';
+    statusText.textContent = 'Error during conversion';
+    statusMeta.innerHTML = `<span>${err.message}</span>`;
+    resetLink.classList.add('visible');
+    converted = false;
+  }
+});
+
+// ── Parsing helpers ───────────────────────────────────────────────────────────
+function cleanNumber(text) {
+  if (!text) return null;
+  text = text.trim().replace(/,/g, '').replace(/\s/g, '');
+  if (!text || text === '-') return null;
+  const neg = text.startsWith('(') && text.endsWith(')');
+  const n = parseFloat(text.replace(/[()]/g, ''));
+  if (isNaN(n)) return null;
+  return neg ? -n : n;
+}
+
+function detectPeriod(doc) {
+  let period = '';
+  doc.querySelectorAll('td, p').forEach(el => {
+    const t = el.textContent.trim();
+    if (!period && /\w+ \d+, \d{4}\s*-\s*\w+ \d+, \d{4}/.test(t)) period = t.trim();
+  });
+  return period;
+}
+
+// ── Register (FPR4059) ────────────────────────────────────────────────────────
+const REG_COLS = ['Asset Type','ID','Name','Depreciation Start Date','AL','Beg Cost','Beg Accum Depr','Beg NBV','Acquisitions','Sale','Disposals','Depreciation','Transfers','Revaluations','Write Down','Lease','Net Book Value'];
+const REG_NUMERIC = new Set(['AL','Beg Cost','Beg Accum Depr','Beg NBV','Acquisitions','Sale','Disposals','Depreciation','Transfers','Revaluations','Write Down','Lease','Net Book Value']);
+const SUB_NUMERIC = ['Beg Cost','Beg Accum Depr','Beg NBV','Acquisitions','Sale','Disposals','Depreciation','Transfers','Revaluations','Write Down','Lease','Net Book Value'];
+
+function parseRegister(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, 'text/html');
+  const period = detectPeriod(doc);
+  const trs = Array.from(doc.querySelectorAll('tr'));
+  const rows = [];
+  let lastAssetType = '';
+  let assetCount = 0;
+  const sub13s = [];
+
+  trs.forEach(tr => {
+    const tds = Array.from(tr.querySelectorAll('td'));
+    if (!tds.length) return;
+    const fc = parseInt(tds[0].getAttribute('colspan') || '1', 10);
+    const texts = tds.map(td => td.textContent.trim());
+    if (tds.length === 17) {
+      lastAssetType = texts[0];
+      const row = { 'Row Type': 'Asset' };
+      REG_COLS.forEach((col, i) => { row[col] = REG_NUMERIC.has(col) ? (cleanNumber(texts[i]) ?? 0) : texts[i]; });
+      rows.push(row); assetCount++;
+    } else if (tds.length === 13 && fc === 5) {
+      sub13s.push({ lastAssetType, texts });
+    }
+  });
+
+  sub13s.forEach((s, idx) => {
+    const isGrand = idx === sub13s.length - 1;
+    const row = { 'Row Type': isGrand ? 'Grand Total' : 'Subtotal' };
+    REG_COLS.forEach(col => { row[col] = null; });
+    row['Asset Type'] = isGrand ? 'GRAND TOTAL' : `Subtotal: ${s.lastAssetType}`;
+    SUB_NUMERIC.forEach((col, i) => { row[col] = cleanNumber(s.texts[i + 1]) ?? 0; });
+    rows.push(row);
+  });
+
+  return { rows, period, assetCount };
+}
+
+function buildRegisterSheet(rows, period) {
+  const numFmt = '#,##0.00;(#,##0.00);"-"';
+  const wsData = [
+    ['Fixed Assets Management – Register Report (FPR4059)', ...Array(REG_COLS.length - 1).fill(null)],
+    [period || '', ...Array(REG_COLS.length - 1).fill(null)],
+    Array(REG_COLS.length).fill(null),
+    [...REG_COLS],
+    ...rows.map(row => REG_COLS.map(col => row[col] ?? null))
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  if (!ws['!merges']) ws['!merges'] = [];
+  ws['!merges'].push({ s:{r:0,c:0}, e:{r:0,c:REG_COLS.length-1} }, { s:{r:1,c:0}, e:{r:1,c:REG_COLS.length-1} });
+  ws['!cols'] = [22,12,42,12,6,14,14,14,14,12,12,14,12,12,12,12,15].map(w => ({wch:w}));
+  ws['!freeze'] = { xSplit: 0, ySplit: 4 };
+  const numericIdxs = REG_COLS.map((c,i) => REG_NUMERIC.has(c) ? i : -1).filter(i => i >= 0);
+  rows.forEach((_, ri) => {
+    numericIdxs.forEach(ci => {
+      const addr = XLSX.utils.encode_cell({ r: ri + 4, c: ci });
+      if (ws[addr] && ws[addr].t === 'n') ws[addr].z = numFmt;
+    });
+  });
+  return ws;
+}
+
+// ── Summary (FPR4060) ─────────────────────────────────────────────────────────
+const SUM_COLS = ['Category','Beginning Balance','Additions','Sale','Disposals','Transfers','Revaluations','Leases','Ending Balance'];
+const SUM_NUMERIC = new Set(['Beginning Balance','Additions','Sale','Disposals','Transfers','Revaluations','Leases','Ending Balance']);
+
+function parseSummary(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, 'text/html');
+  const period = detectPeriod(doc);
+  const trs = Array.from(doc.querySelectorAll('tr'));
+
+  // Section headers: single td with bold, text is COST / DEPRECIATION / NET BOOK VALUE, colspan=8 sibling
+  // Data rows: first td has asset type name (bold), rest have 8 numeric tds (font-size:9px)
+  // Subtotal rows: first td empty/bold, rest 8 numeric tds
+
+  const sections = [];
+  let currentSection = null;
+
+  trs.forEach(tr => {
+    const tds = Array.from(tr.querySelectorAll('td'));
+    if (!tds.length) return;
+    const texts = tds.map(td => td.textContent.trim());
+    const fc = parseInt(tds[0].getAttribute('colspan') || '1', 10);
+
+    // Section header: 2 tds, second has colspan=8
+    const secondColspan = tds[1] ? parseInt(tds[1].getAttribute('colspan') || '1', 10) : 0;
+    if (tds.length === 2 && secondColspan === 8) {
+      const label = texts[0];
+      if (label === 'COST' || label === 'DEPRECIATION' || label === 'NET BOOK VALUE') {
+        currentSection = { name: label, rows: [] };
+        sections.push(currentSection);
+        return;
+      }
+    }
+
+    // Skip separator rows (only 2 tds where second has colspan and is whitespace)
+    if (tds.length === 2 && secondColspan === 8 && !texts[0]) return;
+
+    // Data rows: 9 tds (category + 8 numeric)
+    if (tds.length === 9 && currentSection) {
+      const isSubtotal = !texts[0]; // empty first cell = section total row
+      const row = {
+        'Category': isSubtotal ? `Total ${currentSection.name}` : texts[0],
+        'Row Type': isSubtotal ? 'Subtotal' : 'Data'
+      };
+      SUM_COLS.slice(1).forEach((col, i) => { row[col] = cleanNumber(texts[i + 1]) ?? 0; });
+      currentSection.rows.push(row);
+    }
+  });
+
+  return { sections, period };
+}
+
+function buildSummarySheet(sections, period) {
+  const numFmt = '#,##0.00;(#,##0.00);"-"';
+  const wsData = [
+    ['Fixed Assets Management – Summary Report (FPR4060)', ...Array(SUM_COLS.length - 1).fill(null)],
+    [period || '', ...Array(SUM_COLS.length - 1).fill(null)],
+    Array(SUM_COLS.length).fill(null),
+  ];
+
+  // Each section gets a header row then its data rows, then a blank spacer
+  const sectionHeaderRows = new Set(); // track which wsData rows are section headers
+  const subtotalRows = new Set();
+
+  sections.forEach((section, si) => {
+    const headerRowIdx = wsData.length;
+    sectionHeaderRows.add(headerRowIdx);
+    wsData.push([section.name, ...Array(SUM_COLS.length - 1).fill(null)]);
+
+    // Column headers only on first section
+    if (si === 0) {
+      wsData.push([...SUM_COLS]);
+    }
+
+    section.rows.forEach(row => {
+      const rowIdx = wsData.length;
+      if (row['Row Type'] === 'Subtotal') subtotalRows.add(rowIdx);
+      wsData.push(SUM_COLS.map(col => col === 'Category' ? row[col] : (row[col] ?? null)));
+    });
+
+    wsData.push(Array(SUM_COLS.length).fill(null)); // spacer between sections
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  if (!ws['!merges']) ws['!merges'] = [];
+  ws['!merges'].push(
+    { s:{r:0,c:0}, e:{r:0,c:SUM_COLS.length-1} },
+    { s:{r:1,c:0}, e:{r:1,c:SUM_COLS.length-1} }
+  );
+  // Merge section header rows across all columns
+  sectionHeaderRows.forEach(ri => {
+    ws['!merges'].push({ s:{r:ri,c:0}, e:{r:ri,c:SUM_COLS.length-1} });
+  });
+
+  ws['!cols'] = [30,16,14,12,12,12,14,12,16].map(w => ({wch:w}));
+  ws['!freeze'] = { xSplit: 0, ySplit: 4 };
+
+  const numericIdxs = SUM_COLS.map((c,i) => SUM_NUMERIC.has(c) ? i : -1).filter(i => i >= 0);
+  for (let ri = 3; ri < wsData.length; ri++) {
+    numericIdxs.forEach(ci => {
+      const addr = XLSX.utils.encode_cell({ r: ri, c: ci });
+      if (ws[addr] && ws[addr].t === 'n') ws[addr].z = numFmt;
+    });
+  }
+
+  return ws;
+}
+</script>
+</body>
+</html>
