@@ -168,23 +168,15 @@
     <button class="add-map-btn" onclick="addPair()">+ Add Row</button>
   </details>
 
-  <!-- Drop zones -->
-  <div class="dg">
+  <!-- Drop zone -->
+  <div class="dg" style="grid-template-columns:1fr;">
     <div class="zone" id="zone-export">
       <input type="file" id="inp-export" accept=".xls,.xlsx">
-      <div class="badge">Required</div>
+      <div class="badge">Drop or click</div>
       <div class="zi">📥</div>
       <div class="zl">NetSuite Due To/From Export</div>
-      <div class="zh">Single month or full date range (Jan 2022 – Mar 2026)</div>
+      <div class="zh">Single month or full date range — generates master immediately on drop</div>
       <div class="zf" id="fn-export"></div>
-    </div>
-    <div class="zone" id="zone-master">
-      <input type="file" id="inp-master" accept=".xlsx">
-      <div class="badge opt">Optional</div>
-      <div class="zi">📂</div>
-      <div class="zl">Existing Master File</div>
-      <div class="zh">Due_ToFrom_Master.xlsx — merges prior months &amp; carries sub balances forward</div>
-      <div class="zf" id="fn-master"></div>
     </div>
   </div>
 
@@ -192,26 +184,6 @@
   <div class="status">
     <div class="dot idle" id="dot"></div>
     <span id="smsg">Drop the NetSuite export to begin. Single month or full historical range both work.</span>
-  </div>
-
-  <!-- Starting sub-side balances (shown when no existing master) -->
-  <div class="card hidden" id="sb-card">
-    <div class="card-title">Starting Sub-Side Balances
-      <span class="pill" id="sb-period-pill"></span>
-    </div>
-    <div class="card-sub">
-      Enter each subsidiary's combined balance in accounts <strong>25001 + 15152</strong> as of the
-      month <strong>before</strong> the first transaction in your export.
-      Copy these from the <em>Reconciliation Total</em> on the 25001 / 15152 tab of your last monthly
-      balance sheet recon sheet before this period starts.<br>
-      If an account was created at inception during this period, enter <strong>0</strong>.
-    </div>
-    <table class="sb-table">
-      <thead><tr><th>Subsidiary</th><th>Sub-Side Starting Balance ($)</th></tr></thead>
-      <tbody id="sb-body"></tbody>
-    </table>
-    <br>
-    <button class="btn" id="gen-btn" onclick="generate()">&#9654;&nbsp; Generate Master</button>
   </div>
 
   <!-- Results -->
@@ -351,38 +323,26 @@ const MAX_R   = 5000;
 // STATE
 // ─────────────────────────────────────────────────────────────────────────
 const S = {
-  exportFile: null, masterFile: null,
-  parsed: null,     // { transactions, acctHeaders, allMonths, reportLabel }
-  existingWb: null,
+  exportFile: null,
+  parsed: null,   // { transactions, acctHeaders, allMonths, reportLabel }
   resultWb: null,
 };
 
 // ─────────────────────────────────────────────────────────────────────────
 // DROP ZONE WIRING
 // ─────────────────────────────────────────────────────────────────────────
-['export','master'].forEach(w => {
-  const zone = document.getElementById(`zone-${w}`);
-  const inp  = document.getElementById(`inp-${w}`);
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
-  zone.addEventListener('dragleave', () => zone.classList.remove('over'));
-  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('over'); const f=e.dataTransfer.files[0]; if(f) onFile(w,f); });
-  inp.addEventListener('change', () => { if(inp.files[0]) onFile(w,inp.files[0]); });
-});
+const zone = document.getElementById('zone-export');
+const inp  = document.getElementById('inp-export');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('over'); const f=e.dataTransfer.files[0]; if(f) onFile(f); });
+inp.addEventListener('change', () => { if(inp.files[0]) onFile(inp.files[0]); });
 
-async function onFile(which, file) {
-  document.getElementById(`fn-${which}`).textContent = file.name;
-  document.getElementById(`zone-${which}`).classList.add('ready');
-  if (which === 'export') {
-    S.exportFile = file;
-    await loadExport();
-  } else {
-    S.masterFile = file;
-    // Read the master workbook immediately so S.existingWb is available
-    // regardless of which drop zone was used first.
-    const mab = await file.arrayBuffer();
-    S.existingWb = XLSX.read(mab, {type:'array'});
-    if (S.parsed) await maybeAutoGenerate();
-  }
+async function onFile(file) {
+  document.getElementById('fn-export').textContent = file.name;
+  zone.classList.add('ready');
+  S.exportFile = file;
+  await loadExport();
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -399,176 +359,64 @@ function setStatus(kind, msg) {
 async function loadExport() {
   setStatus('spin', 'Parsing NetSuite export...');
   document.getElementById('results').classList.add('hidden');
-  document.getElementById('sb-card').classList.add('hidden');
-
   try {
     const ab = await S.exportFile.arrayBuffer();
     S.parsed = parseExport(ab);
-    const { allMonths, transactions, reportLabel } = S.parsed;
-    const isMulti = allMonths.length > 1;
-
-    setStatus('ok', `Loaded: ${reportLabel} — ${allMonths.length} month${allMonths.length>1?'s':''}, ${transactions.length.toLocaleString()} transactions.`);
-
-    // S.existingWb is populated in onFile when the master is dropped,
-    // regardless of which zone is used first.
-    await maybeAutoGenerate();
+    await generate();
   } catch(e) {
     setStatus('err', `Parse error: ${e.message}`);
     console.error(e);
   }
 }
 
-// If we have an existing master, sub prior balances can be read from it — no user input needed.
-// If no existing master (or first run), show starting balance inputs for shared-account pairs.
-async function maybeAutoGenerate() {
-  const { allMonths, reportLabel } = S.parsed;
-  const hasExisting = !!S.existingWb; // true only when the workbook is actually loaded
-
-  // Read prior sub-end-balances from existing master if available
-  const priorSubBals = hasExisting ? readPriorSubBals(S.existingWb, allMonths) : null;
-  const needsInput = !hasExisting; // need starting balances if no existing master
-
-  if (needsInput) {
-    // Show starting balance input table
-    renderStartingBalInputs(allMonths[0]);
-    document.getElementById('sb-card').classList.remove('hidden');
-  } else {
-    // Auto-generate with carried-forward balances
-    await generate(priorSubBals);
-  }
-}
-
-// Read per-pair prior sub-end-balances from existing master's Recon Summary
-// Returns { label: latestSubEndBal } for the month immediately before allMonths[0]
-function readPriorSubBals(wb, newMonths) {
-  if (!wb) return {};
-  const ws = wb.Sheets['Recon Summary'];
-  if (!ws) return {};
-  const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null}).slice(2);
-  // Find rows for months NOT in the new export (these are the prior months)
-  const newMonthSet = new Set(newMonths);
-  const byLabel = {}; // label -> { month, subEnd }[]
-  rows.forEach(r => {
-    if (!r || !r[0] || !r[1] || newMonthSet.has(r[0])) return;
-    const label = r[1], subEnd = r[8]; // col I (index 8) = Sub End Balance
-    if (!byLabel[label]) byLabel[label] = [];
-    byLabel[label].push({ month: r[0], subEnd });
-  });
-  // For each label, pick the LATEST month's subEnd as the new starting balance
-  const result = {};
-  Object.entries(byLabel).forEach(([label, arr]) => {
-    arr.sort((a,b) => monthCmp(a.month, b.month));
-    const last = arr[arr.length - 1];
-    if (last && last.subEnd !== null) result[label] = last.subEnd;
-  });
-  return result;
-}
-
 // ─────────────────────────────────────────────────────────────────────────
-// STEP 2 — Starting balance UI (shown when no existing master)
+// STEP 2 — Generate
 // ─────────────────────────────────────────────────────────────────────────
-function renderStartingBalInputs(firstMonth) {
-  // Figure out the month BEFORE the first month in the data
-  const [y, mi] = parseMonth(firstMonth);
-  const prevMon = mi === 0 ? `Dec ${y-1}` : `${MO[mi-1]} ${y}`;
-
-  document.getElementById('sb-period-pill').textContent = `as of ${prevMon}`;
-  const tbody = document.getElementById('sb-body');
-  tbody.innerHTML = PAIRS.filter(p => p.kind === 'shared').map(p => `
-    <tr>
-      <td>${p.label} <span style="color:var(--dim);font-size:9px">(${p.entity})</span></td>
-      <td><input type="number" step="0.01" placeholder="0.00" id="sb-${p.label.replace(/\W+/g,'_')}"
-           onkeydown="if(event.key==='Enter')document.getElementById('gen-btn').click()"/></td>
-    </tr>`).join('');
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// STEP 3 — Generate
-// ─────────────────────────────────────────────────────────────────────────
-async function generate(priorSubBalsArg) {
-  setStatus('spin', 'Computing monthly balances...');
+async function generate() {
+  setStatus('spin', 'Computing monthly data...');
   document.getElementById('results').classList.add('hidden');
-
-  // Collect starting sub balances (from args or from input fields)
-  const startSubBals = priorSubBalsArg || {};
-  if (!priorSubBalsArg) {
-    PAIRS.filter(p=>p.kind==='shared').forEach(p => {
-      const el = document.getElementById(`sb-${p.label.replace(/\W+/g,'_')}`);
-      if (el) startSubBals[p.label] = parseFloat(el.value) || 0;
-    });
-  }
 
   try {
     const { transactions, acctHeaders, allMonths, reportLabel } = S.parsed;
 
-    // Merge with existing master's transactions (minus overlapping months)
-    const existingTrans  = S.existingWb ? readExistingSheet(S.existingWb, 'Transactions', TRANS_H, new Set(allMonths)) : [];
-    const existingRecon  = S.existingWb ? readExistingSheet(S.existingWb, 'Recon Summary', RECON_H, new Set(allMonths)) : [];
+    // All starting balances are $0 — use a full date-range NetSuite export from inception
+    const startSubBals = {};
 
-    // Seed per-account balances from last known transaction in existing master (before first new month)
-    const seedBals = {};
-    const firstNew = allMonths[0];
-    [...existingTrans]
-      .filter(t => t.Acct_Num && t.Balance !== null && t.Balance !== undefined && monthCmp(t.Month, firstNew) < 0)
-      .sort((a, b) => (a.Date||'').localeCompare(b.Date||''))
-      .forEach(t => { seedBals[t.Acct_Num] = t.Balance; });
+    const { reconRows, monthlyEndBal } =
+      computeMonthlyData(transactions, acctHeaders, allMonths, startSubBals);
 
-    // Add existing months to allMonths for carry-forward purposes
-    const existingMonths = [...new Set(existingTrans.map(r => r.Month).filter(Boolean))].sort(monthCmp);
-    const fullMonths = [...new Set([...existingMonths, ...allMonths])].sort(monthCmp);
-
-    // Build per-account header map from existing data (for months we're not re-parsing)
-    const mergedAcctHeaders = { ...acctHeaders };
-
-    // Compute monthly recon for the new months
-    setStatus('spin', `Computing ${allMonths.length} months of data...`);
-    const { reconRows: newRecon, monthlyEndBal } =
-      computeMonthlyData(transactions, mergedAcctHeaders, allMonths, startSubBals, existingRecon, seedBals);
-
-    // Tag new transactions with derived month
+    // Tag transactions with derived month; overwrite shared sub-account Balance
+    // with a per-entity running total (NetSuite's Balance column is aggregate-only)
     const taggedTrans = transactions.map(t => ({...t, Month: txMonth(t.Date)}));
-
-    // Overwrite Balance for shared sub account (25001/15152) transactions with a
-    // per-entity running balance. NetSuite's Balance column is the aggregate across
-    // ALL subsidiaries and is meaningless per-entity.
-    // Starting point = startSubBals entry for the entity (prior end bal or user input).
     {
       const SHARED_SUB = new Set(['25001','15152']);
       const entityLabel = {};
       PAIRS.filter(p => p.kind === 'shared').forEach(p => {
         if (!entityLabel[p.entity]) entityLabel[p.entity] = p.label;
       });
-      const running = {}; // entity -> running balance
+      const running = {};
       [...taggedTrans]
         .filter(t => t.Side === 'Sub' && SHARED_SUB.has(t.Acct_Num))
         .sort((a, b) => (a.Date||'').localeCompare(b.Date||''))
         .forEach(t => {
-          const lbl = entityLabel[t.Subsidiary];
-          if (running[t.Subsidiary] === undefined)
-            running[t.Subsidiary] = r2(startSubBals[lbl] ?? 0);
+          if (running[t.Subsidiary] === undefined) running[t.Subsidiary] = 0;
           running[t.Subsidiary] = r2(running[t.Subsidiary] + (t.Amount || 0));
           t.Balance = running[t.Subsidiary];
         });
     }
 
-    // Build workbook
-    const allTrans = [...existingTrans, ...taggedTrans];
-    const allRecon = [...existingRecon, ...newRecon].sort((a,b) => monthCmp(a.Month,b.Month) || 0);
+    S.resultWb = buildWorkbook(taggedTrans, reconRows);
 
-    S.resultWb = buildWorkbook(allTrans, allRecon);
-
-    // Stats & preview
     const latestMonth = allMonths[allMonths.length - 1];
     document.getElementById('s-period').textContent = allMonths.length > 1
       ? `${allMonths[0]} – ${latestMonth}` : latestMonth;
     document.getElementById('s-months').textContent = allMonths.length;
     document.getElementById('s-trans').textContent  = taggedTrans.length.toLocaleString();
     document.getElementById('s-accts').textContent  = new Set(taggedTrans.map(t=>t.Acct_Num).filter(Boolean)).size;
-    renderRecon(newRecon.filter(r => r.Month === latestMonth));
+    renderRecon(reconRows.filter(r => r.Month === latestMonth));
     document.getElementById('results').classList.remove('hidden');
 
-    const totalTx = allTrans.length;
-    setStatus('ok', `Done — ${allMonths.length} new months, ${taggedTrans.length.toLocaleString()} transactions (${totalTx.toLocaleString()} total in master). Ready to download.`);
+    setStatus('ok', `Done — ${allMonths.length} month${allMonths.length>1?'s':''}, ${taggedTrans.length.toLocaleString()} transactions. Ready to download.`);
   } catch(e) {
     setStatus('err', `Error: ${e.message}`);
     console.error(e);
@@ -661,7 +509,7 @@ function parseExport(ab) {
 // ─────────────────────────────────────────────────────────────────────────
 // COMPUTE MONTHLY DATA
 // ─────────────────────────────────────────────────────────────────────────
-function computeMonthlyData(transactions, acctHeaders, allMonths, startSubBals, existingRecon, seedBals) {
+function computeMonthlyData(transactions, acctHeaders, allMonths, startSubBals) {
   // ── Build per-account, per-month ending balance lookup ─────────────────
   // Group transactions by account, sorted by date
   const txByAcct = {};
@@ -676,10 +524,7 @@ function computeMonthlyData(transactions, acctHeaders, allMonths, startSubBals, 
   const allAccts = [...new Set([...Object.keys(txByAcct), ...Object.keys(acctHeaders)])];
 
   allAccts.forEach(acctNum => {
-    // Prefer seeded balance from existing master's Transactions tab; fall back to export header
-    let prevEnd = (seedBals && seedBals[acctNum] !== undefined)
-      ? seedBals[acctNum]
-      : (acctHeaders[acctNum]?.begBal || 0);
+    let prevEnd = acctHeaders[acctNum]?.begBal || 0;
 
     allMonths.forEach(month => {
       const monthTxs = (txByAcct[acctNum] || []).filter(t => t.Month === month);
@@ -883,15 +728,6 @@ function downloadResult() {
 // ─────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────
-function readExistingSheet(wb, name, headers, excludeMonths) {
-  const ws = wb.Sheets[name];
-  if (!ws) return [];
-  return XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null})
-    .slice(1)
-    .filter(r => r && r[0] && !excludeMonths.has(r[0]))
-    .map(r => Object.fromEntries(headers.map((h,i) => [h, r[i]??null])));
-}
-
 function txMonth(dateStr) {
   if (!dateStr) return null;
   const [y, m] = dateStr.split('-');
