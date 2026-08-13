@@ -102,6 +102,37 @@
     .note strong{color:var(--amber);}
     .hidden{display:none!important;}
 
+    /* Mapping editor */
+    .map-card{margin-bottom:20px;}
+    .map-card summary{cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.05em;
+      color:var(--mid);list-style:none;display:flex;align-items:center;gap:10px;user-select:none;}
+    .map-card summary::-webkit-details-marker{display:none;}
+    .map-card summary::before{content:'▶';font-size:8px;color:var(--dim);transition:transform .2s;}
+    .map-card[open] summary::before{transform:rotate(90deg);}
+    .map-card summary .mp{color:var(--text);}
+    .map-card .map-sub{font-size:10px;color:var(--dim);margin:10px 0 14px;line-height:1.7;}
+    .map-card .map-sub strong{color:var(--amber);}
+    .mt{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:14px;}
+    .mt th{background:var(--hi);border:1px solid var(--b);padding:6px 9px;text-align:left;
+      color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-size:9px;white-space:nowrap;}
+    .mt td{border:1px solid var(--b);padding:4px 6px;background:var(--surface);vertical-align:middle;}
+    .map-in{background:var(--hi);border:1px solid var(--bm);border-radius:3px;color:var(--text);
+      font-family:var(--mono);font-size:10px;padding:4px 7px;outline:none;width:100%;
+      transition:border-color .15s;box-sizing:border-box;}
+    .map-in:focus{border-color:var(--accent);}
+    .map-in.warn{border-color:var(--amber);}
+    .map-sel{background:var(--hi);border:1px solid var(--bm);border-radius:3px;color:var(--mid);
+      font-family:var(--mono);font-size:10px;padding:4px 6px;outline:none;cursor:pointer;}
+    .del-btn{background:none;border:1px solid var(--bm);border-radius:3px;color:var(--dim);
+      cursor:pointer;font-size:11px;padding:3px 8px;transition:color .15s,border-color .15s;}
+    .del-btn:hover{color:var(--red);border-color:var(--red);}
+    .add-map-btn{background:var(--hi);border:1px solid var(--bm);border-radius:6px;color:var(--mid);
+      cursor:pointer;font-family:var(--mono);font-size:10px;padding:8px 16px;
+      transition:color .15s,border-color .15s;letter-spacing:.04em;}
+    .add-map-btn:hover{color:var(--accent);border-color:var(--accent);}
+    .unmapped-warn{background:var(--rdim);border:1px solid rgba(239,68,68,.35);border-radius:6px;
+      padding:10px 14px;font-size:10px;color:var(--red);margin-bottom:12px;display:none;}
+
     /* Period pill */
     .pill{display:inline-block;background:var(--adim);border:1px solid var(--accent);color:var(--accent);
       border-radius:20px;font-size:10px;padding:3px 12px;letter-spacing:.05em;margin-left:10px;}
@@ -111,9 +142,31 @@
 <div class="wrap">
 
   <div class="hdr">
-    <h1>Due To/From Master Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.1</span></h1>
+    <h1>Due To/From Master Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.2</span></h1>
     <div class="sub">Cardone Ventures &nbsp;·&nbsp; Intercompany Reconciliation</div>
   </div>
+
+  <!-- Mapping editor -->
+  <details class="map-card" id="map-card">
+    <summary><span class="mp">Subsidiary Mappings</span> <span id="map-count" style="color:var(--dim);font-size:9px"></span></summary>
+    <div class="map-sub">
+      Each row maps a <strong>CV account number</strong> to the subsidiary's legal entity name and its intercompany account(s).
+      Changes take effect immediately on the next Generate run. Add a row for any <strong>⚠ UNMAPPED</strong> accounts that appear in your export.
+    </div>
+    <div id="unmapped-banner" class="unmapped-warn"></div>
+    <table class="mt" id="map-table">
+      <thead><tr>
+        <th>Label</th>
+        <th>CV Acct(s) <span style="font-weight:400;opacity:.6">(comma-sep)</span></th>
+        <th>Sub Acct(s) <span style="font-weight:400;opacity:.6">(comma-sep)</span></th>
+        <th>Entity (exact NetSuite name)</th>
+        <th>Kind</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="map-tbody"></tbody>
+    </table>
+    <button class="add-map-btn" onclick="addPair()">+ Add Row</button>
+  </details>
 
   <!-- Drop zones -->
   <div class="dg">
@@ -206,7 +259,7 @@
 // CV account number -> counterparty entity name (built from PAIRS below)
 const CV_ACCT_ENTITY = {};
 
-const PAIRS = [
+let PAIRS = [
   {label:"10X HVAC",                 cv:["15108"],         sub:["25001","15152"], entity:"10X HVAC, LLC",                                    kind:"shared"},
   {label:"10X Buy/Sell",             cv:["15109","22209"], sub:["25001","15152"], entity:"10X Buy/Sell, LLC",                                kind:"shared"},
   {label:"10X BA Franchising",       cv:["15113"],         sub:["25001","15152"], entity:"10X Business Advisor Franchising, LLC",            kind:"shared"},
@@ -228,6 +281,65 @@ const PAIRS = [
 
 // Populate CV account -> entity lookup from PAIRS
 PAIRS.forEach(p => p.cv.forEach(a => { CV_ACCT_ENTITY[a] = p.entity; }));
+
+// ─────────────────────────────────────────────────────────────────────────
+// MAPPING EDITOR
+// ─────────────────────────────────────────────────────────────────────────
+function rebuildCvAcctEntity() {
+  Object.keys(CV_ACCT_ENTITY).forEach(k => delete CV_ACCT_ENTITY[k]);
+  PAIRS.forEach(p => p.cv.forEach(a => { if (a) CV_ACCT_ENTITY[a.trim()] = p.entity; }));
+}
+
+function renderMappingTable() {
+  const tbody = document.getElementById('map-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = PAIRS.map((p, i) => `
+    <tr>
+      <td><input class="map-in" value="${esc(p.label)}" oninput="updatePair(${i},'label',this.value)" placeholder="Label"></td>
+      <td><input class="map-in" value="${esc(p.cv.join(', '))}" oninput="updatePair(${i},'cv',this.value)" placeholder="15108"></td>
+      <td><input class="map-in" value="${esc(p.sub.join(', '))}" oninput="updatePair(${i},'sub',this.value)" placeholder="25001, 15152"></td>
+      <td><input class="map-in" value="${esc(p.entity)}" oninput="updatePair(${i},'entity',this.value)" placeholder="Entity, LLC"></td>
+      <td><select class="map-sel" onchange="updatePair(${i},'kind',this.value)">
+        <option value="shared"${p.kind==='shared'?' selected':''}>shared</option>
+        <option value="dedicated"${p.kind==='dedicated'?' selected':''}>dedicated</option>
+      </select></td>
+      <td><button class="del-btn" onclick="deletePair(${i})" title="Delete row">✕</button></td>
+    </tr>`).join('');
+  const cnt = document.getElementById('map-count');
+  if (cnt) cnt.textContent = `(${PAIRS.length} pairs)`;
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function updatePair(i, field, value) {
+  if (field === 'cv' || field === 'sub') {
+    PAIRS[i][field] = value.split(',').map(s => s.trim()).filter(Boolean);
+  } else {
+    PAIRS[i][field] = value;
+  }
+  rebuildCvAcctEntity();
+}
+
+function deletePair(i) {
+  PAIRS.splice(i, 1);
+  rebuildCvAcctEntity();
+  renderMappingTable();
+}
+
+function addPair() {
+  PAIRS.push({ label: '', cv: [], sub: ['25001','15152'], entity: '', kind: 'shared' });
+  renderMappingTable();
+  // Scroll to last row and focus label input
+  const rows = document.querySelectorAll('#map-tbody tr');
+  if (rows.length) {
+    rows[rows.length-1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const inp = rows[rows.length-1].querySelector('.map-in');
+    if (inp) inp.focus();
+  }
+}
+
+// Init mapping table (script runs after DOM is ready — call directly)
+renderMappingTable();
 
 const TRANS_H = ["Month","Date","Side","Subsidiary","Acct_Num","Acct_Name","Type","Doc_Number","Name","Amount","Balance","Description","Memo"];
 const BAL_H   = ["Month","Acct_Num","Acct_Name","Beg_Balance","Activity","End_Balance"];
@@ -389,10 +501,17 @@ async function generate(priorSubBalsArg) {
   try {
     const { transactions, acctHeaders, allMonths, reportLabel } = S.parsed;
 
-    // Merge with existing master's transactions / balances (minus overlapping months)
+    // Merge with existing master's transactions (minus overlapping months)
     const existingTrans  = S.existingWb ? readExistingSheet(S.existingWb, 'Transactions', TRANS_H, new Set(allMonths)) : [];
-    const existingBals   = S.existingWb ? readExistingSheet(S.existingWb, 'Account Balances', BAL_H, new Set(allMonths)) : [];
     const existingRecon  = S.existingWb ? readExistingSheet(S.existingWb, 'Recon Summary', RECON_H, new Set(allMonths)) : [];
+
+    // Seed per-account balances from last known transaction in existing master (before first new month)
+    const seedBals = {};
+    const firstNew = allMonths[0];
+    [...existingTrans]
+      .filter(t => t.Acct_Num && t.Balance !== null && t.Balance !== undefined && monthCmp(t.Month, firstNew) < 0)
+      .sort((a, b) => (a.Date||'').localeCompare(b.Date||''))
+      .forEach(t => { seedBals[t.Acct_Num] = t.Balance; });
 
     // Add existing months to allMonths for carry-forward purposes
     const existingMonths = [...new Set(existingTrans.map(r => r.Month).filter(Boolean))].sort(monthCmp);
@@ -401,10 +520,10 @@ async function generate(priorSubBalsArg) {
     // Build per-account header map from existing data (for months we're not re-parsing)
     const mergedAcctHeaders = { ...acctHeaders };
 
-    // Compute monthly account balances and recon for the new months
+    // Compute monthly recon for the new months
     setStatus('spin', `Computing ${allMonths.length} months of data...`);
-    const { accountBalances: newBals, reconRows: newRecon, monthlyEndBal } =
-      computeMonthlyData(transactions, mergedAcctHeaders, allMonths, startSubBals, existingRecon, existingBals);
+    const { reconRows: newRecon, monthlyEndBal } =
+      computeMonthlyData(transactions, mergedAcctHeaders, allMonths, startSubBals, existingRecon, seedBals);
 
     // Tag new transactions with derived month
     const taggedTrans = transactions.map(t => ({...t, Month: txMonth(t.Date)}));
@@ -434,10 +553,9 @@ async function generate(priorSubBalsArg) {
 
     // Build workbook
     const allTrans = [...existingTrans, ...taggedTrans];
-    const allBals  = [...existingBals,  ...newBals];
     const allRecon = [...existingRecon, ...newRecon].sort((a,b) => monthCmp(a.Month,b.Month) || 0);
 
-    S.resultWb = buildWorkbook(allTrans, allBals, allRecon);
+    S.resultWb = buildWorkbook(allTrans, allRecon);
 
     // Stats & preview
     const latestMonth = allMonths[allMonths.length - 1];
@@ -445,7 +563,7 @@ async function generate(priorSubBalsArg) {
       ? `${allMonths[0]} – ${latestMonth}` : latestMonth;
     document.getElementById('s-months').textContent = allMonths.length;
     document.getElementById('s-trans').textContent  = taggedTrans.length.toLocaleString();
-    document.getElementById('s-accts').textContent  = newBals.length;
+    document.getElementById('s-accts').textContent  = new Set(taggedTrans.map(t=>t.Acct_Num).filter(Boolean)).size;
     renderRecon(newRecon.filter(r => r.Month === latestMonth));
     document.getElementById('results').classList.remove('hidden');
 
@@ -543,7 +661,7 @@ function parseExport(ab) {
 // ─────────────────────────────────────────────────────────────────────────
 // COMPUTE MONTHLY DATA
 // ─────────────────────────────────────────────────────────────────────────
-function computeMonthlyData(transactions, acctHeaders, allMonths, startSubBals, existingRecon, existingBals) {
+function computeMonthlyData(transactions, acctHeaders, allMonths, startSubBals, existingRecon, seedBals) {
   // ── Build per-account, per-month ending balance lookup ─────────────────
   // Group transactions by account, sorted by date
   const txByAcct = {};
@@ -554,64 +672,26 @@ function computeMonthlyData(transactions, acctHeaders, allMonths, startSubBals, 
   });
   Object.values(txByAcct).forEach(txs => txs.sort((a,b) => (a.Date||'').localeCompare(b.Date||'')));
 
-  // Build complete monthly end-balance map including carry-forward
-  // monthlyEndBal["acctNum|month"] = ending balance for that account at end of that month
   const monthlyEndBal = {};
   const allAccts = [...new Set([...Object.keys(txByAcct), ...Object.keys(acctHeaders)])];
 
-  // Seed beginning balances from existing Account Balances tab if available
-  // (prior months we're not re-processing)
-  const seedBals = {}; // acctNum -> balance just before allMonths[0]
-  if (existingBals && existingBals.length > 0) {
-    const firstNewMonth = allMonths[0];
-    existingBals.forEach(b => {
-      if (b.Acct_Num && b.End_Balance !== null && monthCmp(b.Month, firstNewMonth) < 0) {
-        if (!seedBals[b.Acct_Num] || monthCmp(b.Month, (seedBals[b.Acct_Num]||{}).month||'') > 0) {
-          seedBals[b.Acct_Num] = { val: b.End_Balance, month: b.Month };
-        }
-      }
-    });
-  }
-
   allAccts.forEach(acctNum => {
-    // Starting balance: use existing master seed if available, else account header
-    let prevEnd = seedBals[acctNum]
-      ? seedBals[acctNum].val
+    // Prefer seeded balance from existing master's Transactions tab; fall back to export header
+    let prevEnd = (seedBals && seedBals[acctNum] !== undefined)
+      ? seedBals[acctNum]
       : (acctHeaders[acctNum]?.begBal || 0);
 
     allMonths.forEach(month => {
       const monthTxs = (txByAcct[acctNum] || []).filter(t => t.Month === month);
       monthTxs.sort((a,b) => (a.Date||'').localeCompare(b.Date||''));
-
-      let endBal;
-      if (monthTxs.length > 0) {
-        // Last transaction's Balance is the running cumulative end-of-month balance
-        endBal = monthTxs[monthTxs.length - 1].Balance ?? r2(prevEnd + monthTxs.reduce((s,t)=>s+(t.Amount||0),0));
-      } else {
-        endBal = prevEnd; // carry forward
-      }
-
-      monthlyEndBal[`${acctNum}|${month}`] = r2(endBal);
+      // Always compute from transaction amounts — never rely on NetSuite's Balance column
+      const endBal = monthTxs.length > 0
+        ? r2(prevEnd + monthTxs.reduce((s,t) => s + (t.Amount||0), 0))
+        : prevEnd;
+      monthlyEndBal[`${acctNum}|${month}`] = endBal;
       prevEnd = endBal;
     });
   });
-
-  // ── Build Account Balances rows (only months with activity) ────────────
-  const accountBalances = [];
-  allAccts.forEach(acctNum => {
-    const acctName = acctHeaders[acctNum]?.name || acctNum;
-    allMonths.forEach(month => {
-      const monthTxs = (txByAcct[acctNum] || []).filter(t => t.Month === month);
-      if (monthTxs.length === 0) return; // skip no-activity months
-      const activity = r2(monthTxs.reduce((s,t)=>s+(t.Amount||0),0));
-      const endBal   = monthlyEndBal[`${acctNum}|${month}`];
-      const begBal   = r2(endBal - activity);
-      accountBalances.push({ Month:month, Acct_Num:acctNum, Acct_Name:acctName,
-                             Beg_Balance:begBal, Activity:activity, End_Balance:endBal });
-    });
-  });
-  // Sort by month then account
-  accountBalances.sort((a,b) => monthCmp(a.Month,b.Month) || a.Acct_Num.localeCompare(b.Acct_Num));
 
   // ── Build sub-activity map ─────────────────────────────────────────────
   // Only Sub-side transactions, only on known sub intercompany accounts.
@@ -669,13 +749,13 @@ function computeMonthlyData(transactions, acctHeaders, allMonths, startSubBals, 
     });
   });
 
-  return { accountBalances, reconRows, monthlyEndBal };
+  return { reconRows, monthlyEndBal };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
 // BUILD WORKBOOK (all values — no cross-sheet formulas needed)
 // ─────────────────────────────────────────────────────────────────────────
-function buildWorkbook(allTrans, allBals, allRecon) {
+function buildWorkbook(allTrans, allRecon) {
   const wb = XLSX.utils.book_new();
 
   // Tab 1: Transactions
@@ -685,21 +765,14 @@ function buildWorkbook(allTrans, allBals, allRecon) {
   wsT['!autofilter'] = {ref: wsT['!ref']};
   XLSX.utils.book_append_sheet(wb, wsT, 'Transactions');
 
-  // Tab 2: Account Balances
-  const wsB = XLSX.utils.aoa_to_sheet([BAL_H, ...allBals.map(b => BAL_H.map(h=>b[h]??null))]);
-  wsB['!cols']       = [8,7,32,12,10,12].map(w=>({wch:w}));
-  wsB['!freeze']     = {xSplit:0, ySplit:1};
-  wsB['!autofilter'] = {ref: wsB['!ref']};
-  XLSX.utils.book_append_sheet(wb, wsB, 'Account Balances');
-
-  // Tab 3: Recon Summary
+  // Tab 2: Recon Summary
   const wsR = XLSX.utils.aoa_to_sheet([RECON_H, ...allRecon.map(r => RECON_H.map(h=>r[h]??null))]);
   wsR['!cols']       = [8,24,36,10,14,10,14,12,14,14].map(w=>({wch:w}));
   wsR['!freeze']     = {xSplit:0, ySplit:1};
   wsR['!autofilter'] = {ref: wsR['!ref']};
   XLSX.utils.book_append_sheet(wb, wsR, 'Recon Summary');
 
-  // Tab 4: Import Formulas guide
+  // Tab 3: Import Formulas guide
   XLSX.utils.book_append_sheet(wb, buildGuide(), 'Import Formulas');
 
   return wb;
@@ -854,7 +927,7 @@ function fmtDate(v) {
 }
 </script>
 
-<script>const TOOL_KEY='due-to-from'; const TOOL_VERSION='1.0';</script>
+<script>const TOOL_KEY='due-to-from'; const TOOL_VERSION='1.2';</script>
 <script src="version-check.js"></script>
 </body>
 </html>
