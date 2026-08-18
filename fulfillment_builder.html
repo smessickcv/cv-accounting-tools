@@ -414,6 +414,155 @@
   .btn-ghost:hover { color: var(--text2); border-color: var(--text2); }
   .action-ok { font-size: 0.76rem; color: var(--green); font-weight: 500; }
 
+  /* ── Remove / upgrade / manual / add-line UI ────────────────────── */
+  .it-act { width: 22px; text-align: right; vertical-align: middle; }
+  .it-remove-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--border2);
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0 2px;
+    border-radius: 3px;
+    font-family: inherit;
+    transition: color 0.12s;
+  }
+  .it-remove-btn:hover { color: #c0392b; }
+  .it-upgrade-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--amber-bg);
+    border: 1px solid var(--amber-bd);
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 5px;
+    vertical-align: middle;
+  }
+  .it-qty-inp {
+    width: 38px;
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 0.79rem;
+    font-weight: 700;
+    font-family: inherit;
+    color: var(--navy);
+    background: var(--surface2);
+    outline: none;
+    text-align: center;
+    -moz-appearance: textfield;
+  }
+  .it-qty-inp:focus { border-color: var(--accent); }
+  .it-qty-inp::-webkit-inner-spin-button,
+  .it-qty-inp::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .add-line-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    background: none;
+    border: 1px dashed var(--border2);
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 0.74rem;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.12s, border-color 0.12s;
+  }
+  .add-line-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── Item combobox ───────────────────────────────────────────────── */
+  .it-combo-wrap { position: relative; }
+  .it-combo-input {
+    width: 100%;
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 0.78rem;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface2);
+    outline: none;
+    cursor: pointer;
+    min-width: 150px;
+    transition: border-color 0.13s;
+  }
+  .it-combo-input:focus { border-color: var(--accent); cursor: text; }
+  .it-combo-input.overridden {
+    border-color: var(--purple);
+    background: var(--purple-bg);
+    color: var(--purple);
+    font-weight: 500;
+  }
+  .it-combo-drop {
+    position: fixed;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.14);
+    max-height: 230px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+  }
+  .it-combo-drop.open { display: block; }
+  .it-combo-opt {
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .it-combo-opt:hover, .it-combo-opt.active { background: var(--accent-bg); color: var(--accent); }
+  .it-combo-opt.selected { font-weight: 600; background: var(--accent-bg); }
+  .it-combo-empty {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* ── Line ID override row ────────────────────────────────────────── */
+  .it-lineid-cell { padding: 0 0 6px 0 !important; }
+  .it-lineid-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--purple-bg);
+    border: 1px solid var(--purple-bd);
+    border-radius: 6px;
+    padding: 5px 10px;
+  }
+  .it-lineid-lbl {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--purple);
+    white-space: nowrap;
+  }
+  .it-lineid-hint { font-size: 0.68rem; color: var(--muted); white-space: nowrap; }
+  .it-lineid-inp {
+    flex: 1;
+    border: 1px solid var(--purple-bd);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.78rem;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    min-width: 60px;
+    max-width: 120px;
+  }
+  .it-lineid-inp:focus { border-color: var(--purple); }
+
   [hidden] { display: none !important; }
 
   @media (max-width: 720px) {
@@ -541,6 +690,7 @@ let nsRows = null, attRows = null, itemsRows = null;
 let plan = null, warns = [];
 let nsCols = [], attCols = [];
 let itemMap = {}, classItems = {}, selectedClass = '';
+let nsItemIds = new Set();
 
 // ── Items persistence (localStorage) ─────────────────────────────────────────
 const ITEMS_STORAGE_KEY = 'cv_fulfillment_items_v1';
@@ -652,10 +802,12 @@ function buildItemMap() {
     const id = parseInt(rawId) || 0;
     if (!id) continue;
 
-    const display  = String(col(row, ['display name']) || '').toUpperCase();
-    const name     = String(col(row, ['name']) || '').toUpperCase();
-    const combined = display + ' ' + name;
-    const cls      = String(col(row, ['class']) || '').trim();
+    const displayRaw = String(col(row, ['display name']) || '').trim();
+    const nameRaw    = String(col(row, ['name']) || '').trim();
+    const display    = displayRaw.toUpperCase();
+    const name       = nameRaw.toUpperCase();
+    const combined   = display + ' ' + name;
+    const cls        = String(col(row, ['class']) || '').trim();
 
     // Detect attendee capacity from display name / name
     let cap = 1;
@@ -664,7 +816,7 @@ function buildItemMap() {
     else if (/\b5[\s-]*(TICKET|SEAT)/.test(combined)) cap = 5;
     else if (/\b3[\s-]*(TICKET|SEAT|RETREAT)/.test(combined)) cap = 3;
 
-    itemMap[id] = { cap, cls };
+    itemMap[id] = { cap, cls, name: nameRaw, displayName: displayRaw };
 
     if (cls) {
       if (!classItems[cls]) classItems[cls] = new Set();
@@ -688,6 +840,150 @@ function getAvailableClasses() {
 function getCapacity(itemId) {
   if (itemMap[itemId]) return itemMap[itemId].cap;
   return CAP_FALLBACK[itemId] ?? 1;
+}
+
+// Returns item options for the combobox — class-filtered if a class is selected,
+// otherwise falls back to items present in the loaded NS report.
+function getItemOptions(currentItemId) {
+  if (!Object.keys(itemMap).length) return [];
+  let ids;
+  if (selectedClass && classItems[selectedClass]) {
+    ids = [...classItems[selectedClass]];
+  } else {
+    ids = [...nsItemIds].filter(id => itemMap[id]);
+  }
+  if (!ids.includes(currentItemId)) ids.unshift(currentItemId);
+  return ids
+    .filter(id => itemMap[id])
+    .map(id => {
+      const e = itemMap[id];
+      return { id, label: e.displayName || e.name || String(id) };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function buildCombobox(ln, lineIdTr) {
+  const opts = getItemOptions(ln.itemId);
+  const origShort = shortName(ln.itemName);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'it-combo-wrap';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'it-combo-input' + (!ln.isManual && ln.overrideItemId ? ' overridden' : '');
+  input.value = ln.overrideItemName ?? (ln.isManual ? '' : origShort);
+  input.autocomplete = 'off';
+  input.setAttribute('spellcheck', 'false');
+  if (ln.isManual) input.placeholder = 'Select item…';
+
+  // Drop is appended to body so it escapes any overflow:hidden container
+  const drop = document.createElement('div');
+  drop.className = 'it-combo-drop';
+  drop.setAttribute('data-combo-portal', '');
+  document.body.appendChild(drop);
+
+  let activeIdx = -1;
+  let visibleOpts = [];
+
+  function positionDrop() {
+    const r = input.getBoundingClientRect();
+    drop.style.top      = (r.bottom + 3) + 'px';
+    drop.style.left     = r.left + 'px';
+    drop.style.minWidth = Math.max(r.width, 220) + 'px';
+  }
+
+  function renderDrop(filter) {
+    const q = (filter || '').toLowerCase().trim();
+    visibleOpts = q ? opts.filter(o => o.label.toLowerCase().includes(q)) : opts.slice();
+    drop.innerHTML = '';
+    activeIdx = -1;
+    if (!visibleOpts.length) {
+      const el = document.createElement('div');
+      el.className = 'it-combo-empty';
+      el.textContent = 'No items found';
+      drop.appendChild(el);
+    } else {
+      const selId = ln.overrideItemId !== null ? ln.overrideItemId : ln.itemId;
+      visibleOpts.forEach(opt => {
+        const el = document.createElement('div');
+        el.className = 'it-combo-opt' + (opt.id === selId ? ' selected' : '');
+        el.textContent = opt.label;
+        el.onmousedown = e => { e.preventDefault(); choose(opt); };
+        drop.appendChild(el);
+      });
+    }
+  }
+
+  function openDrop() {
+    document.querySelectorAll('.it-combo-drop.open').forEach(d => { if (d !== drop) d.classList.remove('open'); });
+    renderDrop('');
+    positionDrop();
+    drop.classList.add('open');
+    const sel = drop.querySelector('.selected');
+    if (sel) sel.scrollIntoView({ block: 'nearest' });
+  }
+
+  function closeDrop() {
+    drop.classList.remove('open');
+    activeIdx = -1;
+  }
+
+  function choose(opt) {
+    const isOrig = !ln.isManual && opt.id === ln.itemId;
+    ln.overrideItemId   = isOrig ? null : opt.id;
+    ln.overrideItemName = isOrig ? null : opt.label;
+    input.value = opt.label;
+    if (!ln.isManual) input.classList.toggle('overridden', !isOrig);
+    if (lineIdTr && !ln.isManual) lineIdTr.hidden = isOrig;
+    closeDrop();
+  }
+
+  input.addEventListener('focus', openDrop);
+  input.addEventListener('input', () => { renderDrop(input.value); positionDrop(); drop.classList.add('open'); });
+  input.addEventListener('keydown', e => {
+    const isOpen = drop.classList.contains('open');
+    if (!isOpen) { if (e.key === 'ArrowDown' || e.key === 'Enter') { openDrop(); e.preventDefault(); } return; }
+    const items = drop.querySelectorAll('.it-combo-opt');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+      if (items[activeIdx]) items[activeIdx].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+      if (items[activeIdx]) items[activeIdx].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIdx >= 0 && visibleOpts[activeIdx]) choose(visibleOpts[activeIdx]);
+      else closeDrop();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      input.value = ln.overrideItemName ?? (ln.isManual ? '' : origShort);
+      closeDrop();
+    }
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (drop.classList.contains('open')) {
+        input.value = ln.overrideItemName ?? (ln.isManual ? '' : origShort);
+        closeDrop();
+      }
+    }, 150);
+  });
+
+  wrap.appendChild(input);
+  return wrap;
+}
+
+// Detects whether a line item is an upgrade/add-on (fulfilled regardless of attendee count)
+function isUpgradeItem(itemId, itemName) {
+  const src = (itemMap[itemId]
+    ? ((itemMap[itemId].displayName || '') + ' ' + (itemMap[itemId].name || ''))
+    : itemName).toUpperCase();
+  return /\bUPGRADE\b|SUPER\s+VIP|ADD[-\s]?ON\b|VIP\s+UPGRADE|CLUB\s+UPGRADE/.test(src);
 }
 
 // ── Business logic ────────────────────────────────────────────────────────────
@@ -749,24 +1045,65 @@ function buildPlan(nsData, attData, filterItemIds) {
       if (qty <= 0) continue;
 
       fillLines.push({
-        internalId:  parseInt(col(line, ['internal id'])) || 0,
-        status:      String(col(line, ['status'])),
-        dateCreated: fmtDate(col(line, ['date created'])),
-        docNumber:   soDoc,
-        customer:    String(col(line, ['name','customer name'])),
-        txnNumber:   String(col(line, ['transaction number'])),
-        itemName:    String(col(line, ['item','item name'])),
+        internalId:       parseInt(col(line, ['internal id'])) || 0,
+        status:           String(col(line, ['status'])),
+        dateCreated:      fmtDate(col(line, ['date created'])),
+        docNumber:        soDoc,
+        customer:         String(col(line, ['name','customer name'])),
+        txnNumber:        String(col(line, ['transaction number'])),
+        itemName:         String(col(line, ['item','item name'])),
         itemId,
-        qty:         parseInt(col(line, ['quantity'])) || 0,
-        qtyRecv:     parseInt(col(line, ['quantity fulfilled/received','qty fulfilled/received'])) || 0,
-        qtyTxn:      parseInt(col(line, ['quantity in transaction units'])) || 0,
-        qtyFulfill:  qty,
-        lineId:      parseInt(col(line, ['line id'])) || 1,
+        qty:              parseInt(col(line, ['quantity'])) || 0,
+        qtyRecv:          parseInt(col(line, ['quantity fulfilled/received','qty fulfilled/received'])) || 0,
+        qtyTxn:           parseInt(col(line, ['quantity in transaction units'])) || 0,
+        qtyFulfill:       qty,
+        lineId:           parseInt(col(line, ['line id'])) || 1,
         cap,
-        covered:     qty * cap,
+        covered:          qty * cap,
+        removed:          false,
+        isUpgrade:        false,
+        isManual:         false,
+        overrideItemId:   null,
+        overrideItemName: null,
+        overrideLineId:   null,
       });
 
       remaining = Math.max(0, remaining - qty * cap);
+    }
+
+    // Second pass: pick up upgrade/add-on items not covered by the attendee pass
+    const coveredLineIds = new Set(fillLines.map(fl => fl.lineId));
+    for (const line of lines) {
+      const upLineId = parseInt(col(line, ['line id'])) || 0;
+      if (coveredLineIds.has(upLineId)) continue;
+      const upOpenQty = parseFloat(col(line, ['quantity open for fulfillment'])) || 0;
+      if (upOpenQty <= 0) continue;
+      const upItemId = parseInt(col(line, ['item internal id'])) || 0;
+      const upName   = String(col(line, ['item', 'item name']));
+      if (!isUpgradeItem(upItemId, upName)) continue;
+      fillLines.push({
+        internalId:       parseInt(col(line, ['internal id'])) || 0,
+        status:           String(col(line, ['status'])),
+        dateCreated:      fmtDate(col(line, ['date created'])),
+        docNumber:        soDoc,
+        customer:         String(col(line, ['name', 'customer name'])),
+        txnNumber:        String(col(line, ['transaction number'])),
+        itemName:         upName,
+        itemId:           upItemId,
+        qty:              parseInt(col(line, ['quantity'])) || 0,
+        qtyRecv:          parseInt(col(line, ['quantity fulfilled/received', 'qty fulfilled/received'])) || 0,
+        qtyTxn:           parseInt(col(line, ['quantity in transaction units'])) || 0,
+        qtyFulfill:       upOpenQty,
+        lineId:           upLineId,
+        cap:              getCapacity(upItemId),
+        covered:          upOpenQty * getCapacity(upItemId),
+        removed:          false,
+        isUpgrade:        true,
+        isManual:         false,
+        overrideItemId:   null,
+        overrideItemName: null,
+        overrideLineId:   null,
+      });
     }
 
     if (fillLines.length === 0) {
@@ -838,6 +1175,9 @@ function tryBuild() {
   // Rebuild item map if items are loaded (in case NS report changed)
   if (itemsRows) buildItemMap();
 
+  // Cache unique item IDs from NS report (used as combobox fallback when no class is selected)
+  nsItemIds = new Set(nsRows.map(r => parseInt(String(col(r, ['item internal id'])).trim()) || 0).filter(Boolean));
+
   // Populate / refresh class dropdown
   renderClassDropdown();
 
@@ -889,16 +1229,7 @@ function renderStep2() {
                String(n.getDate()).padStart(2,'0');
   }
 
-  const totAtt   = plan.reduce((s, o) => s + o.attCount, 0);
-  const totLines = plan.reduce((s, o) => s + o.lines.length, 0);
-
-  document.getElementById('st-sos').textContent   = plan.length;
-  document.getElementById('st-att').textContent   = totAtt;
-  document.getElementById('st-lines').textContent = totLines;
-
-  showPill('hp-sos',   plan.length + ' SO' + (plan.length !== 1 ? 's' : ''));
-  showPill('hp-att',   totAtt + ' attendee' + (totAtt !== 1 ? 's' : ''));
-  showPill('hp-lines', totLines + ' line' + (totLines !== 1 ? 's' : ''));
+  refreshStats();
 
   // Warnings + diagnostics
   const wa = document.getElementById('warn-area');
@@ -946,6 +1277,120 @@ function showPill(id, text) {
   const el = document.getElementById(id);
   el.textContent = text;
   el.classList.add('show');
+}
+
+function refreshStats() {
+  if (!plan) return;
+  const totAtt   = plan.reduce((s, o) => s + o.attCount, 0);
+  const totLines = plan.reduce((s, o) => s + o.lines.filter(l => !l.removed).length, 0);
+  document.getElementById('st-sos').textContent   = plan.length;
+  document.getElementById('st-att').textContent   = totAtt;
+  document.getElementById('st-lines').textContent = totLines;
+  showPill('hp-sos',   plan.length + ' SO' + (plan.length !== 1 ? 's' : ''));
+  showPill('hp-att',   totAtt + ' attendee' + (totAtt !== 1 ? 's' : ''));
+  showPill('hp-lines', totLines + ' line' + (totLines !== 1 ? 's' : ''));
+}
+
+// Builds the main row + Line ID reveal row for a single fulfillment line
+function buildLineRowPair(ln) {
+  // Line ID row — always visible for manual lines, revealed on override for regular lines
+  const lidTr = document.createElement('tr');
+  lidTr.className = 'it-lineid-tr';
+  lidTr.hidden = ln.isManual ? false : !ln.overrideItemId;
+  const lidTd = document.createElement('td');
+  lidTd.colSpan = 4;
+  lidTd.className = 'it-lineid-cell';
+  const lidWrap = document.createElement('div');
+  lidWrap.className = 'it-lineid-wrap';
+  const lidLbl = document.createElement('span');
+  lidLbl.className = 'it-lineid-lbl';
+  lidLbl.textContent = 'Line ID';
+  const lidHint = document.createElement('span');
+  lidHint.className = 'it-lineid-hint';
+  lidHint.textContent = ln.isManual
+    ? 'required — find on the NS SO record'
+    : 'for the selected item on this SO in NetSuite';
+  const lidInp = document.createElement('input');
+  lidInp.type = 'text';
+  lidInp.className = 'it-lineid-inp';
+  lidInp.placeholder = ln.isManual ? 'Line ID' : String(ln.lineId);
+  if (ln.overrideLineId != null) lidInp.value = String(ln.overrideLineId);
+  lidInp.oninput = () => {
+    const v = lidInp.value.trim();
+    ln.overrideLineId = v ? (parseInt(v) || v) : null;
+  };
+  lidWrap.appendChild(lidLbl);
+  lidWrap.appendChild(lidHint);
+  lidWrap.appendChild(lidInp);
+  lidTd.appendChild(lidWrap);
+  lidTr.appendChild(lidTd);
+
+  // Name cell
+  const nameTd = document.createElement('td');
+  nameTd.className = 'it-name';
+  if (Object.keys(itemMap).length > 0) {
+    nameTd.appendChild(buildCombobox(ln, lidTr));
+  } else {
+    nameTd.textContent = shortName(ln.itemName);
+  }
+  if (ln.isUpgrade) {
+    const badge = document.createElement('span');
+    badge.className = 'it-upgrade-badge';
+    badge.textContent = 'Upgrade';
+    nameTd.appendChild(badge);
+  }
+
+  // Qty cell — editable input for manual lines, static text otherwise
+  const qtyTd = document.createElement('td');
+  qtyTd.className = 'it-qty';
+  if (ln.isManual) {
+    const xSpan = document.createTextNode('× ');
+    qtyTd.appendChild(xSpan);
+    const qInp = document.createElement('input');
+    qInp.type = 'number';
+    qInp.min = '1';
+    qInp.value = String(ln.qtyFulfill || 1);
+    qInp.className = 'it-qty-inp';
+    qInp.oninput = () => { ln.qtyFulfill = parseInt(qInp.value) || 1; };
+    qtyTd.appendChild(qInp);
+  } else {
+    qtyTd.textContent = '× ' + ln.qtyFulfill;
+  }
+
+  // Coverage label cell
+  const covTd = document.createElement('td');
+  covTd.className = 'it-cov';
+  if (ln.isManual) {
+    covTd.textContent = 'manual';
+    covTd.style.fontStyle = 'italic';
+  } else if (ln.isUpgrade) {
+    covTd.textContent = 'upgrade item';
+  } else {
+    covTd.textContent = 'covers ' + ln.covered + ' attendee' + (ln.covered !== 1 ? 's' : '');
+  }
+
+  // Remove button cell
+  const actTd = document.createElement('td');
+  actTd.className = 'it-act';
+  const rmBtn = document.createElement('button');
+  rmBtn.className = 'it-remove-btn';
+  rmBtn.title = 'Remove this line';
+  rmBtn.textContent = '×';
+  rmBtn.onclick = () => {
+    ln.removed = true;
+    tr.hidden = true;
+    lidTr.hidden = true;
+    refreshStats();
+  };
+  actTd.appendChild(rmBtn);
+
+  const tr = document.createElement('tr');
+  tr.appendChild(nameTd);
+  tr.appendChild(qtyTd);
+  tr.appendChild(covTd);
+  tr.appendChild(actTd);
+
+  return { tr, lidTr };
 }
 
 function makeCard(so) {
@@ -1002,21 +1447,38 @@ function makeCard(so) {
   const tbl = document.createElement('table');
   tbl.className = 'itbl';
   so.lines.forEach(ln => {
-    const label = 'covers ' + ln.covered + ' attendee' + (ln.covered !== 1 ? 's' : '');
-    const tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td class="it-name">' + esc(shortName(ln.itemName)) + '</td>' +
-      '<td class="it-qty">× ' + ln.qtyFulfill + '</td>' +
-      '<td class="it-cov">' + label + '</td>';
+    const { tr, lidTr } = buildLineRowPair(ln);
     tbl.appendChild(tr);
+    tbl.appendChild(lidTr);
   });
   if (so.uncovered > 0) {
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="3" class="it-warn">⚠ ' + so.uncovered +
+    tr.innerHTML = '<td colspan="4" class="it-warn">⚠ ' + so.uncovered +
       ' attendee' + (so.uncovered > 1 ? 's' : '') + ' not covered — insufficient open qty</td>';
     tbl.appendChild(tr);
   }
   itmCol.appendChild(tbl);
+
+  // Add Line button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-line-btn';
+  addBtn.textContent = '+ Add line';
+  addBtn.onclick = () => {
+    const ln = {
+      internalId: 0, status: '', dateCreated: '',
+      docNumber: so.docNumber, customer: so.customer, txnNumber: '',
+      itemName: '', itemId: 0, qty: 0, qtyRecv: 0, qtyTxn: 0,
+      qtyFulfill: 1, lineId: null, cap: 1, covered: 1,
+      removed: false, isUpgrade: false, isManual: true,
+      overrideItemId: null, overrideItemName: null, overrideLineId: null,
+    };
+    so.lines.push(ln);
+    const { tr, lidTr } = buildLineRowPair(ln);
+    tbl.appendChild(tr);
+    tbl.appendChild(lidTr);
+    refreshStats();
+  };
+  itmCol.appendChild(addBtn);
 
   body.appendChild(attCol);
   body.appendChild(itmCol);
@@ -1074,12 +1536,18 @@ function doGenerate() {
   const rows = [header];
   for (const so of plan) {
     const memo = so.memo.trim() || globalMemo;
+    // SO internal ID from the first non-manual line (used for manual lines that have no internalId)
+    const soId = so.lines.find(l => !l.isManual && !l.removed)?.internalId || 0;
     for (const ln of so.lines) {
+      if (ln.removed) continue;
+      if (ln.isManual && (!ln.overrideItemId || !ln.overrideLineId)) continue;
       rows.push([
-        ln.internalId, q(ln.status), ln.dateCreated,
+        ln.isManual ? soId : ln.internalId,
+        q(ln.status), ln.dateCreated,
         q(ln.docNumber), q(ln.customer), ln.txnNumber,
-        q(ln.itemName), ln.itemId, ln.qty, ln.qtyRecv, ln.qtyTxn,
-        ln.qtyFulfill, fulfDate, ln.lineId, q(memo),
+        q(ln.overrideItemName ?? ln.itemName), ln.overrideItemId ?? ln.itemId,
+        ln.qty, ln.qtyRecv, ln.qtyTxn,
+        ln.qtyFulfill, fulfDate, ln.overrideLineId ?? ln.lineId, q(memo),
       ]);
     }
   }
@@ -1124,6 +1592,8 @@ function doReset() {
   document.getElementById('cfg-class-f').hidden = true;
   document.getElementById('step2').hidden = true;
   document.getElementById('action-ok').textContent = '';
+  // Remove any combobox portal drops appended to body
+  document.querySelectorAll('[data-combo-portal]').forEach(d => d.remove());
 }
 
 // ── Auto-load cached items on page start ──────────────────────────────────────
