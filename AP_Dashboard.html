@@ -385,11 +385,17 @@ const SHEET_TAB        = 'Monthly Bills List';
 const HEADER_ROW       = 3;   // Row 3 has headers
 const DATA_START       = 4;   // Data starts row 4
 const BASE_URL         = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
+// Widen these if the bills sheet ever outgrows them — the old fixed A3:Z1000
+// range silently truncated data past row 1000 / column Z.
+const DATA_LAST_COL    = 'ZZ';
+const DATA_LAST_ROW    = 10000;
+const DATA_RANGE       = `'${SHEET_TAB}'!A${HEADER_ROW}:${DATA_LAST_COL}${DATA_LAST_ROW}`;
 const RELEASE_DATE_COL = 'Paid Date';   // Column J — scheduled payment release date
 const PAID_DATE_COL    = 'Date Paid';   // Written when marking an invoice paid
 
 // ── STATE ─────────────────────────────────────────────────────────
 let accessToken  = null;
+let refreshTimer = null;   // handle for the 45s auto-refresh interval
 let headers      = [];
 let colMap       = {};   // header name → 0-based column index
 let sheetRows    = [];   // [{_row: 4, Subsidiary: 'HRE', ...}, ...]
@@ -403,7 +409,6 @@ window.addEventListener('load', () => {
     `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
   document.getElementById('pq-date').value = isoToday();
   document.getElementById('inv-invoice-date').value = isoToday();
-  document.getElementById('config-banner').style.display = 'none';
 
   if (typeof google !== 'undefined') initAuth();
   document.querySelector('script[src*="gsi/client"]')
@@ -428,9 +433,34 @@ function signIn() {
 async function handleToken(resp) {
   if (resp.error) { showSigninError('Sign-in failed: ' + resp.error); return; }
   accessToken = resp.access_token;
+  document.getElementById('signin-error').style.display = 'none';
   try { const u = await gFetch('https://www.googleapis.com/oauth2/v3/userinfo'); showUserPill(u); } catch (_) {}
   await initSheet();
-  setInterval(reloadData, 45000); // auto-refresh every 45s
+  startAutoRefresh();
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh();   // never stack intervals across repeated sign-ins
+  refreshTimer = setInterval(reloadData, 45000);
+}
+
+function stopAutoRefresh() {
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+}
+
+// Google access tokens expire after ~1 hour. Re-auth has to come from a user
+// click: a popup opened from the background refresh timer is blocked by the
+// browser, which previously left the dashboard silently dead. Stop the timer and
+// send the user back to the sign-in card instead.
+function handleSessionExpired() {
+  if (!accessToken) return;   // already handled
+  stopAutoRefresh();
+  accessToken = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('main-header').style.display = 'none';
+  document.getElementById('user-pill').style.display = 'none';
+  document.getElementById('signin-section').style.display = 'flex';
+  showSigninError('Your Google session expired. Click "Sign in with Google" to reconnect.');
 }
 
 function showUserPill(u) {
@@ -440,6 +470,7 @@ function showUserPill(u) {
 }
 
 function signOut() {
+  stopAutoRefresh();   // before revoke, so the timer dies even if the callback never fires
   google.accounts.oauth2.revoke(accessToken, () => {
     accessToken = null; sheetRows = []; headers = []; colMap = {};
     document.getElementById('app').style.display = 'none';
@@ -454,7 +485,7 @@ function signOut() {
 // ── SHEET READ / WRITE ────────────────────────────────────────────
 async function gFetch(url, opts = {}) {
   const res = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), Authorization: `Bearer ${accessToken}` } });
-  if (res.status === 401) { signIn(); throw new Error('Token expired'); }
+  if (res.status === 401) { handleSessionExpired(); throw new Error('Token expired'); }
   if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
   return res.json();
 }
@@ -462,7 +493,7 @@ async function gFetch(url, opts = {}) {
 async function initSheet() {
   showLoading('Loading sheet data…');
   try {
-    const range = encodeURIComponent(`'${SHEET_TAB}'!A${HEADER_ROW}:Z1000`);
+    const range = encodeURIComponent(DATA_RANGE);
     const data  = await gFetch(`${BASE_URL}/values/${range}`);
     parseSheet(data.values || []);
     populateSubsidiaryDropdowns();
@@ -504,8 +535,9 @@ async function addColumnHeader(colName) {
 }
 
 async function reloadData() {
+  if (!accessToken) return;   // a late timer tick must not fire a tokenless request
   try {
-    const range = encodeURIComponent(`'${SHEET_TAB}'!A${HEADER_ROW}:Z1000`);
+    const range = encodeURIComponent(DATA_RANGE);
     const data  = await gFetch(`${BASE_URL}/values/${range}`);
     parseSheet(data.values || []);
     populateSubsidiaryDropdowns();
@@ -527,7 +559,7 @@ async function updateCell(sheetRow, colName, value) {
 
 async function appendRow(rowValues) {
   // Use full data range so API finds the last populated row and appends at the bottom
-  const range = encodeURIComponent(`'${SHEET_TAB}'!A${HEADER_ROW}:Z1000`);
+  const range = encodeURIComponent(DATA_RANGE);
   await gFetch(`${BASE_URL}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -867,5 +899,7 @@ function showLoading(msg) { document.getElementById('loading-msg').textContent=m
 function hideLoading()    { document.getElementById('loading').classList.remove('show'); }
 function showSigninError(msg) { const el=document.getElementById('signin-error'); el.textContent=msg; el.style.display='block'; hideLoading(); }
 </script>
+<script>const TOOL_KEY='ap-dashboard'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
 </body>
 </html>

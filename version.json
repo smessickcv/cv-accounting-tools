@@ -1,19 +1,22 @@
 {
-  "updated": "2026-06-12",
+  "updated": "2026-08-28",
   "tools": {
     "ns-import":             "1.1",
     "bofa-netsuite":         "1.0",
     "cc-recon":              "1.0",
     "cc-statement-recon":    "1.0",
-    "due-to-from":           "1.0",
+    "due-to-from":           "1.2",
     "intercompany-recon":    "1.0",
     "payroll-je-subsidiary": "1.7",
     "payroll-je-hvac":       "1.6",
     "loan-calculator":       "1.7",
-    "rev-share-je":          "1.0",
-    "shopify-netsuite":      "1.5",
-    "importrange-builder":   "1.1",
-    "netsuite-processor":    "1.1",
-    "payroll-je-generator":  "1.0"
+    "rev-share-je":          "1.1",
+    "shopify-netsuite":      "1.6",
+    "importrange-builder":   "1.0",
+    "netsuite-processor":    "1.0",
+    "payroll-je-generator":  "1.0",
+    "ap-dashboard":          "1.0",
+    "fam-converter":         "1.0",
+    "fulfillment-builder":   "1.1"
   }
 }

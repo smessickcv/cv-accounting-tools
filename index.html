@@ -234,15 +234,6 @@
     }
     footer strong { color: var(--text); }
 
-    /* ── UPDATE BANNER (injected by version-check.js) ── */
-    #cv-global-update-banner {
-      background: var(--cv-red);
-      color: #fff;
-      padding: 10px 24px;
-      font-size: 13px;
-      text-align: center;
-    }
-
     @media (max-width: 600px) {
       header { padding: 0 16px; }
       main { padding: 28px 16px 48px; }
@@ -301,7 +292,7 @@
       key: 'ns-import',
       title: 'NetSuite Cash Sale Import',
       desc: 'Generate NetSuite-ready cash sale import files from CSV data. Supports batch processing and GL account mapping.',
-      version: '1.0',
+      version: '1.1',
       file: 'ns-import-tool.html'
     },
     {
@@ -329,7 +320,7 @@
       key: 'due-to-from',
       title: 'Due To/From Master Generator',
       desc: 'Generate intercompany due-to/from journal entries across all subsidiaries with IMPORTRANGE query builder.',
-      version: '1.0',
+      version: '1.2',
       file: 'DueToFrom_Master_Generator.html'
     },
     {
@@ -350,7 +341,7 @@
       key: 'payroll-je-hvac',
       title: 'Payroll JE Generator (10X HVAC)',
       desc: 'Generate payroll journal entries specifically for 10X HVAC of CA with entity-specific account mappings.',
-      version: '1.0',
+      version: '1.6',
       file: 'payroll_je_tool.html'
     },
     {
@@ -364,14 +355,14 @@
       key: 'rev-share-je',
       title: 'Rev Share JE Generator',
       desc: 'Generate revenue share journal entries for 10X Roofing. Calculates splits and produces NetSuite-ready import files.',
-      version: '1.0',
+      version: '1.1',
       file: 'rev share je generator.html'
     },
     {
       key: 'shopify-netsuite',
       title: 'Shopify → NetSuite',
       desc: 'Convert Shopify sales exports to NetSuite cash sale import format with SKU mapping and discount handling.',
-      version: '1.5',
+      version: '1.6',
       file: 'shopify-to-netsuite_5.html'
     },
     {
@@ -413,15 +404,8 @@
       key: 'fulfillment-builder',
       title: 'Item Fulfillment Builder',
       desc: 'Generate NetSuite item fulfillment import CSVs from a NetSuite SO report and event attendance report. Handles pair-ticket capacity rules, per-class filtering, and optional memo fields.',
-      version: '1.0',
+      version: '1.1',
       file: 'fulfillment_builder.html'
-    },
-    {
-      key: 'xml-to-xlsx',
-      title: 'XML → XLSX Converter',
-      desc: 'Convert XML data files to Excel format. Drop one or more XML files to get a formatted .xlsx workbook with data parsed into columns.',
-      version: '1.0',
-      file: 'xml_to_xlsx_converter.html'
     }
   ];
 
@@ -491,7 +475,6 @@
       const data = await resp.json();
       if (!data.tools) return;
 
-      let anyUpdates = false;
       LOCAL_TOOLS.forEach(t => {
         const latest = data.tools[t.key];
         if (!latest) return;
@@ -501,7 +484,6 @@
           badge.style.color = 'var(--cv-red)';
           badge.style.borderColor = 'var(--cv-red-border)';
           badge.title = 'Update available — get v' + latest + ' from #internal-tools';
-          anyUpdates = true;
         }
       });
     } catch (e) { /* offline or local file — silently ignore */ }
