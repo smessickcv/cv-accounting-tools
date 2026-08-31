@@ -6,21 +6,16 @@ Static GitHub Pages site hosting internal finance & accounting tools.
 
 ---
 
-## ⚠ Branch model — read this first
+## Branch model
 
-**GitHub Pages deploys from `master`. `master` is the live branch.**
+**`master` is both the default branch and the branch GitHub Pages deploys.** Push
+to `master` and it is live in about a minute.
 
-`main` is still the repo's *default* branch, so the GitHub web UI ("Add files via
-upload", the online editor, new PRs) will target `main` unless you change it —
-and anything landed there **will not go live**. This has already happened once:
-`fam_converter.html` and `xml to xlsx converter.html` were uploaded to `main` on
-2026-07-13 and never deployed from that push.
-
-`main` and `master` have diverged and `main` does not contain `index.html`.
-
-- Always commit to `master`.
-- If you use the GitHub web UI, confirm the branch selector says `master`.
-- Fix at the source when convenient: Settings → General → Default branch → `master`.
+`main` is a stale leftover: it diverged long ago, does not contain `index.html`,
+and is not deployed. It only still exists because two files were once uploaded
+there by mistake (`fam_converter.html` and `xml to xlsx converter.html`, on
+2026-07-13) and never went live from that push — both are on `master` now.
+Nothing on `main` is missing from `master`. It can be deleted whenever you want.
 
 ---
 
@@ -46,7 +41,7 @@ entry, and its `index.html` card together. All three must agree. Every tool belo
 
 | Key | File | Notes |
 |-----|------|-------|
-| `ns-import` | `ns-import-tool.html` | NetSuite cash sale import |
+| `ns-import` | `ns-import-tool.html` | NetSuite cash sale import — Shopify / Square / Stripe tabs |
 | `bofa-netsuite` | `BofA_to_NetSuite.html` | BofA → NetSuite bank import |
 | `cc-recon` | `CC_Reconciliation_Tool-1.html` | Credit card reconciliation |
 | `cc-statement-recon` | `CC_Statement_Recon.html` | CC statement reconciliation |
@@ -85,6 +80,10 @@ all for one that does.
 3. **`index.html`** — the `version:` field on that tool's entry in `LOCAL_TOOLS`.
 
 Then commit to `master`, push, and post in **#internal-tools** so people reload.
+
+`ns-import-tool.html` additionally carries a `VERSION` constant near the top that
+drives its on-screen badges. It logs a console warning if it ever falls out of
+step with `TOOL_VERSION`, so bump both.
 
 ### How the banner logic works
 
@@ -129,9 +128,54 @@ Tracked so they are not rediscovered.
   no way to narrow the Sheets API to a single file without switching to a
   `drive.file` picker flow, so this is accepted rather than fixed — but it means
   the tool can read and write every spreadsheet the signed-in user owns.
+
+**Accepted — reviewed and deliberately not changed**
+
+- `ns-import-tool.html` keeps `state.shopify.gateway` when a new orders export is
+  dropped in, so a stale gift-card map can carry over between files.
+- Stripe line `Qty` is always `1`. `parseStripeProducts` strips the leading count
+  off `"3 TeamWork Book"` but does not use it; the even rate split keeps the
+  transaction total correct.
+- `resolveItemBySku` falls back to progressively stripping `-` segments and then
+  accepts `name.startsWith(base) && !name.includes(' ')`. A wrong match suppresses
+  the "unresolved SKU" warning, but this has not caused a problem in practice.
+- Shopify always emits a shipping row, including at $0.
 - No tool sanitises leading `=`, `+`, `-` or `@` in exported CSV fields. Low risk
-  while the data originates in NetSuite, but it is a formula-injection vector if
-  a CSV is ever opened in Excel instead of imported.
+  while the data originates in NetSuite; it is a formula-injection vector only if
+  an export is opened in Excel rather than imported.
+
+**Fixed 2026-08-31 — ns-import-tool v1.2**
+
+- Stripe read the charge-currency columns (`Amount` / `Amount Refunded`, cols C
+  and D). It now reads the settlement-converted columns (`Converted Amount` /
+  `Converted Amount Refunded`, cols G and H) via `stripeAmount()` /
+  `stripeRefund()`, so a 1,703.45 MXN charge imports as its 99.01 USD equivalent.
+  `applyStripeRule()` and the $497 threshold use the converted figure too — the
+  sample MXN charge was previously judged above the threshold on its peso value.
+- Any charge whose `Currency` (col E) is not USD is now flagged **ALTERNATE
+  CURRENCY**, forced out of auto-include into manual review, and counted in its
+  own stat badge. A **Currency** column was added to the Stripe review table
+  showing the currency and, for non-USD, the pre-conversion amount. The exported
+  CSV columns are unchanged — the flag is a review-stage check only.
+- The Stripe Cash Sale Date auto-detect silently overwrote a manually entered
+  date. It now prompts when auto-detection disagrees, remembers the answer so
+  regenerating does not re-ask, and keeps a manual date on multi-day files
+  instead of clearing it.
+- The GitHub self-update block (`GH_OWNER`/`GH_REPO`/`GH_TOKEN`, `checkForUpdates`)
+  is commented out and its Setup button removed. It never worked — the constants
+  were still `YOUR_...` placeholders — and it called for embedding a PAT in a file
+  served from a public repo. `version-check.js` covers this without credentials.
+- Version strings were disagreeing: `VERSION` said `1.0.0` while `TOOL_VERSION`
+  and the navbar badge said `1.1`, so Setup reported a different version from the
+  header. Both badges now render from `VERSION`, all four sources read `1.2`, and
+  `init()` logs a console warning on any future drift.
+- Shopify money fields (`Discount Amount`, `Shipping`, `Lineitem price`, and the
+  gateway report's `Gross payments`) used bare `parseFloat`, which reads
+  `"1,234.56"` as `1`. They now use `parseMoney()`, which was also hardened to
+  never return `NaN`.
+- The inline entry panels emitted bare `cust-id-0` / `sku-id-0` element IDs from
+  both the Shopify and Stripe tabs. With results open on both, `getElementById`
+  returned the wrong tab's inputs. IDs are now namespaced per platform.
 
 **Fixed 2026-08-28**
 

@@ -113,7 +113,7 @@ tr:hover td{background:#f8fafc}
 <body>
 
 <div class="navbar">
-  <h1>&#128197; NetSuite Cash Sale Import Tool<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.1</span></h1>
+  <h1>&#128197; NetSuite Cash Sale Import Tool<span id="app-version-badge" style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;"></span></h1>
   <div class="nav-right">
     <div class="db-badges">
       <span class="badge badge-warn" id="badge-cust">&#128100; Customers: Not loaded</span>
@@ -230,7 +230,7 @@ tr:hover td{background:#f8fafc}
     <div class="modal-hdr">
       <h2>&#9881;&#65039; Setup &amp; Databases</h2>
       <div style="display:flex;align-items:center;gap:10px">
-        <button id="btn-update-check" class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="checkForUpdates()">&#8635; Check for Updates <span id="update-version-badge" style="font-size:10px;color:var(--muted)"></span></button>
+        <span id="update-version-badge" style="font-size:11px;color:var(--muted)"></span>
         <button class="modal-x" onclick="closeSetup()">&#10005;</button>
       </div>
     </div>
@@ -335,15 +335,27 @@ const LS_SHOPIFY_RULES  = 'ns_tool_shopify_rules';
 const LS_SQUARE_RULES   = 'ns_tool_square_rules';
 const LS_INITIALS       = 'ns_tool_initials';
 const LS_SQUARE_ITEMS   = 'ns_tool_square_items'; // { 'Item Name': 'internalId' }
-const VERSION = '1.0.0'; // ← bump this string with every release pushed to GitHub
+// This tool's version. The navbar badge and the Setup badge both render from it,
+// so those two can no longer drift. TOOL_VERSION at the bottom of the file is
+// deliberately a separate literal rather than a reference to this one: version-check.js
+// guards with `typeof TOOL_VERSION`, and a const initialised from another script
+// would sit in the temporal dead zone if this script ever failed to parse, turning
+// a local error into a thrown exception there. init() warns on any drift instead.
+// When bumping: change it here, at TOOL_VERSION, in version.json, and in index.html.
+const VERSION = '1.2';
 
-// ── GitHub update source (fill in before distributing) ────────
-const GH_OWNER  = 'YOUR_GITHUB_USERNAME_OR_ORG';  // e.g. 'cardone-ventures'
-const GH_REPO   = 'YOUR_REPO_NAME';               // e.g. 'ns-import-tool'
-const GH_BRANCH = 'main';
-const GH_FILE   = 'ns-import-tool.html';
-// Fine-grained PAT — Contents: Read-only on this repo only
-const GH_TOKEN  = 'YOUR_FINE_GRAINED_PAT_HERE';
+// ── DISABLED: GitHub self-update ──────────────────────────────
+// Superseded by version-check.js, which reads version.json straight off GitHub
+// Pages and needs no credentials. The old design required pasting a fine-grained
+// PAT into this file — which is served from a public repo, so the token would
+// have been world-readable. Kept commented for reference only. Do not re-enable
+// with a token in the source.
+//
+// const GH_OWNER  = 'YOUR_GITHUB_USERNAME_OR_ORG';
+// const GH_REPO   = 'YOUR_REPO_NAME';
+// const GH_BRANCH = 'main';
+// const GH_FILE   = 'ns-import-tool.html';
+// const GH_TOKEN  = 'YOUR_FINE_GRAINED_PAT_HERE';
 
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const STRIPE_AMOUNT_THRESHOLD = 497; // payments >= this amount are excluded automatically
@@ -433,6 +445,14 @@ function formatDateMDY(s){
   const dt=new Date(datePart);
   if(!isNaN(dt))return`${dt.getUTCMonth()+1}/${dt.getUTCDate()}/${dt.getUTCFullYear()}`;
   return str;
+}
+
+// "3/22/2026" → "2026-03-22" (for writing back into a date input)
+function mdyToISO(s){
+  if(!s)return'';
+  const [mm,dd,yyyy]=String(s).split('/');
+  if(!mm||!dd||!yyyy)return'';
+  return `${yyyy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
 }
 
 function shopifyExtDate(v){ // "2026-03-22" → "Mar2226"
@@ -549,9 +569,9 @@ function saveCustomerIDs(platform){
   const customers = getCustomers()||[];
   let added=0, skipped=0;
   missing.forEach((c,i)=>{
-    const id   = (document.getElementById(`cust-id-${i}`)||{}).value?.trim()||'';
-    const name = (document.getElementById(`cust-name-${i}`)||{}).value?.trim()||c.name||'';
-    const biz  = (document.getElementById(`cust-biz-${i}`)||{}).value?.trim()||'';
+    const id   = (document.getElementById(`cust-id-${platform}-${i}`)||{}).value?.trim()||'';
+    const name = (document.getElementById(`cust-name-${platform}-${i}`)||{}).value?.trim()||c.name||'';
+    const biz  = (document.getElementById(`cust-biz-${platform}-${i}`)||{}).value?.trim()||'';
     if(!id){skipped++;return;}
     const idx=customers.findIndex(x=>x.email&&x.email.toLowerCase()===(c.email||'').toLowerCase());
     if(idx>=0){customers[idx].internalId=id;customers[idx].name=name;customers[idx].businessName=biz;}
@@ -574,8 +594,8 @@ function saveSkuMappings(platform){
   const items = getItems()||[];
   let added=0, skipped=0;
   skus.forEach((sku,i)=>{
-    const id   = (document.getElementById(`sku-id-${i}`)||{}).value?.trim()||'';
-    const dname= (document.getElementById(`sku-name-${i}`)||{}).value?.trim()||sku;
+    const id   = (document.getElementById(`sku-id-${platform}-${i}`)||{}).value?.trim()||'';
+    const dname= (document.getElementById(`sku-name-${platform}-${i}`)||{}).value?.trim()||sku;
     if(!id){skipped++;return;}
     const idx=items.findIndex(it=>it.name===sku);
     if(idx>=0){items[idx].internalId=id;items[idx].displayName=dname;}
@@ -596,8 +616,8 @@ function downloadCustomerTemplate(platform){
   const missing=window[`_${platform}Missing`]||[];
   const resolved=missing.map((c,i)=>({
     ...c,
-    name:(document.getElementById(`cust-name-${i}`)?.value||c.name||'').trim(),
-    bizName:(document.getElementById(`cust-biz-${i}`)?.value||c.name||'').trim(),
+    name:(document.getElementById(`cust-name-${platform}-${i}`)?.value||c.name||'').trim(),
+    bizName:(document.getElementById(`cust-biz-${platform}-${i}`)?.value||c.name||'').trim(),
   }));
   dl(buildCustomerTemplateCSV(resolved),'New_Customers_Template.csv');
 }
@@ -625,9 +645,9 @@ function renderMissingCustomers(missing, platform){
         <div class="email-cell">${esc(c.email)}</div>
       </td>
       <td><code style="font-size:11px;user-select:all">${esc(c.chargeId||'—')}</code></td>
-      <td><input id="cust-id-${i}" class="entry-input required" placeholder="Required" oninput="markFilled(this)" style="width:130px"></td>
-      <td><input id="cust-name-${i}" class="entry-input${c.noName?' required':''}" value="${esc(c.name||'')}" placeholder="${c.noName?'Required — enter name':'Company name'}" oninput="markFilled(this)" style="width:160px"></td>
-      <td><input id="cust-biz-${i}" class="entry-input${c.noName?' required':''}" value="${esc(c.name||'')}" placeholder="${c.noName?'Required — enter name':'Business owner name'}" oninput="markFilled(this)" style="width:160px"></td>
+      <td><input id="cust-id-${platform}-${i}" class="entry-input required" placeholder="Required" oninput="markFilled(this)" style="width:130px"></td>
+      <td><input id="cust-name-${platform}-${i}" class="entry-input${c.noName?' required':''}" value="${esc(c.name||'')}" placeholder="${c.noName?'Required — enter name':'Company name'}" oninput="markFilled(this)" style="width:160px"></td>
+      <td><input id="cust-biz-${platform}-${i}" class="entry-input${c.noName?' required':''}" value="${esc(c.name||'')}" placeholder="${c.noName?'Required — enter name':'Business owner name'}" oninput="markFilled(this)" style="width:160px"></td>
     </tr>`).join('');
   return`
   <div class="card card-warn" style="margin-top:16px">
@@ -668,8 +688,8 @@ function renderMissingSkus(skus, platform){
   const rows=skus.map((sku,i)=>`
     <tr>
       <td><code>${esc(sku)}</code></td>
-      <td><input id="sku-id-${i}" class="entry-input required" placeholder="Required" oninput="markFilled(this)" style="width:130px"></td>
-      <td><input id="sku-name-${i}" class="entry-input" placeholder="e.g. CV Performance Full Zip" style="width:220px"></td>
+      <td><input id="sku-id-${platform}-${i}" class="entry-input required" placeholder="Required" oninput="markFilled(this)" style="width:130px"></td>
+      <td><input id="sku-name-${platform}-${i}" class="entry-input" placeholder="e.g. CV Performance Full Zip" style="width:220px"></td>
     </tr>`).join('');
   return`
   <div class="card card-warn" style="margin-top:8px">
@@ -703,7 +723,7 @@ function loadGatewayReport(ev){
     rows.forEach(row=>{
       if((row['Payment gateway']||'').toLowerCase()==='gift_card'){
         const name=(row['Order name']||'').trim();
-        const amt=parseFloat(row['Gross payments']||'0');
+        const amt=parseMoney(row['Gross payments']);
         if(name) map[name]=(map[name]||0)+amt;
       }
     });
@@ -745,8 +765,8 @@ function runShopify(){
     const email=h['Email'];
     const date=formatDateMDY(h['Paid at']||h['Created at']);
     const memo=name;
-    const discount=parseFloat(h['Discount Amount'])||0;
-    const shipping=parseFloat(h['Shipping'])||0;
+    const discount=parseMoney(h['Discount Amount']);
+    const shipping=parseMoney(h['Shipping']);
 
     const cust=customers?findCustomer(customers,email):null;
     if(!cust&&email&&!seenEmails.has(email.toLowerCase())){
@@ -759,7 +779,7 @@ function runShopify(){
     ord.lines.forEach(line=>{
       const sku=line['Lineitem sku']; if(!sku)return;
       const qty=line['Lineitem quantity']||'1';
-      const price=parseFloat(line['Lineitem price'])||0;
+      const price=parseMoney(line['Lineitem price']);
       const itemId=resolveItemBySku(items,sku,shopifyRules)||'';
       if(items&&!itemId&&!seenSkus.has(sku)){seenSkus.add(sku);missingSkus.push(sku);}
 
@@ -817,7 +837,9 @@ function runShopify(){
 // ── SQUARE PROCESSOR ─────────────────────────────────────────
 // Transforms Square's native Item Sales CSV export into NetSuite import format.
 
-function parseMoney(s){ return parseFloat((s||'0').replace(/[$,\s]/g,'')||'0'); }
+// Strips $ , and whitespace, and never returns NaN — Shopify and Stripe both
+// export thousands separators on larger amounts ("1,234.56" → 1234.56).
+function parseMoney(s){ const v=parseFloat(String(s==null?'':s).replace(/[$,\s]/g,'')); return isNaN(v)?0:v; }
 function parseQty(s)  { return parseFloat(s||'1')||1; }
 
 function resolveSquareItem(items, squareMap, name, squareRules){
@@ -964,6 +986,28 @@ function saveSquareItemMappings(){
 
 // ── STRIPE PROCESSOR ─────────────────────────────────────────
 
+// Stripe's unified_payments export carries each charge twice: in the charge's own
+// currency (col C "Amount" / col D "Amount Refunded") and converted to the
+// account's settlement currency (col G "Converted Amount" / col H "Converted
+// Amount Refunded"). Always bill off the CONVERTED columns — a 1,703.45 MXN
+// charge must import as its 99.01 USD equivalent, not as 1703.45.
+function stripeAmount(row){
+  const c=row['Converted Amount'];
+  return (c!==undefined&&String(c).trim()!=='')?parseMoney(c):parseMoney(row['Amount']);
+}
+function stripeRefund(row){
+  const c=row['Converted Amount Refunded'];
+  return (c!==undefined&&String(c).trim()!=='')?parseMoney(c):parseMoney(row['Amount Refunded']);
+}
+// Charge currency (col E). Anything other than USD is flagged ALTERNATE CURRENCY
+// and forced to manual review — the converted amount is correct, but the FX rate
+// and the resulting USD figure should be eyeballed before import.
+function stripeCurrency(row){ return String(row['Currency']||'').trim().toUpperCase(); }
+
+// Remembers a resolved Cash Sale Date conflict so regenerating (e.g. after saving
+// customer IDs) does not re-prompt for the same pair of dates.
+let _stripeDateChoice=null;
+
 // Parse "Seller | email | Products: A, B, C" description into product entries
 function parseStripeProducts(row){
   const desc=row['Description']||'';
@@ -1003,7 +1047,7 @@ function runStripe(){
   const _now=new Date(); const timePart=`${String(_now.getHours()).padStart(2,'0')}-${String(_now.getMinutes()).padStart(2,'0')}`;
 
   const allRows=csvToObjects(raw);
-  const allPaid=allRows.filter(r=>r['Status']==='Paid'&&parseFloat(r['Amount Refunded']||'0')===0&&r['Captured']!=='false');
+  const allPaid=allRows.filter(r=>r['Status']==='Paid'&&stripeRefund(r)===0&&r['Captured']!=='false');
   // Include only rows with a populated Application ID (funnel/app transactions)
   const paid=allPaid.filter(r=>(r['Application ID']||'').trim()!=='');
   const excludedCount=allPaid.length-paid.length;
@@ -1019,7 +1063,10 @@ function runStripe(){
 
   paid.forEach(row=>{
     const email=row['Customer Email']||row['email (metadata)']||'';
-    const amount=parseFloat(row['Amount']||'0');
+    const amount=stripeAmount(row);
+    const currency=stripeCurrency(row);
+    const altCurrency=!!currency&&currency!=='USD';
+    const origAmount=parseMoney(row['Amount']);
     const chargeId=row['id']||'';
     const date=utcToAZDate(row['Created date (UTC)']||'');
     const cust=customers?findCustomer(customers,email):null;
@@ -1053,22 +1100,51 @@ function runStripe(){
     }
 
     const allMatched=lines.every(l=>l.itemId);
-    const include=allMatched&&lines.every(l=>l.autoInclude)&&!aboveThresh;
-    groups.push({row,txId:chargeId,email,date,amount,cust,chargeId,aboveThresh,include,lines});
+    // Alternate currency always forces manual review, regardless of rule matches.
+    const include=allMatched&&lines.every(l=>l.autoInclude)&&!aboveThresh&&!altCurrency;
+    groups.push({row,txId:chargeId,email,date,amount,currency,altCurrency,origAmount,cust,chargeId,aboveThresh,include,lines});
   });
 
   // ── Auto-detect Cash Sale Date from converted AZ dates ──────
+  // A date typed into the Cash Sale Date field is an explicit override and is
+  // never silently discarded. If auto-detection disagrees, ask which one wins.
   {
     const uniqueDates=new Set(groups.map(g=>g.date).filter(Boolean));
     const el=document.getElementById('stripe-cashsale-date');
-    if(uniqueDates.size===1){
-      const [mm,dd,yyyy]=[...uniqueDates][0].split('/');
-      const iso=`${yyyy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-      el.value=iso;
-      cashSaleDate=formatDateMDY(iso);
+    const manualDate=cashSaleDateRaw?formatDateMDY(cashSaleDateRaw):null;
+    const autoDate=uniqueDates.size===1?[...uniqueDates][0]:null;
+
+    if(autoDate&&!manualDate){
+      // Single-day file, nothing entered — adopt the detected date.
+      cashSaleDate=autoDate;
+      el.value=mdyToISO(autoDate);
+    } else if(autoDate&&manualDate&&autoDate!==manualDate){
+      let useAuto;
+      if(_stripeDateChoice&&_stripeDateChoice.auto===autoDate&&_stripeDateChoice.manual===manualDate){
+        useAuto=_stripeDateChoice.chosen==='auto';   // already answered for this pair
+      } else {
+        useAuto=confirm(
+`Cash Sale Date conflict
+
+Auto-detected from this file:  ${autoDate}
+Your manual entry:            ${manualDate}
+
+OK      → use the auto-detected date (${autoDate})
+Cancel  → keep your manual date (${manualDate})`);
+        _stripeDateChoice={auto:autoDate,manual:manualDate,chosen:useAuto?'auto':'manual'};
+        toast(useAuto?`Using auto-detected date ${autoDate}`:`Keeping manual date ${manualDate}`,'ok');
+      }
+      cashSaleDate=useAuto?autoDate:manualDate;
+      el.value=mdyToISO(cashSaleDate);
+    } else if(manualDate){
+      // Manual date stands — it either matches auto-detection, or the file spans
+      // multiple days and the user is deliberately forcing them onto one date.
+      cashSaleDate=manualDate;
+      el.value=mdyToISO(manualDate);
     } else {
-      el.value='';
+      // Multi-day file with nothing entered — per-transaction dates.
       cashSaleDate=null;
+      el.value='';
     }
     updateCashSaleDateNote();
   }
@@ -1079,6 +1155,7 @@ function runStripe(){
   const autoCount=groups.filter(g=>g.include).length;
   const reviewCount=groups.length-autoCount;
   const aboveThreshCount=groups.filter(g=>g.aboveThresh).length;
+  const altCurrencyCount=groups.filter(g=>g.altCurrency).length;
   const totalLines=groups.reduce((s,g)=>s+g.lines.length,0);
   const dateStr=dateVal.replace(/-/g,'');
 
@@ -1093,6 +1170,7 @@ function runStripe(){
         ?`<span class="stat stat-yellow">&#128197; All dates overridden &rarr; ${cashSaleDate}</span>`
         :`<span class="stat stat-blue">&#128197; Multi-day — using per-transaction dates</span>`}
       ${aboveThreshCount?`<span class="stat stat-yellow">&#9888; ${aboveThreshCount} above $${STRIPE_AMOUNT_THRESHOLD} &mdash; manual review</span>`:''}
+      ${altCurrencyCount?`<span class="stat stat-red">&#9888; ${altCurrencyCount} ALTERNATE CURRENCY &mdash; manual review</span>`:''}
       ${missingCustomers.length?`<span class="stat stat-red">&#9888; ${missingCustomers.length} missing customer${missingCustomers.length>1?'s':''}</span>`:''}
       ${missingCustomers.filter(c=>c.noName).length?`<span class="stat stat-yellow">&#9888; ${missingCustomers.filter(c=>c.noName).length} no Shipping Name</span>`:''}
     </div>
@@ -1104,7 +1182,7 @@ function runStripe(){
     <table id="stripe-tbl">
     <thead><tr>
       <th><input type="checkbox" id="chk-all" onchange="stripeToggleAll(this.checked)" title="Select all"></th>
-      <th>Date</th><th>Total</th><th>Email</th><th>Info</th><th>Match</th><th>NetSuite Item</th><th>Cust ID</th>
+      <th>Date</th><th>Currency</th><th>Total</th><th>Email</th><th>Info</th><th>Match</th><th>NetSuite Item</th><th>Cust ID</th>
     </tr></thead><tbody>`;
 
   groups.forEach((g,gIdx)=>{
@@ -1113,9 +1191,17 @@ function runStripe(){
     const amtLabel=g.aboveThresh?` <span title="Above $${STRIPE_AMOUNT_THRESHOLD} \u2014 manual review required" style="color:#b45309;font-size:11px">&#9888; review</span>`:'';
     const prodLabel=g.lines.length===1&&!g.lines[0].product?'1 tx':''+g.lines.length+' product'+(g.lines.length>1?'s':'');
     const shortId=g.chargeId.slice(-10);
+    // Currency cell — an eyeball check on every row, loud on anything but USD
+    const curClass=g.altCurrency?' td-err':'';
+    const curLabel=g.altCurrency
+      ?`<strong style="color:#b91c1c;font-size:12px">${esc(g.currency)}</strong>`+
+       `<div style="font-size:9px;color:#b91c1c;font-weight:700;letter-spacing:0.03em;line-height:1.3">&#9888; ALTERNATE<br>CURRENCY</div>`+
+       `<div style="font-size:10px;color:#64748b" title="Original charge amount before conversion">orig ${g.origAmount.toFixed(2)}</div>`
+      :`<span style="font-size:11px;color:#64748b">${esc(g.currency||'—')}</span>`;
     html+=`<tr id="stx-${gIdx}" style="border-top:2px solid #e2e8f0;background:#f8fafc">
       <td><input type="checkbox" class="tx-chk include-check" ${g.include?'checked':''} onchange="stripeToggleTx(${gIdx},this.checked)"></td>
       <td><strong>${g.date}</strong></td>
+      <td class="${curClass}">${curLabel}</td>
       <td class="${amtClass}"><strong>$${g.amount.toFixed(2)}</strong>${amtLabel}</td>
       <td class="${cw}" style="font-size:12px">${esc(g.email)}</td>
       <td style="font-size:11px;color:#64748b">${prodLabel} &middot; <code style="font-size:10px">${esc(shortId)}</code></td>
@@ -1127,7 +1213,7 @@ function runStripe(){
       const displayName=line.product||line.rawEntry.slice(0,60);
       html+=`<tr class="sline-${gIdx}" style="background:#fff">
         <td style="color:#94a3b8;text-align:center;font-size:12px">&#8627;</td>
-        <td colspan="2" style="padding-left:10px;font-size:12px;color:#475569">${esc(displayName)}</td>
+        <td colspan="3" style="padding-left:10px;font-size:12px;color:#475569">${esc(displayName)}</td>
         <td style="font-size:12px;color:#64748b">$${line.rate.toFixed(2)}</td>
         <td></td>
         <td style="font-size:11px;color:#64748b">${esc(line.ruleName)}</td>
@@ -1143,7 +1229,7 @@ function runStripe(){
 }
 
 function applyStripeRule(row,rules){
-  const amount=parseFloat(row['Amount']||'0');
+  const amount=stripeAmount(row);
   const desc=(row['Description']||'').toLowerCase();
   const meta=(row['products (metadata)']||row['order_products (metadata)']||'').toLowerCase();
   for(const r of rules){
@@ -1411,6 +1497,7 @@ function processFile(file,p){
   const r=new FileReader();
   r.onload=e=>{
     state[p].raw=e.target.result;
+    if(p==='stripe') _stripeDateChoice=null;   // new file — re-ask on any date conflict
     const zone=document.getElementById('drop-'+p);
     const lbl=document.getElementById('drop-'+p+'-name');
     zone.classList.add('has-file');
@@ -1444,6 +1531,11 @@ function updateCashSaleDateNote(){
 }
 function closeSetup(){document.getElementById('modal-setup').classList.remove('open');}
 
+// ── CHECK FOR UPDATES — DISABLED ──────────────────────────────
+// version-check.js now handles update notification off version.json. This
+// GitHub-API implementation is retained, commented out, only as a record of
+// what was removed. It required a PAT embedded in a publicly served file.
+/*
 // ── CHECK FOR UPDATES ─────────────────────────────────────────
 async function checkForUpdates(){
   const btn=document.getElementById('btn-update-check');
@@ -1481,6 +1573,8 @@ async function checkForUpdates(){
     if(btn){btn.disabled=false;btn.style.opacity='';}
   }
 }
+*/
+
 function syncInitials(){ const v=getInitials(); ['shopify-initials','stripe-initials'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.matches(':focus'))el.value=v;}); }
 function toast(msg,type){ const w=document.getElementById('toasts'),el=document.createElement('div');el.className='toast '+(type||'');el.textContent=msg;w.appendChild(el);setTimeout(()=>el.style.opacity='0',2800);setTimeout(()=>el.remove(),3200); }
 
@@ -1494,13 +1588,20 @@ function toast(msg,type){ const w=document.getElementById('toasts'),el=document.
   if(saved){document.getElementById('shopify-initials').value=saved;document.getElementById('stripe-initials').value=saved;}
   updateDBStatus();
   document.getElementById('modal-setup').addEventListener('click',e=>{if(e.target===document.getElementById('modal-setup'))closeSetup();});
-  // Set version badge
+  // Version badges — both render from VERSION so they cannot drift
   const vb=document.getElementById('update-version-badge'); if(vb) vb.textContent=`v${VERSION}`;
+  const nb=document.getElementById('app-version-badge');    if(nb) nb.textContent=`v${VERSION}`;
+  // Drift check on the one version string that has to be duplicated. Deferred:
+  // TOOL_VERSION is declared in a later <script>, so it does not exist yet here.
+  setTimeout(()=>{
+    if(typeof TOOL_VERSION!=='undefined'&&TOOL_VERSION!==VERSION)
+      console.warn(`Version drift: VERSION='${VERSION}' but TOOL_VERSION='${TOOL_VERSION}' — update both.`);
+  },0);
 })();
 </script>
 
 <datalist id="items-datalist"></datalist>
-<script>const TOOL_KEY='ns-import'; const TOOL_VERSION='1.1';</script>
+<script>const TOOL_KEY='ns-import'; const TOOL_VERSION='1.2';</script>
 <script src="version-check.js"></script>
 </body>
 </html>

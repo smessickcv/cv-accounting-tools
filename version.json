@@ -1,7 +1,7 @@
 {
-  "updated": "2026-08-28",
+  "updated": "2026-08-31",
   "tools": {
-    "ns-import":             "1.1",
+    "ns-import":             "1.2",
     "bofa-netsuite":         "1.0",
     "cc-recon":              "1.0",
     "cc-statement-recon":    "1.0",
