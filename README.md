@@ -59,6 +59,7 @@ entry, and its `index.html` card together. All three must agree. Every tool belo
 | `fam-converter` | `fam_converter.html` | FAM XML → XLSX converter |
 | `fulfillment-builder` | `fulfillment_builder.html` | Item fulfillment builder |
 | `401k-converter` | `401k-converter.html` | 401k payroll converter — **stores SSN/DOB locally, see Data privacy** |
+| `register-builder` | `register-builder.html` | Weekly cash register builder — **ships empty, needs the settings bundle, see below** |
 | *(not listed)* | `xml_to_xlsx_converter.html` | Duplicate of `fam_converter.html`; deliberately absent from the hub — see Known issues |
 
 ---
@@ -108,6 +109,20 @@ contains SSNs, dates of birth and hire dates. That data never leaves the browser
 — it is not transmitted anywhere and none of it is in this repo — but it does
 persist in `localStorage` on whatever machine the tool is used on. Use it on a
 company device, and use the *Clear Roster from Storage* button on a shared one.
+
+**`register-builder.html` ships deliberately empty.** Its coding rules and code
+list are not in this repo. The original carried an 88KB rule corpus — roughly
+1,800 bank transaction descriptions naming vendors and individual payees — plus
+four real bank account numbers, none of which belongs in a public repository.
+
+The published file starts with no rules and no codes, shows a banner saying so,
+and codes every row `REVIEW` until someone loads the data. Everything lives in a
+single `Register Builder settings.json`, distributed through **#internal-tools**
+or SharePoint, and loaded with **Settings → Import settings**. That one file
+carries rules, codes, sources (including account numbers), the export layout,
+flags, learned corrections, hidden rules and the learn toggle — so **Export
+settings** is also a complete backup. Treat the bundle as confidential; it is
+gitignored here so it cannot be committed by accident.
 
 **`AP_Dashboard.html` is the exception.** It signs the user into Google, requests
 the full `https://www.googleapis.com/auth/spreadsheets` scope, and reads/writes a

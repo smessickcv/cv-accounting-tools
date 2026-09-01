@@ -18,6 +18,7 @@
     "ap-dashboard":          "1.0",
     "fam-converter":         "1.0",
     "fulfillment-builder":   "1.1",
-    "401k-converter":        "1.0"
+    "401k-converter":        "1.0",
+    "register-builder":      "1.0"
   }
 }

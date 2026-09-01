@@ -20,3 +20,8 @@ loan-interest-calculator_15.html
 
 # Local-only backup of the original README
 README.original.md
+
+# Register Builder settings bundle — confidential (account numbers, payee names)
+Register Builder settings.json
+*settings.json
+_test_*

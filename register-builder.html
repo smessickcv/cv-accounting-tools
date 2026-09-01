@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+
+<style>
+:root{
+  --ground:#F7F8F6; --surface:#FFFFFF; --surface-2:#F1F4F1; --sunken:#EDF0ED;
+  --ink:#16211E; --ink-2:#40514C; --ink-3:#77857F;
+  --line:#DDE3E0; --line-2:#C8D2CD;
+  --accent:#0F5C4B; --accent-ink:#FFFFFF; --accent-soft:#E4EFEA;
+  --ok:#1E7A5F; --ok-soft:#E2F0EA;
+  --warn:#8A5B06; --warn-soft:#FAEFD9;
+  --crit:#A32F2B; --crit-soft:#F8E5E3;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1412; --surface:#161F1C; --surface-2:#1C2724; --sunken:#111917;
+    --ink:#E8EFEB; --ink-2:#A9B8B2; --ink-3:#7C8C86;
+    --line:#26332E; --line-2:#33443E;
+    --accent:#3FBF9B; --accent-ink:#08221C; --accent-soft:#16302A;
+    --ok:#4FC79F; --ok-soft:#14302A;
+    --warn:#D9A441; --warn-soft:#33280F;
+    --crit:#E0736B; --crit-soft:#361A19;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1412; --surface:#161F1C; --surface-2:#1C2724; --sunken:#111917;
+  --ink:#E8EFEB; --ink-2:#A9B8B2; --ink-3:#7C8C86;
+  --line:#26332E; --line-2:#33443E;
+  --accent:#3FBF9B; --accent-ink:#08221C; --accent-soft:#16302A;
+  --ok:#4FC79F; --ok-soft:#14302A;
+  --warn:#D9A441; --warn-soft:#33280F;
+  --crit:#E0736B; --crit-soft:#361A19;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif; font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased}
+.wrap{max-width:1140px; margin:0 auto; padding:38px 22px 80px; display:flex; flex-direction:column; gap:26px}
+header{display:flex; flex-direction:column; gap:8px; padding-bottom:22px; border-bottom:1px solid var(--line)}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--accent)}
+h1{font-family:"IBM Plex Serif",Georgia,serif; font-weight:600; font-size:clamp(28px,4vw,38px); line-height:1.12; margin:0; text-wrap:balance; letter-spacing:-.01em}
+.lede{margin:0; color:var(--ink-2); max-width:64ch}
+.step{display:flex; flex-direction:column; gap:12px}
+.step-head{display:flex; align-items:baseline; gap:10px}
+.step-n{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; letter-spacing:.1em; color:var(--accent); background:var(--accent-soft); border-radius:4px; padding:3px 7px}
+.step-t{font-family:"IBM Plex Serif",Georgia,serif; font-size:18px; font-weight:600; margin:0}
+.hint{color:var(--ink-3); font-size:13.5px; margin:0}
+.drop{border:1.5px dashed var(--line-2); border-radius:var(--r); background:var(--surface); padding:32px 22px; text-align:center; cursor:pointer;
+  transition:border-color .15s,background .15s; display:flex; flex-direction:column; align-items:center; gap:7px}
+.drop:hover,.drop:focus-visible{border-color:var(--accent); background:var(--surface-2)}
+.drop.over{border-color:var(--accent); background:var(--accent-soft); border-style:solid}
+.drop:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+.drop-main{font-weight:500}
+.drop-sub{color:var(--ink-3); font-size:13px; font-family:"IBM Plex Mono",monospace}
+.files{display:flex; flex-direction:column; gap:8px}
+.file{display:flex; align-items:center; gap:12px; padding:11px 14px; background:var(--surface); border:1px solid var(--line); border-radius:8px}
+.file-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13.5px}
+.file-meta{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.tag{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; letter-spacing:.04em; padding:3px 8px; border-radius:4px; white-space:nowrap}
+.tag.known{background:var(--accent-soft); color:var(--accent)}
+.tag.sweep{background:var(--warn-soft); color:var(--warn)}
+.tag.unknown{background:var(--crit-soft); color:var(--crit)}
+.x{border:0; background:none; color:var(--ink-3); cursor:pointer; font-size:17px; line-height:1; padding:2px 6px; border-radius:4px}
+.x:hover{color:var(--crit); background:var(--crit-soft)}
+.dates{display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end}
+.field{display:flex; flex-direction:column; gap:5px}
+label{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+input[type=date],input[type=text],select{font-family:"IBM Plex Mono",monospace; font-size:13.5px; color:var(--ink);
+  background:var(--surface); border:1px solid var(--line-2); border-radius:7px; padding:8px 10px}
+input:focus-visible,select:focus-visible{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
+button.go{font-family:"IBM Plex Sans",sans-serif; font-size:14.5px; font-weight:600; background:var(--accent); color:var(--accent-ink); border:0; border-radius:7px; padding:11px 22px; cursor:pointer}
+button.go:hover:not(:disabled){opacity:.88}
+button.go:disabled{opacity:.4; cursor:not-allowed}
+button.go:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+#out{display:none; flex-direction:column; gap:26px}
+#out.on{display:flex}
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:var(--r); overflow:hidden}
+.stat{background:var(--surface); padding:13px 15px; display:flex; flex-direction:column; gap:2px}
+.stat-l{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+.stat-v{font-family:"IBM Plex Mono",monospace; font-size:19px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+.stat-v.pos{color:var(--ok)} .stat-v.neg{color:var(--crit)} .stat-v.bad{color:var(--crit)}
+.tblwrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); background:var(--surface)}
+table{border-collapse:collapse; width:100%; font-size:13.5px}
+th,td{padding:8px 13px; text-align:right; white-space:nowrap}
+th{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); font-weight:500; border-bottom:1px solid var(--line); background:var(--surface-2); position:sticky; top:0}
+th:first-child,td:first-child{text-align:left}
+td{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+tr.tot td{font-weight:600; background:var(--surface-2)}
+.rev{max-height:460px; overflow:auto}
+.rev table{font-size:12.5px}
+.rev td{padding:5px 10px; vertical-align:middle}
+.rev th{padding:8px 10px}
+.rev td.desc{text-align:left; max-width:430px; overflow:hidden; text-overflow:ellipsis; color:var(--ink-3); font-size:11.5px}
+tr.f-REVIEW td{background:var(--crit-soft)}
+tr.f-CHECK td{background:var(--warn-soft)}
+tr.edited td{background:var(--ok-soft)}
+tr.split-part td{box-shadow:inset 3px 0 0 var(--accent)}
+tr.unbalanced td{background:var(--crit-soft)}
+input.code{font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600; width:104px; padding:4px 7px;
+  background:var(--surface); color:var(--ink); border:1px solid var(--line-2); border-radius:5px; text-transform:uppercase}
+input.amt{font-family:"IBM Plex Mono",monospace; font-size:12px; width:96px; padding:4px 7px; text-align:right;
+  background:var(--surface); color:var(--ink); border:1px solid var(--line-2); border-radius:5px; font-variant-numeric:tabular-nums}
+.rowbtn{border:1px solid var(--line-2); background:var(--surface); color:var(--ink-3); border-radius:5px; cursor:pointer; font-size:12px; padding:3px 7px; line-height:1.3}
+.rowbtn:hover{border-color:var(--accent); color:var(--accent)}
+.tgt{font-size:11px; color:var(--ink-3); min-width:38px; display:inline-block}
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.seg{display:inline-flex; border:1px solid var(--line-2); border-radius:7px; overflow:hidden}
+.seg button{font-family:"IBM Plex Sans",sans-serif; font-size:13px; border:0; background:var(--surface); color:var(--ink-2); padding:7px 13px; cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+.chk{display:inline-flex; align-items:center; gap:7px; font-size:13.5px; color:var(--ink-2); cursor:pointer}
+.chk input{accent-color:var(--accent); width:15px; height:15px}
+.outbox{display:flex; flex-direction:column; gap:10px}
+textarea{width:100%; height:180px; resize:vertical; background:var(--sunken); color:var(--ink); border:1px solid var(--line); border-radius:var(--r);
+  padding:13px; font-family:"IBM Plex Mono",monospace; font-size:11.5px; line-height:1.5; white-space:pre}
+textarea:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.btn{font-family:"IBM Plex Sans",sans-serif; font-size:13.5px; font-weight:600; cursor:pointer; background:var(--surface); color:var(--ink);
+  border:1px solid var(--line-2); border-radius:7px; padding:9px 16px}
+.btn:hover{border-color:var(--accent); color:var(--accent)}
+.btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.btn.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.btn.primary:hover{opacity:.88; color:var(--accent-ink)}
+.btn.done{background:var(--ok-soft); color:var(--ok); border-color:var(--ok)}
+.btn.sm{font-size:12.5px; padding:6px 11px}
+.note{font-size:13px; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r); padding:12px 15px}
+.note.err{background:var(--crit-soft); border-color:var(--crit); color:var(--crit)}
+.note.warn{background:var(--warn-soft); border-color:var(--warn); color:var(--warn)}
+footer{border-top:1px solid var(--line); padding-top:18px; font-size:12.5px; color:var(--ink-3)}
+dialog{border:1px solid var(--line); border-radius:var(--r); background:var(--surface); color:var(--ink);
+  padding:0; max-width:560px; width:calc(100% - 32px); box-shadow:0 24px 60px -20px rgba(0,0,0,.45)}
+dialog::backdrop{background:rgba(8,14,12,.55)}
+.dlg{display:flex; flex-direction:column; gap:14px; padding:20px 22px}
+.dlg h3{font-family:"IBM Plex Serif",Georgia,serif; font-size:18px; margin:0}
+.dlg-src{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-3); background:var(--sunken);
+  border:1px solid var(--line); border-radius:7px; padding:9px 11px; line-height:1.5; word-break:break-word}
+.dlg-src b{color:var(--ink); font-variant-numeric:tabular-nums}
+.parts{display:flex; flex-direction:column; gap:7px}
+.part{display:flex; gap:8px; align-items:center}
+.part input.amt{width:120px}
+.part input.code{flex:1; width:auto}
+.dlg-foot{display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:space-between}
+.remain{font-family:"IBM Plex Mono",monospace; font-size:13px; font-variant-numeric:tabular-nums; color:var(--crit); font-weight:600}
+.remain.ok{color:var(--ok)}
+details.cfg{border:1px solid var(--line); border-radius:var(--r); background:var(--surface)}
+details.cfg>summary{cursor:pointer; padding:15px 18px; font-family:"IBM Plex Serif",Georgia,serif; font-size:17px; font-weight:600; list-style:none; display:flex; align-items:center; gap:10px}
+details.cfg>summary::-webkit-details-marker{display:none}
+details.cfg>summary::before{content:"\25B8"; color:var(--accent); font-size:13px}
+details.cfg[open]>summary::before{content:"\25BE"}
+.cfgbody{padding:0 18px 18px; display:flex; flex-direction:column; gap:16px; border-top:1px solid var(--line)}
+.cfgpanel{display:none; flex-direction:column; gap:13px}
+.cfgpanel.on{display:flex}
+.cfgcard{border:1px solid var(--line); border-radius:8px; background:var(--surface-2); padding:14px 15px; display:flex; flex-direction:column; gap:11px}
+.cfgcard h4{margin:0; font-size:14.5px; display:flex; align-items:center; gap:9px; justify-content:space-between}
+.grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:9px}
+.f{display:flex; flex-direction:column; gap:4px}
+.f span{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3)}
+.f input,.f select{width:100%}
+.maprow{display:grid; grid-template-columns:128px 1fr; gap:8px; align-items:center}
+.maprow span{font-size:12.5px; color:var(--ink-2)}
+.maprow input{font-size:12.5px; padding:6px 9px}
+.codetbl{max-height:340px; overflow:auto}
+.codetbl input{font-size:12.5px; padding:4px 7px}
+.codetbl td{padding:4px 8px}
+.colrow{display:flex; align-items:center; gap:9px; padding:6px 0; border-bottom:1px solid var(--line)}
+.colrow:last-child{border-bottom:0}
+.colrow .nm{font-size:12.5px; color:var(--ink-2); width:135px}
+.colrow input[type=text]{flex:1; font-size:12.5px; padding:5px 8px}
+code{font-family:"IBM Plex Mono",monospace; font-size:.92em; background:var(--sunken); padding:1px 5px; border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Cardone Ventures &middot; Treasury</div>
+    <h1>Weekly Register Builder<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.0</span></h1>
+    <p class="lede">Drop the raw bank downloads, fix any uncertain codes, then copy or download a register in your tab layout.</p>
+    <div id="corpusbanner" style="display:none;margin-top:14px;padding:12px 16px;border-radius:8px;
+         background:#fef3c7;border:1px solid #fcd34d;color:#78350f;font-size:13px;line-height:1.55"></div>
+  </header>
+
+  <section class="step">
+    <div class="step-head"><span class="step-n">01</span><h2 class="step-t">Add the downloads</h2></div>
+    <p class="hint">Each file is identified by its columns, using the layouts in Settings. Overlapping exports are fine; duplicates are removed.</p>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add CSV files">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <div class="drop-main">Drop CSV files here, or click to choose</div>
+      <div class="drop-sub">.csv only &middot; nothing leaves this page</div>
+    </div>
+    <input type="file" id="picker" accept=".csv,text/csv" multiple hidden>
+    <div class="files" id="files"></div>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><span class="step-n">02</span><h2 class="step-t">Set the week</h2></div>
+    <div class="dates">
+      <div class="field"><label for="wk">Week ending</label><input type="date" id="wk"></div>
+      <div class="field"><label for="st">From</label><input type="date" id="st"></div>
+      <button class="go" id="go" disabled>Build register</button>
+    </div>
+    <p class="hint">&ldquo;From&rdquo; follows the week-ending date by four days. Widen it for a month-end stub week.</p>
+  </section>
+
+  <section id="out">
+    <div class="stats" id="stats"></div>
+    <div class="tblwrap"><table id="acct"></table></div>
+    <div id="notes"></div>
+
+    <div class="step">
+      <div class="step-head"><span class="step-n">03</span><h2 class="step-t">Review and fix</h2></div>
+      <p class="hint">Red rows found no matching pattern. Amber rows were coded from a pattern whose category depends on the beneficiary. Edit any code, or split a row when one deposit covers several lines.</p>
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="Filter rows">
+          <button id="fAll" aria-pressed="false">All rows</button>
+          <button id="fFlag" aria-pressed="true">Needs attention</button>
+        </div>
+        <span class="hint" id="revcount"></span>
+      </div>
+      <div class="tblwrap rev"><table id="revtbl"></table></div>
+      <datalist id="codes"></datalist>
+    </div>
+
+    <dialog id="splitdlg" aria-labelledby="splith">
+      <form method="dialog" class="dlg">
+        <h3 id="splith">Split this transaction</h3>
+        <div class="dlg-src" id="splitsrc"></div>
+        <div class="parts" id="parts"></div>
+        <div><button type="button" class="rowbtn" id="addpart">+ Add a part</button></div>
+        <div class="dlg-foot">
+          <span class="remain" id="remain"></span>
+          <span style="display:flex; gap:9px">
+            <button type="button" class="btn" id="splitcancel">Cancel</button>
+            <button type="button" class="btn primary" id="splitapply">Apply split</button>
+          </span>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="step">
+      <div class="step-head"><span class="step-n">04</span><h2 class="step-t">Export</h2></div>
+      <div class="outbox">
+        <div class="toolbar">
+          <button class="btn primary" id="copy">Copy all rows</button>
+          <button class="btn" id="dl">Download CSV</button>
+          <label class="chk"><input type="checkbox" id="hdr"> Include header row</label>
+          <span class="hint" id="outmeta"></span>
+        </div>
+        <textarea id="tsv" readonly spellcheck="false" aria-label="Register rows"></textarea>
+        <p class="hint">Copy uses the delimiter set in Settings. Paste at cell <strong>A2</strong> of the new tab.</p>
+      </div>
+    </div>
+  </section>
+
+  <details class="cfg" id="cfg">
+    <summary>Settings</summary>
+    <div class="cfgbody">
+      <div class="toolbar" style="padding-top:14px">
+        <div class="seg" role="group" aria-label="Settings section">
+          <button id="tabCodes" aria-pressed="true">Code map</button>
+          <button id="tabSrc" aria-pressed="false">Source layouts</button>
+          <button id="tabExp" aria-pressed="false">Export format</button>
+          <button id="tabLearn" aria-pressed="false">Flags &amp; learning</button>
+        </div>
+        <span style="flex:1"></span>
+        <button class="btn sm" id="cfgexport">Export settings</button>
+        <button class="btn sm" id="cfgimport">Import settings</button>
+        <button class="btn sm" id="cfgreset">Reset to defaults</button>
+        <span class="hint" id="cfgsaved" style="color:var(--ok); font-weight:600"></span>
+      </div>
+      <input type="file" id="cfgfile" accept=".json,application/json" hidden>
+
+      <div class="cfgpanel on" id="panCodes">
+        <p class="hint">Which forecast row each bank code feeds. <strong>-1</strong> marks an internal transfer that must not reach any line. Matching is case-insensitive.</p>
+        <div class="toolbar">
+          <input type="text" id="codesearch" placeholder="Filter codes" aria-label="Filter codes" style="min-width:200px">
+          <button class="btn sm" id="addcode">+ Add a code</button>
+          <span class="hint" id="codecount"></span>
+        </div>
+        <div class="tblwrap codetbl"><table id="codetbl"></table></div>
+      </div>
+
+      <div class="cfgpanel" id="panSrc">
+        <p class="hint">How each download is recognised and where its columns land. Use <code>{Column Name}</code> to pull a field from the CSV &mdash; anything else is literal, so <code>{Description} | {Text}</code> joins two fields.</p>
+        <div id="srclist" style="display:flex; flex-direction:column; gap:13px"></div>
+        <div class="toolbar">
+          <button class="btn sm" id="addsrc">+ Add a source</button>
+          <button class="btn sm primary" id="rebuild">Apply and rebuild</button>
+        </div>
+      </div>
+
+      <div class="cfgpanel" id="panExp">
+        <p class="hint">Column order, header labels and formats. Applies to both Copy and Download.</p>
+        <div class="grid2">
+          <label class="f"><span>Delimiter for Copy</span>
+            <select id="expDelim"><option value="tab">Tab (paste into Sheets)</option><option value="comma">Comma</option></select></label>
+          <label class="f"><span>Date format</span>
+            <select id="expDate"><option value="iso">2026-08-21</option><option value="us">08/21/2026</option></select></label>
+          <label class="f"><span>Header row</span>
+            <select id="expHdr"><option value="no">Omit</option><option value="yes">Include</option></select></label>
+        </div>
+        <div id="collist"></div>
+      </div>
+
+      <div class="cfgpanel" id="panLearn">
+        <p class="hint">Any row whose description contains one of these is always flagged for review, even when the tool is confident. One phrase per line, matched anywhere in the text and ignoring case.</p>
+        <textarea id="flaglist" style="height:132px" aria-label="Always flag phrases"></textarea>
+        <p class="hint" style="margin-top:6px"><strong>Learning.</strong> When you correct a code and move on, the tool can remember that descriptor for next time. Corrections on split parts are never learned &mdash; one slice of a split would otherwise teach the wrong code for the whole deposit.</p>
+        <div class="toolbar">
+          <label class="chk"><input type="checkbox" id="learnOn"> Learn from my corrections</label>
+          <button class="btn sm" id="forgetall">Forget everything learned</button>
+          <span class="hint" id="learncount"></span>
+        </div>
+        <div class="tblwrap codetbl"><table id="learntbl"></table></div>
+
+        <p class="hint" style="margin-top:14px"><strong>Every auto-mapping rule.</strong> These decide the code a row gets before you touch it. Change a built-in rule and your version wins from then on; hide one to stop that descriptor applying at all, in either direction. Search to narrow the list.</p>
+        <div class="toolbar">
+          <input type="text" id="rulesearch" placeholder="Search descriptor or code" aria-label="Search rules" style="min-width:240px">
+          <div class="seg" role="group" aria-label="Rule origin">
+            <button id="rfAll" aria-pressed="true">All</button>
+            <button id="rfMine" aria-pressed="false">Yours &amp; edited</button>
+            <button id="rfHidden" aria-pressed="false">Hidden</button>
+          </div>
+          <span class="hint" id="rulecount"></span>
+        </div>
+        <div class="tblwrap codetbl" style="max-height:420px"><table id="ruletbl"></table></div>
+      </div>
+    </div>
+  </details>
+
+  <footer>Coding learned from 84 register tabs plus your 8.28 build. Anything it can&rsquo;t place with confidence is flagged rather than guessed. Settings are stored in this browser only &mdash; use Export settings to share them.</footer>
+</div>
+
+<script>
+const BUILTIN_RULES={}, BUILTIN_CODES={};
+/* The rule corpus and code list are NOT shipped in this file. They contain bank
+   account numbers, vendor names and individual payee names, and this repository is
+   public. Load them with Settings -> Import settings, using the bundle distributed
+   through Slack/SharePoint. Everything the tool needs lives in that one JSON file. */
+const DEFAULT_FLAGS=["WIRE TYPE:WIRE OUT","WIRE TYPE:BOOK IN","WIRE TYPE:BOOK OUT","WIRE TYPE:INTL OUT",
+  "WIRE TYPE:FX OUT","ACCOUNT TRANSFER TRSF","COMMERCIAL DEPOSIT"];
+/* Recomputed on demand: the corpus arrives by import, not at page load. */
+function years(){ return Object.keys(CFG.rules||{}).sort().reverse(); }
+function hasRules(){ return years().length>0; }
+const $=id=>document.getElementById(id);
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* ---------------- config ---------------- */
+const OUTKEYS=[
+  {key:"date",name:"Post date"},{key:"currency",name:"Currency"},{key:"bankidtype",name:"Bank ID type"},
+  {key:"bankid",name:"Bank ID"},{key:"account",name:"Account"},{key:"type",name:"Credits / Debits"},
+  {key:"amount",name:"Amount"},{key:"code",name:"Code"},{key:"i",name:"Column I"},{key:"j",name:"Column J"},
+  {key:"k",name:"Column K"},{key:"ref",name:"Bank reference"},{key:"text",name:"Description"}
+];
+const DEFAULT_SOURCES=[
+  {id:"bofa",label:"BofA",account:"",detect:"As Of, BankID Type, Data Type",
+   typeMode:"field",typeMap:"Credits=Credits, Debits=Debits",
+   map:{date:"{As Of}",currency:"{Currency}",bankidtype:"{BankID Type}",bankid:"{BankID}",account:"{Account}",
+        type:"{Data Type}",amount:"{Amount}",code:"",i:"{Immediate Availability}",j:"{1 Day Float}",
+        k:"{2+ DayFloat}",ref:"{Bank Reference}",text:"{Description} | {Text}"}},
+  {id:"umpqua_combined",label:"Umpqua — Combined Report",account:"",
+   detect:"Post Date, Transaction Type, Account Number",typeMode:"field",
+   typeMap:"CREDIT=Credits, DEBIT=Debits, CHECK=Debits",
+   map:{date:"{Post Date}",currency:"",bankidtype:"",bankid:"",account:"{Account Number}",type:"{Transaction Type}",
+        amount:"{Transaction Amount}",code:"",i:"",j:"{BAI Description}",k:"",ref:"{Bank Reference}",text:"{Text}"}},
+  {id:"umpqua_export",label:"Umpqua — Export",account:"",
+   detect:"Post Date, Amount, Description, Type, Account Number",typeMode:"sign",typeMap:"",
+   map:{date:"{Post Date}",currency:"",bankidtype:"",bankid:"",account:"{Account Number}",type:"",
+        amount:"{Amount}",code:"",i:"",j:"{Description}",k:"{Type}",ref:"{Reference}",text:"{Text}"}},
+  {id:"sweep",label:"ICS sweep",account:"",role:"sweep",
+   detect:"Post, BAI Description, Account Number",typeMode:"field",typeMap:"",
+   map:{date:"{Post}",currency:"",bankidtype:"",bankid:"",account:"{Account Number}",type:"",
+        amount:"{Transaction Amount}",code:"",i:"",j:"",k:"",ref:"",text:"{BAI Description}"}}
+];
+const HEADNAMES={date:"As Of",currency:"Currency",bankidtype:"BankID Type",bankid:"BankID",account:"Account",
+  type:"Data Type",amount:"Amount",code:"Customer Reference",i:"Immediate Availability",j:"1 Day Float",
+  k:"2+ DayFloat",ref:"Bank Reference",text:"Text"};
+const DEFAULT_EXPORT={header:false,delim:"tab",dateFormat:"iso",
+  columns:OUTKEYS.map(k=>({key:k.key,head:HEADNAMES[k.key],on:true}))};
+const STORE="cvRegisterBuilder.v1";
+const clone=o=>JSON.parse(JSON.stringify(o));
+let CFG={};
+function loadCfg(){
+  let s=null; try{ s=JSON.parse(localStorage.getItem(STORE)||"null"); }catch(e){}
+  CFG.rules  =(s&&s.rules)?s.rules:clone(BUILTIN_RULES);
+  CFG.codes  =(s&&s.codes)?s.codes:clone(BUILTIN_CODES);
+  CFG.sources=(s&&s.sources&&s.sources.length)?s.sources:clone(DEFAULT_SOURCES);
+  CFG.exp    =(s&&s.exp&&s.exp.columns&&s.exp.columns.length)?s.exp:clone(DEFAULT_EXPORT);
+  CFG.flags  =(s&&s.flags&&s.flags.length)?s.flags:clone(DEFAULT_FLAGS);
+  CFG.learned=(s&&s.learned)?s.learned:{};
+  CFG.hidden =(s&&s.hidden)?s.hidden:[];
+  Object.keys(CFG.learned).forEach(k=>{        // migrate dir|tier|sig -> tier|dir|sig
+    const m=k.match(/^([CD])\|([pb])\|([\s\S]*)$/);
+    if(m){ CFG.learned[m[2]+"|"+m[1]+"|"+m[3]]=CFG.learned[k]; delete CFG.learned[k]; }
+  });
+  CFG.learnOn=(s&&typeof s.learnOn==="boolean")?s.learnOn:true;
+}
+function saveCfg(){
+  try{ localStorage.setItem(STORE,JSON.stringify(CFG)); }catch(e){}
+  const el=$("cfgsaved"); el.textContent="Saved"; clearTimeout(saveCfg.t);
+  saveCfg.t=setTimeout(()=>{el.textContent="";},1500);
+}
+loadCfg();
+document.addEventListener("DOMContentLoaded",updateCorpusState);
+
+/* ---------------- parsing ---------------- */
+function parseCSV(text){
+  if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+  const rows=[]; let row=[],f="",q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(f); f=""; }
+    else if(c==='\n'){ row.push(f); f=""; rows.push(row); row=[]; }
+    else if(c!=='\r') f+=c;
+  }
+  if(f.length||row.length){ row.push(f); rows.push(row); }
+  if(!rows.length) return [];
+  const head=rows[0].map(h=>h.trim());
+  return rows.slice(1).filter(r=>r.some(v=>v!=="")).map(r=>{const o={}; head.forEach((h,i)=>o[h]=(r[i]||"").trim()); return o;});
+}
+function money(v){
+  if(v==null) return null;
+  let s=String(v).trim().replace(/\$/g,"").replace(/,/g,"");
+  if(!s) return null;
+  const neg=(s.startsWith("(")&&s.endsWith(")"))||s.startsWith("-");
+  s=s.replace(/[()\-]/g,"");
+  const f=parseFloat(s);
+  return isFinite(f)?{amt:Math.abs(f),neg:neg}:null;
+}
+function pdate(v){
+  const s=String(v||"").trim(); if(!s) return null;
+  let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if(m){ let y=+m[3]; if(y<100) y+=2000; return new Date(y,+m[1]-1,+m[2]); }
+  return null;
+}
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const usd=d=>String(d.getMonth()+1).padStart(2,"0")+"/"+String(d.getDate()).padStart(2,"0")+"/"+d.getFullYear();
+const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+function fill(tpl,row){
+  if(!tpl) return "";
+  return String(tpl).replace(/\{([^}]*)\}/g,function(m,f){const v=row[f.trim()]; return v==null?"":String(v).trim();}).trim();
+}
+function parseMapStr(s){
+  const o={}; String(s||"").split(",").forEach(p=>{const i=p.indexOf("="); if(i>0) o[p.slice(0,i).trim().toUpperCase()]=p.slice(i+1).trim();});
+  return o;
+}
+const detectList=s=>String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
+
+/* ---------------- coding ---------------- */
+function clean(t){
+  t=String(t).toUpperCase().replace(/\s+/g," ").trim();
+  t=t.replace(/\bDATE:\d+/g,"DATE:#").replace(/\bTIME:\d+/g,"").replace(/\bTRN:\S+/g,"");
+  t=t.replace(/\bID:\S*/g,"ID:#").replace(/\bFL#\s*\d+/g,"FL#").replace(/\bST-\w+/g,"ST-#");
+  t=t.replace(/\bSQ\d+/g,"SQ#").replace(/\b\d[\d.,\-]{3,}\b/g,"#");
+  return t.replace(/\s+/g," ").trim();
+}
+function baseSig(t){
+  if(!t) return null;
+  const c=clean(t);
+  let m=c.match(/^(.{0,40}?DES:[A-Z0-9 .&/\-#]{0,16})/); if(m) return m[1].trim();
+  m=c.match(/^(WIRE TYPE:[A-Z ]+)/); if(m) return m[1].trim();
+  return c.slice(0,32).trim();
+}
+function payeeSig(t){
+  if(!t) return null;
+  const b=baseSig(t), nm=String(t).toUpperCase().match(/\bNM:([A-Z0-9 &.'\-]{2,26})/);
+  return (b&&nm)? b+" | NM:"+nm[1].trim().slice(0,20) : null;
+}
+/* A rule key is  tier|direction|signature .
+   tier      p = descriptor + payee, b = descriptor only
+   direction C, D, or * (either)                                        */
+function candidateKeys(text,dir){
+  const p=payeeSig(text), b=baseSig(text), k=[];
+  if(p) k.push("p|"+dir+"|"+p);
+  if(b) k.push("b|"+dir+"|"+b);
+  if(p) k.push("p|*|"+p);
+  if(b) k.push("b|*|"+b);
+  return k;
+}
+function baseRule(key){
+  const i=key.indexOf("|"), j=key.indexOf("|",i+1);
+  const tier=key.slice(0,i), dir=key.slice(i+1,j), sig=key.slice(j+1);
+  for(const y of years()){
+    const tbl=(CFG.rules[y]||{})[dir==="*"?tier+"0":tier];
+    if(!tbl) continue;
+    const rk=dir==="*"?sig:dir+"|"+sig;
+    if(tbl[rk]!=null) return {code:tbl[rk],origin:y};
+  }
+  return null;
+}
+function keyVariants(key){
+  const i=key.indexOf("|"), j=key.indexOf("|",i+1);
+  const tier=key.slice(0,i), sig=key.slice(j+1);
+  return [tier+"|C|"+sig, tier+"|D|"+sig, tier+"|*|"+sig];
+}
+function ruleLookup(key){
+  if(CFG.learned&&CFG.learned[key]!=null) return {code:CFG.learned[key],origin:"Yours"};
+  if(CFG.hidden&&CFG.hidden.indexOf(key)>=0) return null;
+  return baseRule(key);
+}
+function predict(text,dir){
+  const keys=candidateKeys(text,dir);
+  for(const k of keys){
+    const hit=ruleLookup(k);
+    if(hit) return {code:hit.code,flag:"",learned:hit.origin==="Yours",ruleKey:k};
+  }
+  return {code:"",flag:"REVIEW"};
+}
+function mustFlag(fullText){
+  const u=String(fullText||"").toUpperCase();
+  return (CFG.flags||[]).some(x=>x&&u.indexOf(String(x).toUpperCase())>=0);
+}
+function learnFrom(r){
+  if(!CFG.learnOn||r.sid||!r.code||!r.sig) return false;
+  if(mustFlag(r.text)) return false;   // always-flag descriptors are ambiguous by definition
+  const dir=r.type==="Credits"?"C":"D";
+  const p=payeeSig(r.sig), b=baseSig(r.sig);
+  let n=0;
+  if(p&&CFG.learned["p|"+dir+"|"+p]!==r.code){ CFG.learned["p|"+dir+"|"+p]=r.code; n++; }
+  if(b&&CFG.learned["b|"+dir+"|"+b]!==r.code){ CFG.learned["b|"+dir+"|"+b]=r.code; n++; }
+  if(n) saveCfg();
+  return n>0;
+}
+/* every rule the tool can apply, learned first then the built-in corpus */
+let RULECACHE=null;
+function allRules(){
+  if(RULECACHE) return RULECACHE;
+  const out=[], seen={};
+  Object.keys(CFG.learned||{}).forEach(k=>{
+    out.push({key:k,code:CFG.learned[k],origin:baseRule(k)?"Edited":"Yours"}); seen[k]=1;
+  });
+  years().forEach(y=>{
+    [["p","p"],["b","b"],["p0","p"],["b0","b"]].forEach(t=>{
+      const tbl=(CFG.rules[y]||{})[t[0]]; if(!tbl) return;
+      const anyDir=t[0].length>1;
+      Object.keys(tbl).forEach(rk=>{
+        const key=anyDir?(t[1]+"|*|"+rk):(t[1]+"|"+rk);
+        if(seen[key]) return; seen[key]=1;
+        out.push({key:key,code:tbl[rk],origin:y});
+      });
+    });
+  });
+  RULECACHE=out; return out;
+}
+function bustRules(){ RULECACHE=null; }
+
+/* ---------------- state ---------------- */
+const FILES=[]; let ROWS=[], SWEEPINFO=null, SKIPPED=0, FILTER="flag";
+function lastFriday(){ const d=new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate()-((d.getDay()+2)%7||7)); return d; }
+(function(){ const f=lastFriday(); $("wk").value=iso(f); const s=new Date(f); s.setDate(s.getDate()-4); $("st").value=iso(s); })();
+$("wk").addEventListener("change",()=>{ const d=pdate($("wk").value); if(!d) return; const s=new Date(d); s.setDate(s.getDate()-4); $("st").value=iso(s); });
+function refreshCodeList(){
+  $("codes").innerHTML=Object.keys(CFG.codes).sort().map(c=>{
+    const v=CFG.codes[c];
+    return '<option value="'+esc(c)+'">'+esc(v[0]===-1?"internal — excluded":"row "+v[0]+(v[1]?" · "+v[1]:""))+'</option>';
+  }).join("");
+}
+refreshCodeList();
+
+/* ---------------- intake ---------------- */
+const drop=$("drop"), picker=$("picker");
+drop.addEventListener("click",()=>picker.click());
+drop.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();picker.click();} });
+["dragenter","dragover"].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",ev=>take(ev.dataTransfer.files));
+picker.addEventListener("change",()=>{take(picker.files); picker.value="";});
+function detectSource(rows){
+  if(!rows.length) return null;
+  const keys=Object.keys(rows[0]);
+  let best=null,bn=-1;
+  CFG.sources.forEach(s=>{
+    const need=detectList(s.detect);
+    if(need.length&&need.every(h=>keys.indexOf(h)>=0)&&need.length>bn){ best=s; bn=need.length; }
+  });
+  return best;
+}
+function take(list){
+  [].slice.call(list).filter(f=>/\.csv$/i.test(f.name)).forEach(f=>{
+    const rd=new FileReader();
+    rd.onload=()=>{ let rows=[]; try{rows=parseCSV(rd.result);}catch(e){rows=[];}
+      FILES.push({name:f.name,rows:rows,src:detectSource(rows)}); renderFiles(); };
+    rd.readAsText(f);
+  });
+}
+function renderFiles(){
+  const box=$("files"); box.innerHTML="";
+  FILES.forEach((f,i)=>{
+    const el=document.createElement("div"); el.className="file";
+    const cls=!f.src?"unknown":(f.src.role==="sweep"?"sweep":"known");
+    el.innerHTML='<span class="tag '+cls+'">'+esc(f.src?f.src.label:"Unrecognized")+'</span>'
+      +'<span class="file-name"></span><span class="file-meta">'+f.rows.length.toLocaleString()+' rows</span>'
+      +'<button class="x" aria-label="Remove">&times;</button>';
+    el.querySelector(".file-name").textContent=f.name;
+    el.querySelector(".x").onclick=()=>{FILES.splice(i,1);renderFiles();};
+    box.appendChild(el);
+  });
+  $("go").disabled=!FILES.some(f=>f.src&&f.src.role!=="sweep");
+}
+
+/* ---------------- build ---------------- */
+$("go").addEventListener("click",build);
+$("rebuild").addEventListener("click",()=>{ FILES.forEach(f=>{f.src=detectSource(f.rows);}); renderFiles(); if(!$("go").disabled) build(); });
+function build(){
+  const d1=pdate($("wk").value), d0=pdate($("st").value);
+  if(!d0||!d1||d0>d1){ showErr("Check the dates — “From” must be on or before “Week ending”."); return; }
+  ROWS=[]; SKIPPED=0; const seen={};
+  FILES.filter(f=>f.src&&f.src.role!=="sweep").forEach(f=>{
+    const s=f.src, tmap=parseMapStr(s.typeMap);
+    f.rows.forEach(raw=>{
+      const acct=fill(s.map.account,raw);
+      if(s.account&&acct!==String(s.account).trim()) return;
+      const d=pdate(fill(s.map.date,raw)); if(!d) return;
+      if(d<d0||d>d1){ SKIPPED++; return; }
+      const mv=money(fill(s.map.amount,raw)); if(!mv) return;
+      let typ;
+      if(s.typeMode==="sign") typ=mv.neg?"Debits":"Credits";
+      else{
+        const t=fill(s.map.type,raw);
+        typ=tmap[String(t).toUpperCase()]||((t==="Credits"||t==="Debits")?t:null);
+      }
+      if(typ!=="Credits"&&typ!=="Debits") return;
+      const text=fill(s.map.text,raw), ref=fill(s.map.ref,raw);
+      const key=[+d,typ,mv.amt.toFixed(2),ref,text.slice(0,40)].join("|");
+      if(seen[key]) return; seen[key]=1;
+      const joined=String(s.map.text||"").indexOf("|")>=0;
+      const jm=joined?text.match(/^(.*?)\s\|\s*([\s\S]*)$/):null;
+      const sigText=jm?jm[2].trim():text;
+      const g=predict(sigText,typ==="Credits"?"C":"D");
+      let flag=g.flag;
+      if(mustFlag(text)&&flag!=="REVIEW") flag="CHECK";
+      ROWS.push({sig:sigText,learned:!!g.learned,date:d,currency:fill(s.map.currency,raw),bankidtype:fill(s.map.bankidtype,raw),
+        bankid:fill(s.map.bankid,raw).replace(/^0+/,""),account:acct,type:typ,amount:mv.amt,
+        code:g.code,i:fill(s.map.i,raw),j:fill(s.map.j,raw),k:fill(s.map.k,raw),ref:ref,text:text,
+        flag:flag,srcLabel:s.label});
+    });
+  });
+  if(!ROWS.length){ showErr("No transactions fell in that date range. Widen “From”, or check the files you loaded."); return; }
+  ROWS.sort((a,b)=>(a.type==="Credits"?0:1)-(b.type==="Credits"?0:1)||a.amount-b.amount);
+  SWEEPINFO=null;
+  FILES.filter(f=>f.src&&f.src.role==="sweep").forEach(f=>{
+    const s=f.src;
+    f.rows.forEach(raw=>{
+      const acct=fill(s.map.account,raw);
+      if(s.account&&acct!==String(s.account).trim()) return;
+      const d=pdate(fill(s.map.date,raw)); if(!d||d>d1) return;
+      const desc=fill(s.map.text,raw).toUpperCase(), mv=money(fill(s.map.amount,raw));
+      if(desc==="ENDING BALANCE"&&mv){ if(!SWEEPINFO||d>=SWEEPINFO.on) SWEEPINFO={bal:mv.amt,on:d,int:SWEEPINFO?SWEEPINFO.int:0}; }
+      if(desc==="INTEREST PAID"&&mv&&mv.amt&&d>=d0&&d<=d1){ SWEEPINFO=SWEEPINFO||{bal:null,on:d,int:0}; SWEEPINFO.int+=mv.amt; }
+    });
+  });
+  $("out").classList.add("on"); refresh(); $("out").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+/* ---------------- split ---------------- */
+let SPLIT_I=-1, PARTS=[], SID=0;
+function openSplit(i){
+  SPLIT_I=i; const r=ROWS[i];
+  PARTS=[{amt:r.amount,code:r.code},{amt:0,code:""}];
+  $("splitsrc").innerHTML=iso(r.date)+' · '+(r.type==="Credits"?"Credit":"Debit")+' · <b>'+fmt(r.amount)+'</b><br>'+esc(String(r.text).slice(0,160));
+  drawParts(); $("splitdlg").showModal();
+}
+function drawParts(){
+  const box=$("parts"); box.innerHTML="";
+  PARTS.forEach((p,n)=>{
+    const row=document.createElement("div"); row.className="part";
+    row.innerHTML='<input class="amt" type="text" inputmode="decimal" value="'+(p.amt?p.amt.toFixed(2):"")+'" placeholder="0.00" aria-label="Part amount">'
+      +'<input class="code" list="codes" value="'+esc(p.code)+'" placeholder="code" aria-label="Part code">'
+      +(PARTS.length>2?'<button type="button" class="rowbtn" aria-label="Remove part">&times;</button>':'');
+    const a=row.children[0], c=row.children[1], x=row.children[2];
+    a.addEventListener("input",()=>{const v=parseFloat(a.value.replace(/[^0-9.\-]/g,"")); PARTS[n].amt=isFinite(v)?Math.abs(v):0; showRemain();});
+    c.addEventListener("input",()=>{PARTS[n].code=c.value.trim().toUpperCase(); showRemain();});
+    if(x) x.addEventListener("click",()=>{PARTS.splice(n,1); drawParts();});
+    box.appendChild(row);
+  });
+  showRemain();
+}
+function splitTotals(){
+  const src=ROWS[SPLIT_I]?ROWS[SPLIT_I].amount:0;
+  const sum=PARTS.reduce((s,p)=>s+(p.amt||0),0);
+  return {src:src,sum:sum,rem:Math.round((src-sum)*100)/100};
+}
+function showRemain(){
+  const t=splitTotals(), el=$("remain");
+  const bad=PARTS.filter(p=>p.amt>0).some(p=>!p.code);
+  el.textContent=t.rem===0?(bad?"Every part needs a code":"Balanced — "+fmt(t.sum)):"Remaining to allocate: "+fmt(t.rem);
+  el.className="remain"+(t.rem===0&&!bad?" ok":"");
+  $("splitapply").disabled=!(t.rem===0&&!bad&&PARTS.filter(p=>p.amt>0).length>=2);
+  $("splitapply").style.opacity=$("splitapply").disabled?.45:1;
+}
+$("addpart").addEventListener("click",()=>{PARTS.push({amt:0,code:""}); drawParts();});
+$("splitcancel").addEventListener("click",()=>$("splitdlg").close());
+$("splitapply").addEventListener("click",()=>{
+  const t=splitTotals(); if(t.rem!==0) return;
+  const src=ROWS[SPLIT_I], sid=++SID;
+  const parts=PARTS.filter(p=>p.amt>0).map(p=>Object.assign({},src,{amount:p.amt,code:p.code,split:true,sid:sid,srcAmt:src.amount,edited:true,flag:""}));
+  ROWS.splice.apply(ROWS,[SPLIT_I,1].concat(parts));
+  $("splitdlg").close(); refresh();
+});
+$("splitdlg").addEventListener("close",()=>{SPLIT_I=-1;PARTS=[];});
+
+/* ---------------- render ---------------- */
+function refresh(){
+  const cr=ROWS.filter(r=>r.type==="Credits").reduce((s,r)=>s+r.amount,0);
+  const de=ROWS.filter(r=>r.type==="Debits").reduce((s,r)=>s+r.amount,0);
+  const open=ROWS.filter(r=>!r.code).length;
+  const pct=ROWS.length?((ROWS.length-open)/ROWS.length*100):0;
+  $("stats").innerHTML=[["Rows",ROWS.length.toLocaleString(),""],["Credits",fmt(cr),""],["Debits",fmt(de),""],
+    ["Net",fmt(cr-de),cr-de>=0?"pos":"neg"],["Coded",pct.toFixed(1)+"%",open?"bad":"pos"]]
+    .map(x=>'<div class="stat"><span class="stat-l">'+x[0]+'</span><span class="stat-v '+x[2]+'">'+x[1]+'</span></div>').join("");
+  const labels=[]; ROWS.forEach(r=>{ if(labels.indexOf(r.srcLabel)<0) labels.push(r.srcLabel); });
+  let b='<thead><tr><th>Source</th><th>Credits</th><th>Debits</th><th>Net</th><th>Rows</th></tr></thead><tbody>';
+  labels.forEach(l=>{
+    const rs=ROWS.filter(r=>r.srcLabel===l);
+    const c=rs.filter(r=>r.type==="Credits").reduce((a,r)=>a+r.amount,0), d=rs.filter(r=>r.type==="Debits").reduce((a,r)=>a+r.amount,0);
+    b+='<tr><td>'+esc(l)+'</td><td>'+fmt(c)+'</td><td>'+fmt(d)+'</td><td>'+fmt(c-d)+'</td><td>'+rs.length+'</td></tr>';
+  });
+  b+='<tr class="tot"><td>Total</td><td>'+fmt(cr)+'</td><td>'+fmt(de)+'</td><td>'+fmt(cr-de)+'</td><td>'+ROWS.length+'</td></tr></tbody>';
+  $("acct").innerHTML=b;
+  const notes=[], groups={};
+  ROWS.filter(r=>r.sid).forEach(r=>{ if(!groups[r.sid]) groups[r.sid]={sum:0,src:r.srcAmt,rows:[]};
+    groups[r.sid].sum+=r.amount; groups[r.sid].rows.push(r); });
+  const broken=Object.keys(groups).map(k=>groups[k]).filter(g=>Math.abs(g.sum-g.src)>0.005);
+  ROWS.forEach(r=>{r.unbalanced=false;});
+  broken.forEach(g=>g.rows.forEach(r=>{r.unbalanced=true;}));
+  if(broken.length) notes.push('<div class="note err"><strong>'+broken.length+' split '+(broken.length>1?"groups do":"group does")
+    +' not add back to the original amount.</strong> Fix the highlighted rows — the register total is off by '+fmt(broken.reduce((s,g)=>s+(g.sum-g.src),0))+'.</div>');
+  const missing=CFG.sources.filter(s=>s.role!=="sweep"&&!ROWS.some(r=>r.srcLabel===s.label)).map(s=>s.label);
+  if(missing.length) notes.push('<div class="note warn">No rows from: <strong>'+esc(missing.join(", "))+'</strong>. If you expected some, check that the file is loaded and its dates fall inside the week.</div>');
+  if(SWEEPINFO&&SWEEPINFO.bal!=null){
+    const stale=+SWEEPINFO.on!==+pdate($("wk").value);
+    notes.push('<div class="note'+(stale?" warn":"")+'"><strong>ICS sweep balance '+iso(SWEEPINFO.on)+': '+fmt(SWEEPINFO.bal)+'</strong> → row 148.'
+      +(SWEEPINFO.int?' Interest of '+fmt(SWEEPINFO.int)+' this period → row 60.':'')
+      +(stale?' This is the latest closing balance available, not the week-ending date — confirm before using it.':'')+'</div>');
+  }
+  $("notes").innerHTML=notes.join("");
+  renderReview(); buildOutput();
+}
+function renderReview(){
+  const list=FILTER==="all"?ROWS:ROWS.filter(r=>r.flag||!r.code||r.split);
+  $("revcount").textContent=list.length+" of "+ROWS.length+" rows shown";
+  let h='<thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Code</th><th>Goes to</th><th>Description</th><th></th></tr></thead><tbody>';
+  list.forEach(r=>{
+    const i=ROWS.indexOf(r), t=CFG.codes[(r.code||"").toUpperCase()];
+    const tgt=r.code?(t?(t[0]===-1?"internal":"row "+t[0]):'<span style="color:var(--crit)">unknown code</span>'):"—";
+    const cls=r.unbalanced?"unbalanced":(r.sid?"split-part":(r.edited?"edited":"f-"+(r.flag||"")));
+    h+='<tr class="'+cls+'"><td>'+iso(r.date)+'</td><td>'+(r.type==="Credits"?"Cr":"Dr")+'</td>'
+      +'<td><input class="amt" data-i="'+i+'" value="'+r.amount.toFixed(2)+'" aria-label="Amount"></td>'
+      +'<td><input class="code" list="codes" data-i="'+i+'" value="'+esc(r.code)+'" placeholder="code" aria-label="Code"></td>'
+      +'<td class="tgt">'+tgt+'</td><td class="desc" title="'+esc(r.text)+'">'+esc(String(r.text).slice(0,150))+'</td>'
+      +'<td><button class="rowbtn" data-split="'+i+'" title="Split this row">split</button> '
+      +(r.split?'<button class="rowbtn" data-del="'+i+'" title="Delete this row">del</button>':'')+'</td></tr>';
+  });
+  $("revtbl").innerHTML=h+'</tbody>';
+  $("revtbl").querySelectorAll("input.code").forEach(el=>el.addEventListener("input",e=>{
+    const r=ROWS[+e.target.dataset.i]; r.code=e.target.value.trim().toUpperCase(); r.edited=true; r.flag="";
+    const t=CFG.codes[r.code], cell=e.target.closest("tr").querySelector(".tgt");
+    cell.innerHTML=r.code?(t?(t[0]===-1?"internal":"row "+t[0]):'<span style="color:var(--crit)">unknown code</span>'):"—";
+    e.target.closest("tr").className="edited"; statsOnly(); buildOutput();
+  }));
+  $("revtbl").querySelectorAll("input.code").forEach(el=>el.addEventListener("change",e=>{
+    const r=ROWS[+e.target.dataset.i];
+    if(learnFrom(r)){ bustRules(); drawLearned(); drawRules(); }
+  }));
+  $("revtbl").querySelectorAll("input.amt").forEach(el=>el.addEventListener("input",e=>{
+    const v=parseFloat(e.target.value); if(!isFinite(v)) return;
+    ROWS[+e.target.dataset.i].amount=Math.abs(v); statsOnly(); buildOutput();
+  }));
+  $("revtbl").querySelectorAll("[data-split]").forEach(el=>el.addEventListener("click",e=>openSplit(+e.target.dataset.split)));
+  $("revtbl").querySelectorAll("[data-del]").forEach(el=>el.addEventListener("click",e=>{
+    ROWS.splice(+e.target.dataset.del,1); statsOnly(); renderReview(); buildOutput();
+  }));
+}
+function statsOnly(){
+  const cr=ROWS.filter(r=>r.type==="Credits").reduce((s,r)=>s+r.amount,0);
+  const de=ROWS.filter(r=>r.type==="Debits").reduce((s,r)=>s+r.amount,0);
+  const open=ROWS.filter(r=>!r.code).length, pct=ROWS.length?((ROWS.length-open)/ROWS.length*100):0;
+  const v=$("stats").querySelectorAll(".stat-v");
+  if(v.length===5){ v[0].textContent=ROWS.length.toLocaleString(); v[1].textContent=fmt(cr); v[2].textContent=fmt(de);
+    v[3].textContent=fmt(cr-de); v[3].className="stat-v "+(cr-de>=0?"pos":"neg");
+    v[4].textContent=pct.toFixed(1)+"%"; v[4].className="stat-v "+(open?"bad":"pos"); }
+}
+
+/* ---------------- export ---------------- */
+function activeCols(){ return CFG.exp.columns.filter(c=>c.on!==false); }
+function matrix(){
+  const cols=activeCols();
+  const m=ROWS.map(r=>cols.map(c=>{
+    if(c.key==="date") return CFG.exp.dateFormat==="us"?usd(r.date):iso(r.date);
+    if(c.key==="amount") return r.amount.toFixed(2);
+    return String(r[c.key]==null?"":r[c.key]);
+  }));
+  return CFG.exp.header?[cols.map(c=>c.head)].concat(m):m;
+}
+function buildOutput(){
+  const d=CFG.exp.delim==="comma"?",":"\t";
+  $("tsv").value=matrix().map(r=>r.map(c=>(d===","&&/[",\n]/.test(c))?'"'+c.replace(/"/g,'""')+'"':c).join(d)).join("\n");
+  const open=ROWS.filter(r=>!r.code).length;
+  $("outmeta").textContent=ROWS.length+" rows"+(open?"  ·  "+open+" still without a code":"")+(SKIPPED?"  ·  "+SKIPPED.toLocaleString()+" outside the range":"");
+}
+function csvText(){
+  return matrix().map(r=>r.map(c=>/[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c).join(",")).join("\r\n");
+}
+let SAVER=null;
+if(window.claude&&typeof window.claude.use==="function"){ window.claude.use("downloads").then(d=>{SAVER=d;}).catch(()=>{}); }
+function localSave(name,text){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["﻿"+text],{type:"text/csv;charset=utf-8;"}));
+  a.download=name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+$("copy").addEventListener("click",async()=>{
+  const ta=$("tsv"); if(!ta.value) return; const b=$("copy");
+  try{ await navigator.clipboard.writeText(ta.value); }catch(e){ ta.select(); document.execCommand("copy"); }
+  b.textContent="Copied — paste at A2"; b.classList.add("done");
+  setTimeout(()=>{b.textContent="Copy all rows"; b.classList.remove("done");},2200);
+});
+$("dl").addEventListener("click",async()=>{
+  const b=$("dl"), name="Bank Register "+$("wk").value+".csv", text=csvText();
+  if(!text) return;
+  if(SAVER){
+    b.textContent="Saving…";
+    try{ await SAVER.save({filename:name,data:"﻿"+text}); b.textContent="Saved"; b.classList.add("done"); }
+    catch(err){ const c=(err&&err.code)||"unavailable";
+      b.textContent=c==="declined"?"Download cancelled":c==="rate_limited"?"Try again in a moment":"Download unavailable"; }
+    setTimeout(()=>{b.textContent="Download CSV"; b.classList.remove("done");},2400);
+    return;
+  }
+  localSave(name,text);
+});
+$("hdr").addEventListener("change",()=>{ CFG.exp.header=$("hdr").checked; $("expHdr").value=CFG.exp.header?"yes":"no"; saveCfg(); buildOutput(); });
+function showErr(msg){
+  $("notes").innerHTML='<div class="note err">'+esc(msg)+'</div>';
+  $("stats").innerHTML=""; $("acct").innerHTML=""; $("revtbl").innerHTML=""; $("tsv").value=""; $("outmeta").textContent=""; $("revcount").textContent="";
+  $("out").classList.add("on");
+}
+$("fAll").addEventListener("click",()=>{FILTER="all";$("fAll").setAttribute("aria-pressed","true");$("fFlag").setAttribute("aria-pressed","false");renderReview();});
+$("fFlag").addEventListener("click",()=>{FILTER="flag";$("fFlag").setAttribute("aria-pressed","true");$("fAll").setAttribute("aria-pressed","false");renderReview();});
+
+/* ---------------- settings UI ---------------- */
+const PANELS={tabCodes:"panCodes",tabSrc:"panSrc",tabExp:"panExp",tabLearn:"panLearn"};
+Object.keys(PANELS).forEach(t=>$(t).addEventListener("click",()=>{
+  Object.keys(PANELS).forEach(o=>{ $(o).setAttribute("aria-pressed",String(o===t)); $(PANELS[o]).classList.toggle("on",o===t); });
+}));
+function drawCodes(){
+  const q=($("codesearch").value||"").toUpperCase();
+  const keys=Object.keys(CFG.codes).sort().filter(k=>!q||k.indexOf(q)>=0||String(CFG.codes[k][1]||"").toUpperCase().indexOf(q)>=0);
+  $("codecount").textContent=Object.keys(CFG.codes).length+" codes";
+  let h='<thead><tr><th>Code</th><th>Forecast row</th><th>Line name</th><th></th></tr></thead><tbody>';
+  keys.forEach(k=>{
+    h+='<tr><td><input type="text" data-c="'+esc(k)+'" data-f="key" value="'+esc(k)+'" style="width:130px"></td>'
+      +'<td><input type="text" data-c="'+esc(k)+'" data-f="row" value="'+esc(CFG.codes[k][0])+'" style="width:80px"></td>'
+      +'<td><input type="text" data-c="'+esc(k)+'" data-f="lab" value="'+esc(CFG.codes[k][1]||"")+'" style="width:100%"></td>'
+      +'<td><button class="rowbtn" data-delcode="'+esc(k)+'">delete</button></td></tr>';
+  });
+  $("codetbl").innerHTML=h+'</tbody>';
+  $("codetbl").querySelectorAll("input").forEach(el=>el.addEventListener("change",e=>{
+    const k=e.target.dataset.c, f=e.target.dataset.f, v=e.target.value.trim();
+    if(f==="key"){ if(!v||v.toUpperCase()===k) return; CFG.codes[v.toUpperCase()]=CFG.codes[k]; delete CFG.codes[k]; }
+    else if(f==="row"){ const n=parseInt(v,10); CFG.codes[k][0]=isFinite(n)?n:0; }
+    else CFG.codes[k][1]=v;
+    saveCfg(); refreshCodeList(); drawCodes(); if(ROWS.length) renderReview();
+  }));
+  $("codetbl").querySelectorAll("[data-delcode]").forEach(el=>el.addEventListener("click",e=>{
+    delete CFG.codes[e.target.dataset.delcode]; saveCfg(); refreshCodeList(); drawCodes(); if(ROWS.length) renderReview();
+  }));
+}
+$("codesearch").addEventListener("input",drawCodes);
+$("addcode").addEventListener("click",()=>{
+  let n="NEW", i=1; while(CFG.codes[n]) n="NEW"+(++i);
+  CFG.codes[n]=[0,""]; saveCfg(); refreshCodeList(); $("codesearch").value=""; drawCodes();
+});
+function drawSources(){
+  const box=$("srclist"); box.innerHTML="";
+  CFG.sources.forEach((s,n)=>{
+    const card=document.createElement("div"); card.className="cfgcard";
+    let mh="";
+    OUTKEYS.forEach(k=>{
+      mh+='<div class="maprow"><span>'+k.name+'</span><input type="text" data-n="'+n+'" data-k="'+k.key+'" value="'+esc((s.map&&s.map[k.key])||"")+'" placeholder="{Column Name}"></div>';
+    });
+    card.innerHTML='<h4><span>'+esc(s.label||"Untitled source")+'</span><button class="rowbtn" data-delsrc="'+n+'">delete source</button></h4>'
+      +'<div class="grid2">'
+      +'<label class="f"><span>Name</span><input type="text" data-n="'+n+'" data-s="label" value="'+esc(s.label||"")+'"></label>'
+      +'<label class="f"><span>Only this account</span><input type="text" data-n="'+n+'" data-s="account" value="'+esc(s.account||"")+'" placeholder="blank = all"></label>'
+      +'<label class="f"><span>Identify file by columns</span><input type="text" data-n="'+n+'" data-s="detect" value="'+esc(s.detect||"")+'"></label>'
+      +'<label class="f"><span>Role</span><select data-n="'+n+'" data-s="role"><option value="">Transactions</option><option value="sweep"'+(s.role==="sweep"?" selected":"")+'>Sweep balances</option></select></label>'
+      +'<label class="f"><span>Credit / debit from</span><select data-n="'+n+'" data-s="typeMode"><option value="field"'+(s.typeMode!=="sign"?" selected":"")+'>A column</option><option value="sign"'+(s.typeMode==="sign"?" selected":"")+'>Sign of the amount</option></select></label>'
+      +'<label class="f"><span>Value translations</span><input type="text" data-n="'+n+'" data-s="typeMap" value="'+esc(s.typeMap||"")+'" placeholder="CREDIT=Credits, DEBIT=Debits"></label>'
+      +'</div><div class="grid2">'+mh+'</div>';
+    box.appendChild(card);
+  });
+  box.querySelectorAll("[data-s]").forEach(el=>el.addEventListener("change",e=>{
+    CFG.sources[+e.target.dataset.n][e.target.dataset.s]=e.target.value.trim(); saveCfg(); drawSources();
+  }));
+  box.querySelectorAll("[data-k]").forEach(el=>el.addEventListener("change",e=>{
+    const s=CFG.sources[+e.target.dataset.n]; if(!s.map) s.map={}; s.map[e.target.dataset.k]=e.target.value; saveCfg();
+  }));
+  box.querySelectorAll("[data-delsrc]").forEach(el=>el.addEventListener("click",e=>{
+    CFG.sources.splice(+e.target.dataset.delsrc,1); saveCfg(); drawSources();
+  }));
+}
+$("addsrc").addEventListener("click",()=>{
+  const m={}; OUTKEYS.forEach(k=>{m[k.key]="";});
+  CFG.sources.push({id:"src"+Date.now(),label:"New source",account:"",detect:"",typeMode:"field",typeMap:"",map:m});
+  saveCfg(); drawSources();
+});
+function drawExport(){
+  $("expDelim").value=CFG.exp.delim; $("expDate").value=CFG.exp.dateFormat;
+  $("expHdr").value=CFG.exp.header?"yes":"no"; $("hdr").checked=!!CFG.exp.header;
+  const box=$("collist"); box.innerHTML="";
+  CFG.exp.columns.forEach((c,n)=>{
+    const k=OUTKEYS.filter(x=>x.key===c.key)[0];
+    const row=document.createElement("div"); row.className="colrow";
+    row.innerHTML='<label class="chk"><input type="checkbox" data-n="'+n+'" data-x="on"'+(c.on!==false?" checked":"")+'></label>'
+      +'<span class="nm">'+esc(k?k.name:c.key)+'</span>'
+      +'<input type="text" data-n="'+n+'" data-x="head" value="'+esc(c.head||"")+'" aria-label="Header label">'
+      +'<button class="rowbtn" data-up="'+n+'" aria-label="Move up">↑</button>'
+      +'<button class="rowbtn" data-down="'+n+'" aria-label="Move down">↓</button>';
+    box.appendChild(row);
+  });
+  box.querySelectorAll("[data-x]").forEach(el=>el.addEventListener("change",e=>{
+    const c=CFG.exp.columns[+e.target.dataset.n];
+    if(e.target.dataset.x==="on") c.on=e.target.checked; else c.head=e.target.value;
+    saveCfg(); buildOutput();
+  }));
+  box.querySelectorAll("[data-up]").forEach(el=>el.addEventListener("click",e=>{
+    const n=+e.target.dataset.up; if(n<1) return;
+    const a=CFG.exp.columns, t=a[n-1]; a[n-1]=a[n]; a[n]=t; saveCfg(); drawExport(); buildOutput();
+  }));
+  box.querySelectorAll("[data-down]").forEach(el=>el.addEventListener("click",e=>{
+    const n=+e.target.dataset.down, a=CFG.exp.columns; if(n>=a.length-1) return;
+    const t=a[n+1]; a[n+1]=a[n]; a[n]=t; saveCfg(); drawExport(); buildOutput();
+  }));
+}
+["expDelim","expDate","expHdr"].forEach(id=>$(id).addEventListener("change",()=>{
+  CFG.exp.delim=$("expDelim").value; CFG.exp.dateFormat=$("expDate").value; CFG.exp.header=$("expHdr").value==="yes";
+  $("hdr").checked=CFG.exp.header; saveCfg(); buildOutput();
+}));
+$("cfgexport").addEventListener("click",async()=>{
+  // CFG now carries the rule corpus and code list too, so this one file is a
+  // complete backup: rules, codes, sources, export layout, flags, learned
+  // corrections, hidden rules and the learn toggle.
+  const bundle=Object.assign({_meta:{
+    tool:"Register Builder", bundle:"full", schema:1,
+    exported:new Date().toISOString().slice(0,10),
+    rules:Object.keys(CFG.rules||{}).length, codes:Object.keys(CFG.codes||{}).length,
+    learned:Object.keys(CFG.learned||{}).length,
+    note:"Confidential - may contain bank account numbers, vendor and payee names. Do not commit to a public repository."
+  }},clone(CFG));
+  const text=JSON.stringify(bundle,null,2), name="Register Builder settings.json";
+  if(SAVER){ try{ await SAVER.save({filename:name,data:text}); }catch(e){} return; }
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([text],{type:"application/json"}));
+  a.download=name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+});
+$("cfgimport").addEventListener("click",()=>$("cfgfile").click());
+$("cfgfile").addEventListener("change",()=>{
+  const f=$("cfgfile").files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const o=JSON.parse(rd.result);
+      if(o.rules) CFG.rules=o.rules;
+      if(o.codes) CFG.codes=o.codes;
+      if(o.sources&&o.sources.length) CFG.sources=o.sources;
+      if(o.exp&&o.exp.columns) CFG.exp=o.exp;
+      if(o.flags&&o.flags.length) CFG.flags=o.flags;
+      if(o.learned) CFG.learned=o.learned;
+      if(o.hidden) CFG.hidden=o.hidden;
+      if(typeof o.learnOn==="boolean") CFG.learnOn=o.learnOn;
+      saveCfg(); bustRules(); refreshCodeList(); drawCodes(); drawSources(); drawExport(); drawLearned(); drawRules();
+      FILES.forEach(x=>{x.src=detectSource(x.rows);}); renderFiles();
+      if(ROWS.length) refresh();
+      updateCorpusState();
+      const nr=Object.keys(CFG.rules||{}).length, nc=Object.keys(CFG.codes||{}).length;
+      $("cfgsaved").textContent="Settings loaded — "+nr+" rule year"+(nr===1?"":"s")+", "+nc+" codes";
+    }catch(e){ $("cfgsaved").textContent="That file isn’t valid settings JSON"; }
+  };
+  rd.readAsText(f); $("cfgfile").value="";
+});
+$("cfgreset").addEventListener("click",()=>{
+  CFG.rules=clone(BUILTIN_RULES); CFG.codes=clone(BUILTIN_CODES);
+  CFG.sources=clone(DEFAULT_SOURCES); CFG.exp=clone(DEFAULT_EXPORT);
+  CFG.flags=clone(DEFAULT_FLAGS); CFG.learned={}; CFG.hidden=[]; CFG.learnOn=true;
+  saveCfg(); bustRules(); refreshCodeList(); drawCodes(); drawSources(); drawExport(); drawLearned(); drawRules();
+  updateCorpusState();
+  FILES.forEach(x=>{x.src=detectSource(x.rows);}); renderFiles();
+  if(ROWS.length) refresh();
+});
+
+/* Published builds ship with no rule corpus (it is confidential and lives in the
+   settings bundle), so say so plainly rather than silently coding everything REVIEW. */
+function updateCorpusState(){
+  const el=$("corpusbanner"); if(!el) return;
+  if(hasRules()||Object.keys(CFG.codes||{}).length){ el.style.display="none"; return; }
+  el.style.display="";
+  el.innerHTML='<strong>No rule set loaded.</strong> This published copy ships without the '
+    +'coding rules and code list — they contain account numbers and payee names and are '
+    +'not published here. Open <strong>Settings → Import settings</strong> and choose '
+    +'<em>Register Builder settings.json</em> (posted in #internal-tools). Until then every '
+    +'row will come back as REVIEW.';
+}
+function drawLearned(){
+  $("flaglist").value=(CFG.flags||[]).join("\n");
+  $("learnOn").checked=!!CFG.learnOn;
+  const keys=Object.keys(CFG.learned||{});
+  $("learncount").textContent=keys.length?keys.length+" corrections remembered":"nothing learned yet";
+  let h='<thead><tr><th>Applies to</th><th>Code</th><th></th></tr></thead><tbody>';
+  keys.sort().forEach(k=>{
+    const parts=k.split("|");
+    const dir=parts[0]==="C"?"Credit":"Debit";
+    h+='<tr><td style="text-align:left;white-space:normal">'+esc(dir+" · "+parts.slice(2).join("|"))+'</td>'
+      +'<td>'+esc(CFG.learned[k])+'</td>'
+      +'<td><button class="rowbtn" data-forget="'+esc(k)+'">forget</button></td></tr>';
+  });
+  $("learntbl").innerHTML=h+'</tbody>';
+  $("learntbl").querySelectorAll("[data-forget]").forEach(el=>el.addEventListener("click",e=>{
+    delete CFG.learned[e.target.dataset.forget]; saveCfg(); drawLearned();
+  }));
+}
+let RFILTER="all";
+function drawRules(){
+  const q=($("rulesearch").value||"").toUpperCase();
+  const hidden=CFG.hidden||[];
+  let rows=allRules();
+  if(RFILTER==="mine") rows=rows.filter(r=>r.origin==="Yours"||r.origin==="Edited");
+  else if(RFILTER==="hidden") rows=rows.filter(r=>hidden.indexOf(r.key)>=0);
+  if(q) rows=rows.filter(r=>r.key.toUpperCase().indexOf(q)>=0||String(r.code).toUpperCase().indexOf(q)>=0);
+  const total=allRules().length, shown=rows.slice(0,400);
+  $("rulecount").textContent=shown.length+" of "+rows.length+" shown · "+total+" rules total · "
+    +Object.keys(CFG.learned||{}).length+" yours · "+hidden.length+" hidden";
+  let h='<thead><tr><th>From</th><th>Matches on</th><th>When</th><th>Descriptor</th><th>Code</th><th></th></tr></thead><tbody>';
+  shown.forEach(r=>{
+    const i=r.key.indexOf("|"), j=r.key.indexOf("|",i+1);
+    const tier=r.key.slice(0,i), dir=r.key.slice(i+1,j), sig=r.key.slice(j+1);
+    const isHidden=hidden.indexOf(r.key)>=0;
+    const org=r.origin==="Yours"?'<span style="color:var(--ok);font-weight:600">Yours</span>'
+      :r.origin==="Edited"?'<span style="color:var(--accent);font-weight:600">Edited</span>':esc(r.origin);
+    h+='<tr'+(isHidden?' style="opacity:.45"':'')+'><td style="text-align:left">'+org+'</td>'
+      +'<td>'+(tier==="p"?"descriptor + payee":"descriptor")+'</td>'
+      +'<td>'+(dir==="*"?"either":dir==="C"?"credits":"debits")+'</td>'
+      +'<td style="text-align:left;white-space:normal;max-width:430px">'+esc(sig)+'</td>'
+      +'<td><input type="text" class="code" data-rk="'+esc(r.key)+'" value="'+esc(r.code)+'"></td>'
+      +'<td>'+(isHidden?'<button class="rowbtn" data-show="'+esc(r.key)+'">restore</button>'
+        :(r.origin==="Yours"?'<button class="rowbtn" data-forgetrule="'+esc(r.key)+'">forget</button>'
+          :'<button class="rowbtn" data-hide="'+esc(r.key)+'">hide</button>'))
+      +(r.origin==="Edited"?' <button class="rowbtn" data-revert="'+esc(r.key)+'">revert</button>':'')
+      +'</td></tr>';
+  });
+  $("ruletbl").innerHTML=h+'</tbody>';
+  $("ruletbl").querySelectorAll("input.code").forEach(el=>el.addEventListener("change",e=>{
+    const k=e.target.dataset.rk, v=e.target.value.trim().toUpperCase();
+    const b=baseRule(k);
+    if(!v){ delete CFG.learned[k]; }
+    else if(b&&b.code===v){ delete CFG.learned[k]; }   // back to the built-in value
+    else CFG.learned[k]=v;
+    saveCfg(); bustRules(); drawRules(); drawLearned();
+  }));
+  $("ruletbl").querySelectorAll("[data-hide]").forEach(el=>el.addEventListener("click",e=>{
+    keyVariants(e.target.dataset.hide).forEach(k=>{ if(CFG.hidden.indexOf(k)<0) CFG.hidden.push(k); });
+    saveCfg(); bustRules(); drawRules();
+  }));
+  $("ruletbl").querySelectorAll("[data-show]").forEach(el=>el.addEventListener("click",e=>{
+    const v=keyVariants(e.target.dataset.show);
+    CFG.hidden=CFG.hidden.filter(x=>v.indexOf(x)<0); saveCfg(); bustRules(); drawRules();
+  }));
+  $("ruletbl").querySelectorAll("[data-forgetrule],[data-revert]").forEach(el=>el.addEventListener("click",e=>{
+    delete CFG.learned[e.target.dataset.forgetrule||e.target.dataset.revert];
+    saveCfg(); bustRules(); drawRules(); drawLearned();
+  }));
+}
+$("rulesearch").addEventListener("input",drawRules);
+[["rfAll","all"],["rfMine","mine"],["rfHidden","hidden"]].forEach(x=>$(x[0]).addEventListener("click",()=>{
+  RFILTER=x[1];
+  ["rfAll","rfMine","rfHidden"].forEach(id=>$(id).setAttribute("aria-pressed",String(id===x[0])));
+  drawRules();
+}));
+$("flaglist").addEventListener("change",()=>{
+  CFG.flags=$("flaglist").value.split("\n").map(x=>x.trim()).filter(Boolean); saveCfg();
+});
+$("learnOn").addEventListener("change",()=>{ CFG.learnOn=$("learnOn").checked; saveCfg(); });
+$("forgetall").addEventListener("click",()=>{ CFG.learned={}; CFG.hidden=[]; saveCfg(); bustRules(); drawLearned(); drawRules(); });
+drawCodes(); drawSources(); drawExport(); drawLearned(); drawRules();
+</script>
+
+<script>const TOOL_KEY='register-builder'; const TOOL_VERSION='1.0';</script>
+<script src="version-check.js"></script>
+</body>
+</html>
