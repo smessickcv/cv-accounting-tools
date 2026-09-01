@@ -58,6 +58,7 @@ entry, and its `index.html` card together. All three must agree. Every tool belo
 | `ap-dashboard` | `AP_Dashboard.html` | AP dashboard — **not local-only, see Data privacy** |
 | `fam-converter` | `fam_converter.html` | FAM XML → XLSX converter |
 | `fulfillment-builder` | `fulfillment_builder.html` | Item fulfillment builder |
+| `401k-converter` | `401k-converter.html` | 401k payroll converter — **stores SSN/DOB locally, see Data privacy** |
 | *(not listed)* | `xml_to_xlsx_converter.html` | Duplicate of `fam_converter.html`; deliberately absent from the hub — see Known issues |
 
 ---
@@ -101,6 +102,12 @@ which is why the card's `version:` field has to be kept in sync too.
 Most tools parse uploads entirely in the browser via the File API — nothing
 leaves the machine, and `localStorage` holds only UI preferences and saved
 mappings.
+
+**`401k-converter.html` holds employee PII.** Its saved roster (`401k_roster`)
+contains SSNs, dates of birth and hire dates. That data never leaves the browser
+— it is not transmitted anywhere and none of it is in this repo — but it does
+persist in `localStorage` on whatever machine the tool is used on. Use it on a
+company device, and use the *Clear Roster from Storage* button on a shared one.
 
 **`AP_Dashboard.html` is the exception.** It signs the user into Google, requests
 the full `https://www.googleapis.com/auth/spreadsheets` scope, and reads/writes a
