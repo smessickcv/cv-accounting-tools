@@ -1,0 +1,1561 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopify → NetSuite</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap');
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#0c0c10; --surface:rgba(255,255,255,0.03); --border:#1a1a28;
+    --text:#ddd8ce; --muted:#4b5563; --green:#34d399; --blue:#38bdf8;
+    --orange:#fb923c; --red:#f87171; --font:'IBM Plex Mono','Courier New',monospace;
+  }
+  body { background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh; }
+  header { background:#0e0e18; border-bottom:1px solid var(--border); padding:16px 28px; display:flex; align-items:center; gap:12px; }
+  .logo { width:32px; height:32px; border-radius:7px; background:linear-gradient(135deg,var(--green),var(--blue)); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  .title { font-size:14px; font-weight:700; color:#fff; }
+  .subtitle { font-size:9px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; margin-top:2px; }
+  .steps { margin-left:auto; display:flex; gap:5px; }
+  .step-dot { width:22px; height:22px; border-radius:50%; background:var(--border); color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; transition:all 0.2s; }
+  .step-dot.active { background:linear-gradient(135deg,var(--green),var(--blue)); color:var(--bg); }
+  main { max-width:920px; margin:0 auto; padding:26px 18px; }
+  .step { display:none; } .step.visible { display:block; }
+  h2 { font-size:18px; font-weight:700; color:#fff; margin-bottom:5px; }
+  .sub { color:var(--muted); font-size:11px; margin-bottom:22px; line-height:1.6; }
+  .dropzone { border:2px dashed var(--border); border-radius:12px; padding:40px 28px; text-align:center; cursor:pointer; background:rgba(255,255,255,0.01); transition:all 0.2s; }
+  .dropzone:hover,.dropzone.drag { border-color:var(--blue); background:rgba(56,189,248,0.04); }
+  .dropzone.loaded { border-color:var(--green); background:rgba(52,211,153,0.04); }
+  .dropzone .icon { font-size:32px; margin-bottom:10px; }
+  .dropzone .lbl { font-size:12px; color:var(--muted); }
+  .dropzone.loaded .lbl { color:var(--green); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:15px; }
+  .card-label { font-size:9px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:9px; }
+  .card-hint { font-size:9px; color:var(--muted); margin-top:5px; }
+  textarea { width:100%; background:#070710; border:1px solid var(--border); border-radius:5px; color:var(--text); font-family:var(--font); font-size:11px; padding:9px; resize:vertical; outline:none; }
+  textarea:focus { border-color:var(--blue); }
+  .btn { border:none; border-radius:7px; font-family:var(--font); font-weight:700; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .btn-primary  { background:linear-gradient(135deg,var(--green),var(--blue)); color:var(--bg); padding:10px 22px; font-size:12px; }
+  .btn-secondary{ background:transparent; color:var(--muted); border:1px solid var(--border)!important; padding:10px 16px; font-size:12px; }
+  .btn-save     { background:rgba(255,255,255,0.04); color:var(--muted); border:1px solid var(--border)!important; padding:10px 16px; font-size:12px; }
+  .btn-save.saved { background:rgba(52,211,153,0.1); color:var(--green); border-color:var(--green)!important; }
+  .btn-orange   { background:rgba(251,146,60,0.12); color:var(--orange); border:1px solid var(--orange)!important; padding:10px 16px; font-size:12px; }
+  .btn-blue     { background:rgba(56,189,248,0.09); color:var(--blue); border:1px solid var(--blue)!important; padding:10px 16px; font-size:12px; }
+  .btn-row { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-top:4px; }
+  .stats { display:flex; gap:9px; margin-bottom:16px; flex-wrap:wrap; }
+  .stat { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; }
+  .stat-num { font-size:19px; font-weight:700; }
+  .stat-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+  .alert { border-radius:8px; padding:13px; margin-bottom:15px; }
+  .alert-warn { background:rgba(251,146,60,0.07); border:1px solid rgba(251,146,60,0.22); }
+  .alert-info  { background:rgba(56,189,248,0.07); border:1px solid rgba(56,189,248,0.22); }
+  .alert-title { font-size:11px; font-weight:700; margin-bottom:7px; }
+  .alert-warn .alert-title { color:var(--orange); }
+  .alert-info .alert-title { color:var(--blue); }
+  .alert-row { font-size:11px; color:var(--text); margin-bottom:3px; }
+  .alert-row span { color:var(--muted); }
+  .tab-bar { display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+  .tab-btn { background:transparent; border:none; color:var(--muted); font-family:var(--font); font-size:11px; font-weight:600; padding:4px 12px; border-radius:5px; cursor:pointer; }
+  .tab-btn.active { background:var(--border); color:#fff; }
+  .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:8px; max-height:340px; background:rgba(0,0,0,0.18); }
+  table { width:100%; border-collapse:collapse; font-size:11px; }
+  th { padding:7px 9px; text-align:left; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border); white-space:nowrap; background:#0a0a16; position:sticky; top:0; z-index:1; }
+  td { padding:5px 9px; border-bottom:1px solid rgba(255,255,255,0.025); }
+  tr.na-row  { background:rgba(248,113,113,0.06); }
+  tr.new-row { background:rgba(251,146,60,0.05); }
+  tr:nth-child(even):not(.na-row):not(.new-row) { background:rgba(255,255,255,0.008); }
+  .c-green{color:var(--green);} .c-blue{color:var(--blue);} .c-red{color:var(--red);}
+  .c-orange{color:var(--orange);} .c-muted{color:var(--muted);}
+  .trunc{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .section-title { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:20px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+  td.editable input { background:transparent; border:none; border-bottom:1px solid var(--border); color:var(--text); font-family:var(--font); font-size:11px; width:100%; outline:none; padding:1px 2px; min-width:80px; }
+  td.editable input:focus { border-bottom-color:var(--blue); }
+  footer { text-align:center; padding:18px; color:#111118; font-size:9px; letter-spacing:1px; }
+  input[type=file] { display:none; }
+
+  /* ── Top-level tab navigation ── */
+  .tool-nav { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:0; }
+  .tool-tab { background:transparent; border:none; font-family:var(--font); font-size:11px; font-weight:700;
+    color:var(--muted); padding:12px 22px; cursor:pointer; letter-spacing:0.5px;
+    border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.2s; text-transform:uppercase; }
+  .tool-tab:hover { color:var(--text); }
+  .tool-tab.active { color:var(--green); border-bottom-color:var(--green); }
+  .tool-panel { display:none; }
+  .tool-panel.visible { display:block; }
+
+  /* ── How-to export blurb ── */
+  .how-to { margin-top:20px; border:1px solid var(--border); border-radius:9px; background:var(--surface); }
+  .how-to summary { padding:11px 16px; cursor:pointer; font-size:11px; font-weight:700;
+    color:var(--muted); list-style:none; user-select:none; }
+  .how-to summary:hover { color:var(--text); }
+  .how-to[open] summary { color:var(--text); border-bottom:1px solid var(--border); }
+  .how-to-body { display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:18px 18px 20px; }
+  .how-to-title { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; }
+  .how-to-col ol { padding-left:16px; }
+  .how-to-col li { font-size:11px; color:var(--text); line-height:1.7; margin-bottom:4px; }
+  .how-to-col strong { color:#fff; }
+  .how-to-col em { color:var(--blue); font-style:normal; }
+  .how-to-col code { background:rgba(255,255,255,0.06); border-radius:3px; padding:1px 5px; font-size:10px; color:var(--green); }
+  @media(max-width:600px){ .how-to-body { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⟳</div>
+  <div>
+    <div class="title">Shopify → NetSuite<span style="font-size:0.55em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.7</span></div>
+    <div class="subtitle">Cash Sale Import Generator</div>
+  </div>
+</header>
+<div class="tool-nav">
+  <button class="tool-tab active" id="navCashSale" onclick="switchTool('cashsale')">Cash Sales</button>
+  <button class="tool-tab" id="navPayouts" onclick="switchTool('payouts')">Payouts</button>
+  <button class="tool-tab" id="navMappings" onclick="switchTool('mappings')">Mappings</button>
+</div>
+<main>
+<div class="tool-panel visible" id="panelCashSale">
+
+<!-- STEP 1 -->
+<div class="step visible" id="step1">
+  <h2>Step 1 — Upload Shopify Exports</h2>
+  <p class="sub">Both Shopify files are required, plus the customer map file (<code>customer-map.json</code>). Export orders and payment transactions from Shopify admin as CSV.</p>
+  <div class="grid2" style="margin-bottom:16px">
+    <div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;color:var(--green)">1 — Orders Export <span style="color:var(--muted);font-weight:400">(required)</span></div>
+      <div class="dropzone" id="dz1" onclick="document.getElementById('fi1').click()">
+        <div class="icon" id="dzIcon1">↑</div>
+        <div class="lbl" id="dzLbl1">Drop orders_export.csv here or click to browse</div>
+      </div>
+      <input type="file" id="fi1" accept=".csv">
+    </div>
+    <div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;color:var(--blue)">2 — Payment Transactions <span style="color:var(--muted);font-weight:400">(required — for Payout IDs)</span></div>
+      <div class="dropzone" id="dzChargeTxn" onclick="document.getElementById('fiChargeTxn').click()">
+        <div class="icon" id="dzChargeTxnIcon">↑</div>
+        <div class="lbl" id="dzChargeTxnLbl">Drop payment_transactions_export.csv here or click to browse</div>
+      </div>
+      <input type="file" id="fiChargeTxn" accept=".csv">
+    </div>
+  </div>
+  <div style="margin-bottom:16px">
+    <div style="font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;color:var(--orange)">3 — Customer Map <span style="color:var(--muted);font-weight:400">(required — customer-map.json, kept out of the repo)</span></div>
+    <div class="dropzone" id="dzMap" onclick="document.getElementById('fiMap').click()">
+      <div class="icon" id="dzMapIcon">↑</div>
+      <div class="lbl" id="dzMapLbl">Drop customer-map.json here or click to browse</div>
+    </div>
+    <input type="file" id="fiMap" accept=".json,application/json">
+    <div style="display:flex;align-items:center;gap:14px;margin-top:8px;flex-wrap:wrap">
+      <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="mapRemember" checked> Remember on this computer
+      </label>
+      <button class="btn btn-secondary" type="button" onclick="clearSavedCustomerMap()">Clear saved map</button>
+      <span id="mapStatus" style="font-size:11px;color:var(--muted)"></span>
+    </div>
+  </div>
+  <!-- How to export blurb -->
+  <details class="how-to">
+    <summary>How to pull these reports from Shopify ▸</summary>
+    <div class="how-to-body">
+      <div class="how-to-col">
+        <div class="how-to-title c-green">1 — Orders Export</div>
+        <ol>
+          <li>In Shopify Admin, open <strong>Orders</strong> in the left sidebar.</li>
+          <li>Filter by date: click the date filter and choose a custom range (e.g. Jul 16–31, 2026). Apply.</li>
+          <li>Click the <strong>Export</strong> button (top-right corner).</li>
+          <li>Select <em>Orders matching filters</em> and format <em>CSV for Excel</em>, then click <strong>Export orders</strong>.</li>
+          <li>Shopify emails you the file, or it downloads automatically. Rename if needed — any .csv works.</li>
+        </ol>
+      </div>
+      <div class="how-to-col">
+        <div class="how-to-title c-blue">2 — Payment Transactions Export</div>
+        <ol>
+          <li>In Shopify Admin, open <strong>Finances</strong> in the left sidebar, then click <strong>Payments</strong>.</li>
+          <li>Click <strong>Export</strong> (top-right corner).</li>
+          <li>Set the date range to match your orders period.</li>
+          <li>Click <strong>Export transactions</strong>. The file downloads as <code>payment_transactions_export.csv</code>.</li>
+          <li>This tool uses only <em>charge</em>-type rows from this file to map Payout IDs — no other rows are imported.</li>
+        </ol>
+      </div>
+    </div>
+  </details>
+
+  <div style="margin-top:12px">
+    <button class="btn btn-primary" id="btnS1" style="display:none" onclick="goStep(2)">Continue →</button>
+  </div>
+</div>
+
+<!-- STEP 2 -->
+<div class="step" id="step2">
+  <h2>Step 2 — Review Lookup Tables</h2>
+  <p class="sub" id="s2sub">Verify item SKU and shipping method mappings before processing.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-label c-green">Product SKUs → Internal IDs</div>
+      <textarea id="itemMap" spellcheck="false" style="height:210px"></textarea>
+      <div class="card-hint">Format: SKU-CODE: 12345 (one per line)</div>
+    </div>
+    <div class="card">
+      <div class="card-label c-blue">Shipping Methods → Internal IDs</div>
+      <textarea id="shippingMap" spellcheck="false" style="height:210px"></textarea>
+      <div class="card-hint">Exact match to Shopify shipping method name</div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
+    <button class="btn btn-save" id="btnSave" onclick="saveLookups()">💾 Save Lookups</button>
+    <button class="btn btn-primary" onclick="processOrders()">Process Orders →</button>
+  </div>
+</div>
+
+<!-- STEP 2b: New Customers -->
+<div class="step" id="step2b">
+  <h2>Step 2b — New Customers Found</h2>
+  <p class="sub">These customers were not matched in NetSuite by email or name. Download the import template, upload it to NetSuite, then upload your fresh NetSuite customer export below to auto-match. Or enter Internal IDs manually in the table.</p>
+
+  <div class="stats" id="s2bStats"></div>
+  <div id="s2bNote" class="alert alert-warn" style="display:none;margin-bottom:14px"></div>
+
+  <div class="grid2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-label c-orange">Step A — Export new customers to NetSuite</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.6">Download the template, upload to NetSuite, then pull a fresh customer export (same format as the original customer list) and upload it here.</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="downloadCustomerTemplate()">↓ Download Customer Import Template</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label c-green">Step B — Upload updated NetSuite customer export</div>
+      <div class="dropzone" id="dzCust" onclick="document.getElementById('fiCust').click()" style="padding:20px 16px">
+        <div class="icon" id="dzCustIcon" style="font-size:22px;margin-bottom:6px">↑</div>
+        <div class="lbl" id="dzCustLbl" style="font-size:11px">Drop CustomersProjects.csv here or click to browse</div>
+      </div>
+      <input type="file" id="fiCust" accept=".csv">
+    </div>
+  </div>
+
+  <div class="btn-row" style="margin-bottom:18px">
+    <button class="btn btn-orange" onclick="confirmUploaded()">✓ Continue with current IDs →</button>
+    <button class="btn btn-secondary" onclick="goStep(2)">← Back</button>
+  </div>
+
+  <div class="section-title">Unmatched Customers (<span id="unmatchCount">0</span>)</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Name (NetSuite format)</th><th>Email</th><th>Address</th><th>Country</th>
+        <th>Internal ID <span style="color:var(--muted);font-weight:400">(auto-filled or enter manually)</span></th>
+      </tr></thead>
+      <tbody id="newCustBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- STEP 3 -->
+<div class="step" id="step3">
+  <h2>Step 3 — Review &amp; Download</h2>
+  <p class="sub">&nbsp;</p>
+  <div class="stats" id="s3Stats"></div>
+  <div id="s3CustAlert" style="display:none"></div>
+  <div id="s3ItemAlert" style="display:none"></div>
+  <div class="btn-row" style="margin-bottom:18px" id="s3Btns"></div>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabAll"  onclick="switchTab('all')">All Rows</button>
+    <button class="tab-btn"        id="tabNa"   onclick="switchTab('na')">#N/A Items</button>
+    <button class="tab-btn"        id="tabNoId" onclick="switchTab('noid')">No Cust ID</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Ext ID</th><th>Email</th><th>Cust ID</th><th>Date</th>
+        <th>Item SKU</th><th>Item ID</th><th>Qty</th><th>Amount</th><th>Memo</th><th>Payout ID</th><th>Method</th>
+      </tr></thead>
+      <tbody id="previewBody"></tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- end panelCashSale -->
+
+<!-- ══ PAYOUTS PANEL ══════════════════════════════════════ -->
+<div class="tool-panel" id="panelPayouts">
+
+  <div style="max-width:900px;margin:0 auto;padding:26px 18px">
+
+    <h2>Shopify Payouts → NetSuite Journal Entry</h2>
+    <p class="sub">Upload both files below. The transactions export groups payouts; the orders export provides per-state tax breakdowns. Both are needed to generate complete tax journal entries.</p>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-label c-blue">1 — Transactions Export</div>
+        <div class="dropzone" id="dzPayout" onclick="document.getElementById('fiPayout').click()" style="padding:20px 16px">
+          <div class="icon" id="dzPayoutIcon" style="font-size:22px;margin-bottom:6px">↑</div>
+          <div class="lbl" id="dzPayoutLbl" style="font-size:11px">payment_transactions_export.csv</div>
+        </div>
+        <input type="file" id="fiPayout" accept=".csv">
+      </div>
+      <div class="card">
+        <div class="card-label c-green">2 — Orders Export <span style="color:var(--muted);font-weight:400">(for taxes)</span></div>
+        <div class="dropzone" id="dzPayoutOrders" onclick="document.getElementById('fiPayoutOrders').click()" style="padding:20px 16px">
+          <div class="icon" id="dzPayoutOrdersIcon" style="font-size:22px;margin-bottom:6px">↑</div>
+          <div class="lbl" id="dzPayoutOrdersLbl" style="font-size:11px">orders_export.csv</div>
+        </div>
+        <input type="file" id="fiPayoutOrders" accept=".csv">
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-bottom:4px">
+      <button class="btn btn-primary" id="btnProcessPayouts" onclick="processPayouts()" disabled style="opacity:0.4">Process Payouts →</button>
+    </div>
+
+    <div id="payoutResults" style="display:none;margin-top:24px">
+      <div class="stats" id="payoutStats"></div>
+
+      <div class="btn-row" style="margin-bottom:18px">
+        <button class="btn btn-primary" onclick="downloadPayouts()">↓ Download NetSuite Import CSV</button>
+      </div>
+
+      <div class="section-title">Preview — Journal Entry Rows</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Account</th><th>Debit</th><th>Credit</th>
+            <th>Line Description</th><th>Department</th><th>Date</th><th>Payout ID</th><th>Memo</th>
+          </tr></thead>
+          <tbody id="payoutPreviewBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- end panelPayouts -->
+
+<!-- ══ MAPPINGS PANEL ══════════════════════════════════════ -->
+<div class="tool-panel" id="panelMappings">
+  <div style="max-width:900px;margin:0 auto;padding:26px 18px">
+    <h2>Mappings — Review &amp; Edit</h2>
+    <p class="sub">All mapping tables live here. Changes take effect immediately and persist via localStorage. Edits sync to the Step 2 lookup fields automatically.</p>
+
+    <!-- Constants -->
+    <div class="section-title">Constants</div>
+    <div class="stats" style="margin-bottom:20px">
+      <div class="stat"><div class="stat-num" style="font-size:14px;color:var(--green)">26298</div><div class="stat-lbl">Discount Item ID</div></div>
+      <div class="stat"><div class="stat-num" style="font-size:14px;color:var(--blue)">1717</div><div class="stat-lbl">NetSuite Account</div></div>
+      <div class="stat"><div class="stat-num" style="font-size:14px;color:var(--blue)">Custom</div><div class="stat-lbl">Price Level</div></div>
+      <div class="stat"><div class="stat-num" style="font-size:14px;color:var(--orange)">TRUE</div><div class="stat-lbl">Undeposited Funds</div></div>
+    </div>
+
+    <!-- Item + Shipping side by side -->
+    <div class="grid2" style="margin-bottom:24px">
+      <div>
+        <div class="section-title" style="margin-top:0">Product Item SKUs</div>
+        <div class="table-wrap" style="max-height:300px">
+          <table>
+            <thead><tr><th>SKU</th><th>NetSuite ID</th><th style="width:28px"></th></tr></thead>
+            <tbody id="mapItemBody"></tbody>
+          </table>
+        </div>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="btn btn-secondary" onclick="addMapRow('item')">+ Add Row</button>
+          <button class="btn btn-save" onclick="saveLookups()">💾 Save</button>
+        </div>
+      </div>
+      <div>
+        <div class="section-title" style="margin-top:0">Shipping Methods</div>
+        <div class="table-wrap" style="max-height:300px">
+          <table>
+            <thead><tr><th>Method Name</th><th>NetSuite ID</th><th style="width:28px"></th></tr></thead>
+            <tbody id="mapShipBody"></tbody>
+          </table>
+        </div>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="btn btn-secondary" onclick="addMapRow('ship')">+ Add Row</button>
+          <button class="btn btn-save" onclick="saveLookups()">💾 Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tax Items -->
+    <div class="section-title">State Tax Items</div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Internal ID of each state's tax item in NetSuite. Edit the ID column to update. States with no ID are skipped (flagged as #N/A if the order has taxes).</p>
+    <div class="table-wrap" style="max-height:340px">
+      <table>
+        <thead><tr><th>State</th><th>Item SKU</th><th>NetSuite ID</th></tr></thead>
+        <tbody id="mapTaxBody"></tbody>
+      </table>
+    </div>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-save" id="btnSaveTax" onclick="saveTaxItems()">💾 Save Tax Items</button>
+    </div>
+  </div>
+</div><!-- end panelMappings -->
+</main>
+<footer>HRE SHOPIFY WORKBOOK AUTOMATION</footer>
+
+<script src="cv-settings.js" data-tool="shopify-to-netsuite" data-title="Shopify to NetSuite"></script>
+<script>
+// ── Embedded Customer Lookup ──────────────────────────────────────────────────
+// ── Customer map (loaded from customer-map.json, never embedded in this file) ──
+// The map holds customer emails and names, so it lives outside the repo. Upload
+// customer-map.json in Step 1. It can be remembered in this browser (localStorage).
+const LS_BASEMAP = "hre_customer_base_map";
+let NS_MAPS = { email: {}, name: {} };
+let NS_MAPS_META = null;
+
+// Customer map editing through the shared settings panel
+function lowerKeys(o) { const r = {}; for (const [k, v] of Object.entries(o)) r[String(k).trim().toLowerCase()] = String(v).trim(); return r; }
+function persistBaseMap() {
+  try {
+    const cb = document.getElementById('mapRemember');
+    if (cb && cb.checked) localStorage.setItem(LS_BASEMAP, JSON.stringify({ format: 'hre-customer-map', version: 1,
+      generated: new Date().toISOString().slice(0, 10), email: NS_MAPS.email, name: NS_MAPS.name }));
+  } catch (e) {}
+}
+CVSettings.store({ id: 'customer-emails', label: 'Customer email to NetSuite ID', schema: { kind: 'map', columns: ['Email', 'NetSuite internal ID'] },
+  hint: 'The map loaded from customer-map.json. Edits stay saved only while "Remember on this computer" is ticked; otherwise load the file again.',
+  read: () => NS_MAPS.email, write: v => { NS_MAPS.email = lowerKeys(v); persistBaseMap(); } });
+CVSettings.store({ id: 'customer-names', label: 'Customer name to NetSuite ID', schema: { kind: 'map', columns: ['Name (lowercase)', 'NetSuite internal ID'] },
+  hint: 'Fallback match when an order has no email. Names are lowercased on save.',
+  read: () => NS_MAPS.name, write: v => { NS_MAPS.name = lowerKeys(v); persistBaseMap(); } });
+CVSettings.store({ id: 'manual-matches', label: 'Manual customer matches', schema: { kind: 'map', columns: ['Email or NO_EMAIL:order', 'NetSuite internal ID'] },
+  hint: 'Customers you matched by hand in Step 2b. These win over the customer map.',
+  read: () => JSON.parse(localStorage.getItem(LS_CUST) || '{}'), write: v => localStorage.setItem(LS_CUST, JSON.stringify(v)) });
+CVSettings.link({ label: 'SKUs, shipping methods and state tax items', hint: 'Opens the Mappings tab', open: function () { switchTool('mappings'); } });
+
+function customerMapSize() {
+  return Object.keys(NS_MAPS.email).length + Object.keys(NS_MAPS.name).length;
+}
+
+// Validates a parsed JSON object and returns a normalized map, or throws Error.
+function normalizeCustomerMap(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj))
+    throw new Error('File is not a customer map (expected a JSON object).');
+  const out = { email: {}, name: {} };
+  for (const field of ['email', 'name']) {
+    const src = obj[field];
+    if (!src || typeof src !== 'object' || Array.isArray(src))
+      throw new Error('Missing "' + field + '" section in customer map.');
+    for (const [k, v] of Object.entries(src)) {
+      const key = String(k).trim().toLowerCase();
+      const val = String(v).trim();
+      if (key && /^\d+$/.test(val)) out[field][key] = val;
+    }
+  }
+  if (!Object.keys(out.email).length && !Object.keys(out.name).length)
+    throw new Error('Customer map has no valid entries.');
+  out.meta = { generated: obj.generated || '' };
+  return out;
+}
+
+function applyCustomerMap(norm) {
+  NS_MAPS = { email: norm.email, name: norm.name };
+  NS_MAPS_META = norm.meta || null;
+}
+
+function customerMapSummary(prefix) {
+  const gen = NS_MAPS_META && NS_MAPS_META.generated ? ' (generated ' + NS_MAPS_META.generated + ')' : '';
+  return prefix + ' — ' + Object.keys(NS_MAPS.email).length.toLocaleString() + ' emails, ' +
+         Object.keys(NS_MAPS.name).length.toLocaleString() + ' names' + gen;
+}
+
+function saveCustomerMapIfRemembered(rawText) {
+  try {
+    const cb = document.getElementById('mapRemember');
+    if (cb && cb.checked) localStorage.setItem(LS_BASEMAP, rawText);
+    else localStorage.removeItem(LS_BASEMAP);
+  } catch (e) {
+    toastMapWarn('Could not save the customer map in this browser. It stays loaded for this session.');
+  }
+}
+
+function toastMapWarn(msg) {
+  const el = document.getElementById('mapStatus');
+  if (el) { el.textContent = msg; el.style.color = 'var(--orange)'; }
+}
+
+function loadStoredCustomerMap() {
+  try {
+    const stored = localStorage.getItem(LS_BASEMAP);
+    if (!stored) return false;
+    applyCustomerMap(normalizeCustomerMap(JSON.parse(stored)));
+    return true;
+  } catch (e) {
+    try { localStorage.removeItem(LS_BASEMAP); } catch (_) {}
+    return false;
+  }
+}
+
+function clearSavedCustomerMap() {
+  try { localStorage.removeItem(LS_BASEMAP); } catch (_) {}
+  NS_MAPS = { email: { }, name: { } };
+  NS_MAPS_META = null;
+  const dz = document.getElementById('dzMap');
+  dz.classList.remove('loaded');
+  document.getElementById('dzMapIcon').textContent = '↑';
+  document.getElementById('dzMapLbl').textContent = 'Drop customer-map.json here or click to browse';
+  const st = document.getElementById('mapStatus');
+  st.textContent = 'Saved customer map cleared from this browser.';
+  st.style.color = 'var(--muted)';
+  document.getElementById('fiMap').value = '';
+  checkStep1Ready();
+}
+
+function handleCustomerMapFile(txt) {
+  const dz = document.getElementById('dzMap');
+  const icon = document.getElementById('dzMapIcon');
+  const lbl = document.getElementById('dzMapLbl');
+  const st = document.getElementById('mapStatus');
+  try {
+    const norm = normalizeCustomerMap(JSON.parse(txt));
+    applyCustomerMap(norm);
+    saveCustomerMapIfRemembered(txt);
+    lbl.textContent = customerMapSummary('Loaded');
+    st.textContent = document.getElementById('mapRemember').checked
+      ? 'Saved in this browser. You will not need to upload it again on this computer.'
+      : 'Loaded for this session only.';
+    st.style.color = 'var(--muted)';
+  } catch (e) {
+    dz.classList.remove('loaded');
+    icon.textContent = '↑';
+    lbl.textContent = 'Drop customer-map.json here or click to browse';
+    st.textContent = 'Could not load customer map: ' + e.message;
+    st.style.color = 'var(--orange)';
+  }
+  checkStep1Ready();
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const NETSUITE_ACCOUNT = "1717";
+const PRICE_LEVEL      = "Custom";
+const UNDEPOSITED      = "TRUE";
+const DISCOUNT_ITEM    = "26298";
+const LS_ITEMS  = "hre_lookup_items";
+const LS_SHIP   = "hre_lookup_shipping";
+const LS_CUST   = "hre_customer_map";
+const LS_TAX    = "hre_tax_items";
+
+const DEFAULT_TAX_ITEMS = {
+  AL:"2396",AR:"2398",AZ:"26309",CA:"2399",CO:"2400",CT:"2401",DE:"2403",
+  FL:"2404",GA:"2405",HI:"2406",IA:"2407",ID:"2408",IL:"2409",IN:"2410",
+  KS:"2411",KY:"2412",LA:"2413",MA:"2414",MD:"2415",ME:"2416",MI:"2417",
+  MN:"2418",MO:"2419",MS:"2420",NC:"2422",ND:"2423",NE:"2424",NH:"2425",
+  NJ:"2426",NM:"2427",NV:"2428",NY:"2429",OH:"2430",OK:"2431",OR:"2432",
+  PA:"2433",PR:"2434",RI:"2435",SC:"2436",SD:"2437",TN:"2438",TX:"2439",
+  UT:"2440",VA:"2441",VT:"2442",WA:"2443",WI:"2444",WV:"2445"
+};
+
+const DEFAULT_ITEMS = `LG-AK-01: 26197
+LG-LL-01: 26194
+LG-PP-01: 27424
+LG-HB-01: 27438
+LG-EM-01: 27426
+LG-DG-01: 27425
+BC-FSBP-01: 26199
+BC-CRM-01: 26201
+BC-CLN-01: 26200
+LG-DB-01: 26195
+LG-RR-01: 26196
+LG-AS-01: 26198`;
+
+const DEFAULT_SHIP = `Economy 5-10 Business Days: 26299
+Economy 5-10 Business Day: 26299
+FedEx 2-3 Day: 26301
+Standard 3-5 Business Days: 26300
+Priority 2-3 Business Days: 26301
+Express 1-2 Business Days: 26302
+Shipped by Seller: Standard Shipping: 26300
+Shipped by Seller: Standard: 26300
+Free Shipping: 26300`;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let rawCSV        = "";
+let allRows       = [];
+let naRows        = [];
+let noIdRows      = [];
+let newCustomers  = [];   // customers to create in NetSuite
+let custResolved  = {};   // email (or "NO_EMAIL:orderName") -> {id, isNew}
+let extraCustMap  = {};   // saved manual overrides: key -> internalId
+let savedItemMap  = {};
+let savedShipMap  = {};
+let savedOrderMap   = null;
+let savedIdx        = null;
+let activeTaxItems  = {};   // state abbrev -> NetSuite item ID string
+let chargeTxnCSV    = "";   // payment_transactions CSV text
+let chargePayoutMap = {};   // orderNum (no #) -> payoutId string
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('itemMap').value  = localStorage.getItem(LS_ITEMS) || DEFAULT_ITEMS;
+  document.getElementById('shippingMap').value = localStorage.getItem(LS_SHIP)  || DEFAULT_SHIP;
+  try { extraCustMap = JSON.parse(localStorage.getItem(LS_CUST) || '{}'); } catch(_){}
+  if (localStorage.getItem(LS_ITEMS)||localStorage.getItem(LS_SHIP))
+    document.getElementById('s2sub').textContent = "✓ Saved lookups loaded. Update as needed.";
+  loadTaxItems();
+
+  if (loadStoredCustomerMap()) {
+    document.getElementById('dzMap').classList.add('loaded');
+    document.getElementById('dzMapIcon').textContent = '✓';
+    document.getElementById('dzMapLbl').textContent = customerMapSummary('Loaded from this browser');
+    document.getElementById('mapStatus').textContent = 'Drop a new file to replace it.';
+  }
+  setupDrop('dzMap','fiMap','dzMapIcon','dzMapLbl', handleCustomerMapFile);
+
+  setupDrop('dz1','fi1','dzIcon1','dzLbl1', txt => {
+    rawCSV = txt;
+    const n = parseCSV(txt).length - 1;
+    document.getElementById('dzLbl1').textContent = `Loaded — ${n} data rows`;
+    document.getElementById('dz1').classList.add('loaded');
+    checkStep1Ready();
+  });
+
+  setupDrop('dzChargeTxn','fiChargeTxn','dzChargeTxnIcon','dzChargeTxnLbl', txt => {
+    chargeTxnCSV = txt;
+    chargePayoutMap = buildOrderPayoutMap(txt);
+    const n = Object.keys(chargePayoutMap).length;
+    document.getElementById('dzChargeTxnLbl').textContent = `Loaded — ${n} charge transaction${n!==1?'s':''}`;
+    document.getElementById('dzChargeTxn').classList.add('loaded');
+    checkStep1Ready();
+  });
+
+  // Customer export upload on Step 2b
+  setupDrop('dzCust','fiCust','dzCustIcon','dzCustLbl', txt => {
+    loadCustomerExport(txt);
+  });
+
+  // Payouts drop
+  setupDrop('dzPayout','fiPayout','dzPayoutIcon','dzPayoutLbl', txt => {
+    payoutTxnCSV = txt;
+    document.getElementById('dzPayoutLbl').textContent = '✓ Transactions loaded';
+    if (payoutBothReady()) { const b=document.getElementById('btnProcessPayouts'); b.disabled=false; b.style.opacity='1'; }
+  });
+  setupDrop('dzPayoutOrders','fiPayoutOrders','dzPayoutOrdersIcon','dzPayoutOrdersLbl', txt => {
+    payoutOrdCSV = txt;
+    document.getElementById('dzPayoutOrdersLbl').textContent = '✓ Orders loaded';
+    if (payoutBothReady()) { const b=document.getElementById('btnProcessPayouts'); b.disabled=false; b.style.opacity='1'; }
+  });
+});
+
+// ── Drop helper ───────────────────────────────────────────────────────────────
+function setupDrop(dzId, inputId, iconId, lblId, cb) {
+  const dz = document.getElementById(dzId), inp = document.getElementById(inputId);
+  dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('drag');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('drag');readFile(e.dataTransfer.files[0],dzId,iconId,cb);});
+  inp.addEventListener('change',e=>readFile(e.target.files[0],dzId,iconId,cb));
+}
+function readFile(file,dzId,iconId,cb){
+  if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{document.getElementById(dzId).classList.add('loaded');document.getElementById(iconId).textContent="✓";cb(ev.target.result);};
+  r.readAsText(file);
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+const ALL_STEPS = ['step1','step2','step2b','step3'];
+const DOT_ORDER = ['dot1','dot2','dot2b','dot3'];
+const STEP_ORDER = [1, 2, '2b', 3];
+function goStep(n) {
+  ALL_STEPS.forEach(id=>document.getElementById(id).classList.remove('visible'));
+  document.getElementById('step'+n).classList.add('visible');
+  const cur = STEP_ORDER.indexOf(n);
+  DOT_ORDER.forEach((id,i)=>document.getElementById(id).classList.toggle('active',i<=cur));
+}
+
+// ── Save Lookups ──────────────────────────────────────────────────────────────
+function saveLookups() {
+  localStorage.setItem(LS_ITEMS, document.getElementById('itemMap').value);
+  localStorage.setItem(LS_SHIP,  document.getElementById('shippingMap').value);
+  const btn = document.getElementById('btnSave');
+  btn.textContent="✓ Saved!"; btn.classList.add('saved');
+  setTimeout(()=>{btn.textContent="💾 Save Lookups";btn.classList.remove('saved');},2500);
+}
+
+// ── CSV Parser (handles embedded newlines in quoted fields) ───────────────────
+function parseCSV(text) {
+  const rows=[]; let row=[],field="",inQ=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i],nx=text[i+1];
+    if(inQ){
+      if(ch==='"'&&nx==='"'){field+='"';i++;}
+      else if(ch==='"'){inQ=false;}
+      else{field+=ch;}
+    }else{
+      if(ch==='"'){inQ=true;}
+      else if(ch===','){row.push(field);field="";}
+      else if(ch==='\r'&&nx==='\n'){row.push(field);field="";rows.push(row);row=[];i++;}
+      else if(ch==='\n'||ch==='\r'){row.push(field);field="";rows.push(row);row=[];}
+      else{field+=ch;}
+    }
+  }
+  if(field||row.length>0){row.push(field);if(row.some(f=>f!==""))rows.push(row);}
+  return rows;
+}
+
+function parseMapText(txt){
+  const map={};
+  for(const line of txt.split("\n")){
+    const t=line.trim();if(!t)continue;
+    const last=t.lastIndexOf(": ");if(last===-1)continue;
+    const key=t.slice(0,last).trim(),val=parseInt(t.slice(last+2).trim());
+    if(key&&!isNaN(val))map[key]=val;
+  }
+  return map;
+}
+
+function escCSV(v){
+  const s=String(v??"");
+  if(s.includes(",")||s.includes('"')||s.includes("\n")||s.includes("\r"))return`"${s.replace(/"/g,'""')}"`;
+  return s;
+}
+function escH(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function fmtDate(d){
+  if(!d)return"";const m=d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m?`${parseInt(m[2])}/${parseInt(m[3])}/${m[1]}`:d;
+}
+function monthAbbr(n){return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][n-1]||'Jan';}
+
+// ── Customer lookup ───────────────────────────────────────────────────────────
+function lookupCustomer(key, email, billName) {
+  // key = email if present, else "NO_EMAIL:<orderName>"
+  if(extraCustMap[key]) return {id:extraCustMap[key],method:'manual'};
+  const eml=(email||'').trim().toLowerCase();
+  const nm=(billName||'').trim().toLowerCase();
+  if(eml&&NS_MAPS.email[eml]) return {id:NS_MAPS.email[eml],method:'email'};
+  if(nm&&NS_MAPS.name[nm])    return {id:NS_MAPS.name[nm], method:'name'};
+  return null;
+}
+
+// ── Process Orders ────────────────────────────────────────────────────────────
+function processOrders() {
+  saveLookups();
+  savedItemMap = parseMapText(document.getElementById('itemMap').value);
+  savedShipMap = parseMapText(document.getElementById('shippingMap').value);
+
+  const parsed = parseCSV(rawCSV);
+  if(parsed.length<2){alert("Could not parse CSV.");return;}
+
+  const headers=parsed[0];
+  savedIdx={};headers.forEach((h,i)=>{savedIdx[h.trim()]=i;});
+  const idx=savedIdx;
+
+  savedOrderMap=new Map();
+  for(let i=1;i<parsed.length;i++){
+    const cols=parsed[i],name=cols[idx["Name"]]?.trim();
+    if(!name||!name.startsWith("#"))continue;
+    if(!savedOrderMap.has(name))savedOrderMap.set(name,[]);
+    savedOrderMap.get(name).push(cols);
+  }
+
+  // First pass: match ALL orders (including those with no email)
+  custResolved={};
+  const unmatchedMap=new Map(); // key -> cust data
+
+  for(const [orderName,orderRows] of savedOrderMap){
+    const first=orderRows.find(r=>r[idx["Financial Status"]]?.trim())||orderRows[0];
+    const email    = first[idx["Email"]]?.trim()||"";
+    const billName = first[idx["Billing Name"]]?.trim()||"";
+    // Use email as key if available, else use order name as unique key
+    const key = email || ("NO_EMAIL:"+orderName);
+
+    if(custResolved[key]!==undefined)continue;
+
+    const match=lookupCustomer(key, email, billName);
+    if(match){
+      custResolved[key]={id:match.id,isNew:false};
+    }else{
+      custResolved[key]={id:"",isNew:true};
+      if(!unmatchedMap.has(key)){
+        unmatchedMap.set(key,{
+          name:    billName?(billName+" - HRE"):(email||orderName)+" - HRE",
+          email:   email,
+          addr:    first[idx["Billing Address1"]]?.trim()||"",
+          country: first[idx["Billing Country"]]?.trim()||"US",
+          key:     key,
+        });
+      }
+    }
+  }
+
+  // Build new customer list with External IDs
+  newCustomers=[];
+  let seq=1, batchMonth="Mar", batchYear="26";
+  for(const [,orderRows] of savedOrderMap){
+    const first=orderRows.find(r=>r[idx["Financial Status"]]?.trim())||orderRows[0];
+    const dr=first[idx["Created at"]]?.trim()||"";
+    const dp=dr.match(/^(\d{4})-(\d{2})/);
+    if(dp){batchMonth=monthAbbr(parseInt(dp[2]));batchYear=dp[1].slice(2);break;}
+  }
+  for(const [,cust] of unmatchedMap){
+    // Only include in template if they have an email (can't create NetSuite customer without one)
+    cust.extId=`SJM_SHOPIFY_${batchMonth}${batchYear}_${seq++}`;
+    newCustomers.push(cust);
+  }
+
+  if(newCustomers.length>0){
+    renderNewCustomers();
+    goStep('2b');
+  }else{
+    buildImport();
+  }
+}
+
+// ── Step 2b: Render new customers ─────────────────────────────────────────────
+function renderNewCustomers(){
+  const matched=Object.values(custResolved).filter(c=>!c.isNew).length;
+  const noEmail=newCustomers.filter(c=>!c.email);
+  const hasEmail=newCustomers.filter(c=>c.email);
+  document.getElementById('unmatchCount').textContent=newCustomers.length;
+  document.getElementById('s2bStats').innerHTML=`
+    <div class="stat"><div class="stat-num c-orange">${newCustomers.length}</div><div class="stat-lbl">Unmatched</div></div>
+    <div class="stat"><div class="stat-num c-green">${matched}</div><div class="stat-lbl">Matched</div></div>
+    ${hasEmail.length>0?`<div class="stat"><div class="stat-num c-blue">${hasEmail.length}</div><div class="stat-lbl">In Template</div></div>`:""}
+    ${noEmail.length>0?`<div class="stat"><div class="stat-num c-red">${noEmail.length}</div><div class="stat-lbl">No Email — Manual ID Required</div></div>`:""}
+  `;
+
+  // Add a note if any customers have no email
+  const noteEl = document.getElementById('s2bNote');
+  if(noEmail.length>0){
+    noteEl.style.display="block";
+    noteEl.innerHTML=`<div class="alert-title">⚠ ${noEmail.length} customer${noEmail.length>1?'s':''} have no email address</div>
+      <div class="alert-row">These are highlighted in red below. They cannot be created via the import template — you must find them in NetSuite by name and enter their Internal ID manually in the last column.</div>`;
+  } else {
+    noteEl.style.display="none";
+  }
+
+  document.getElementById('newCustBody').innerHTML=newCustomers.map((c,i)=>{
+    const rowClass = !c.email ? 'na-row' : 'new-row';
+    const emailCell = c.email
+      ? `<td class="trunc">${escH(c.email)}</td>`
+      : `<td><span style="color:var(--red);font-style:italic">no email — enter ID →</span></td>`;
+    return `<tr class="${rowClass}">
+      <td class="c-muted">${i+1}</td>
+      <td>${escH(c.name)}</td>
+      ${emailCell}
+      <td>${escH(c.addr)}</td>
+      <td>${escH(c.country)}</td>
+      <td class="editable"><input type="text" placeholder="${c.email?'leave blank = create new':'required — find in NetSuite'}"
+        oninput="newCustomers[${i}].manualId=this.value.trim()"
+        value="${escH(c.manualId||'')}"></td>
+    </tr>`;
+  }).join("");
+}
+
+function noEmailAddress(name){
+  // Convert "First Last - HRE" -> "firstlast@noemail.com"
+  // Strip the " - HRE" suffix, remove spaces, lowercase
+  const base = name.replace(/\s*-\s*HRE\s*$/i,'').trim();
+  const slug = base.replace(/\s+/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  return slug + "@noemail.com";
+}
+
+function downloadCustomerTemplate(){
+  const headers=["External ID","Company Name","Customer Type","Business Name","Customer Email","Customer Address","Customer Country"];
+  const lines=[headers.join(",")];
+  for(const c of newCustomers){
+    if(c.manualId)continue; // skip ones already resolved with a manual ID
+    const email = c.email || noEmailAddress(c.name);
+    lines.push([c.extId,c.name,"FALSE",c.name,email,c.addr,c.country].map(escCSV).join(","));
+  }
+  if(lines.length===1){
+    alert("All unmatched customers already have a manual Internal ID entered — nothing to download.");
+    return;
+  }
+  dlCSV(lines.join("\r\n"),"HRE_Customer_Import.csv");
+}
+
+// ── Load fresh NetSuite customer export and auto-match ────────────────────────
+function loadCustomerExport(txt){
+  const parsed = parseCSV(txt);
+  if(parsed.length < 2){ alert("Could not parse customer CSV."); return; }
+
+  const headers = parsed[0];
+  const idx = {}; headers.forEach((h,i)=>{ idx[h.trim()]=i; });
+
+  // Build email and name maps from the uploaded export
+  // Supports both the full NS export format (Internal ID, Name, Email)
+  // and simpler formats — just needs those three columns
+  const iidCol   = idx["Internal ID"] ?? idx["internal id"] ?? idx["InternalID"];
+  const nameCol  = idx["Name"]        ?? idx["name"]        ?? idx["Company Name"];
+  const emailCol = idx["Email"]       ?? idx["email"]       ?? idx["Customer Email"];
+
+  if(iidCol===undefined){ alert("Could not find 'Internal ID' column in customer export."); return; }
+
+  let matched = 0;
+  const newEmailMap = {}, newNameMap = {};
+
+  for(let i=1; i<parsed.length; i++){
+    const row   = parsed[i];
+    const iid   = row[iidCol]?.trim();
+    const name  = row[nameCol  !== undefined ? nameCol  : -1]?.trim() || "";
+    const email = row[emailCol !== undefined ? emailCol : -1]?.trim().toLowerCase() || "";
+    if(!iid) continue;
+    if(email) newEmailMap[email] = iid;
+    if(name && (name.includes('- HRE') || name.includes('-HRE'))){
+      const base = name.replace(/\s*-\s*HRE\s*$/i,'').trim().toLowerCase();
+      if(base) newNameMap[base] = iid;
+    }
+  }
+
+  // Try to match each unmatched customer using the new export
+  for(let i=0; i<newCustomers.length; i++){
+    const c   = newCustomers[i];
+    if(c.manualId) continue; // already resolved
+
+    const eml = (c.email||"").toLowerCase();
+    const nm  = (c.name||"").replace(/\s*-\s*HRE\s*$/i,'').trim().toLowerCase();
+
+    // Also check the noemail address we would have generated
+    const noEmailAddr = noEmailAddress(c.name);
+
+    const id = newEmailMap[eml] || newEmailMap[noEmailAddr] || newNameMap[nm];
+    if(id){
+      newCustomers[i].manualId = id;
+      custResolved[c.key] = { id, isNew: false };
+      matched++;
+    }
+  }
+
+  // Save newly matched customers to extraCustMap so they persist
+  for(const c of newCustomers){
+    if(c.manualId) extraCustMap[c.key] = c.manualId;
+  }
+  localStorage.setItem(LS_CUST, JSON.stringify(extraCustMap));
+
+  // Re-render the table with filled IDs
+  renderNewCustomers();
+
+  const still = newCustomers.filter(c=>!c.manualId).length;
+  document.getElementById('dzCustLbl').textContent =
+    `✓ Matched ${matched} customer${matched!==1?'s':''}${still>0?' — '+still+' still need manual ID':''}`;
+}
+
+function confirmUploaded(){
+  // Apply manual IDs and save overrides
+  for(const c of newCustomers){
+    if(c.manualId){
+      custResolved[c.key]={id:c.manualId,isNew:false};
+      extraCustMap[c.key]=c.manualId;
+    }
+  }
+  localStorage.setItem(LS_CUST,JSON.stringify(extraCustMap));
+  buildImport();
+}
+
+// ── Build cash sale import ────────────────────────────────────────────────────
+function buildImport(){
+  const itemMap=savedItemMap, shipMap=savedShipMap, orderMap=savedOrderMap, idx=savedIdx;
+  const missingItems=new Set(), missingShip=new Set(), missingTax=new Set();
+  const rows=[];
+
+  for(const [orderName,orderRows] of orderMap){
+    const first=orderRows.find(r=>r[idx["Financial Status"]]?.trim())||orderRows[0];
+    const email    = first[idx["Email"]]?.trim()||"";
+    const dateRaw  = first[idx["Created at"]]?.trim()||"";
+    const date     = fmtDate(dateRaw);
+    const orderNum = orderName.replace("#","");
+    const dp       = dateRaw.match(/^(\d{4})-(\d{2})/);
+    const year=dp?dp[1]:new Date().getFullYear(), mon=dp?parseInt(dp[2]):1;
+    const extIdFml=`${mon}-${year}#${orderNum}`;
+    const externalId=`HRE-#${orderNum}`;
+
+    const key      = email||("NO_EMAIL:"+orderName);
+    const custInfo = custResolved[key]||{id:"",isNew:true};
+    const custId   = custInfo.id||"";
+    const noCustId = !custId;
+
+    // Payout ID and payment method from charge transactions
+    const payoutId      = chargePayoutMap[orderNum] || "";
+    const paymentMethod = chargePayoutMap.hasOwnProperty(orderNum) ? "Shopify Payment" : "TikTok Shop";
+
+    const discAmt  = parseFloat(first[idx["Discount Amount"]]||"0")||0;
+    const shipAmt  = parseFloat(first[idx["Shipping"]]||"0")||0;
+    const shipMeth = first[idx["Shipping Method"]]?.trim()||"";
+    const taxAmt   = parseFloat(first[idx["Taxes"]]||"0")||0;
+    const taxState = (first[idx["Shipping Province"]]?.trim()||"").toUpperCase();
+
+    const base = {email,custId,date,undeposited:UNDEPOSITED,account:NETSUITE_ACCOUNT,
+      priceLevel:PRICE_LEVEL,discItem:"",discAmt:"",memo:orderName,
+      noCustId,hasNa:false,payoutId,paymentMethod};
+
+    for(let ri=0;ri<orderRows.length;ri++){
+      const row=orderRows[ri];
+      const sku   = row[idx["Lineitem sku"]]?.trim()||"";
+      const iname = row[idx["Lineitem name"]]?.trim()||"";
+      const qty   = parseInt(row[idx["Lineitem quantity"]]||"1")||1;
+      const price = parseFloat(row[idx["Lineitem price"]]||"0")||0;
+      if(!sku&&!iname)continue;
+      if(sku.startsWith("GC-")||iname.toLowerCase().includes("gift card"))continue;
+
+      const iid=itemMap[sku];
+      if(sku&&iid===undefined)missingItems.add(sku);
+
+      rows.push({...base,extIdFml,externalId,
+        sku,iid:iid!==undefined?iid:"#N/A",qty,amount:(qty*price).toFixed(2),
+        discItem:discAmt>0&&ri===0?DISCOUNT_ITEM:"",
+        discAmt: discAmt>0&&ri===0?(-discAmt).toFixed(2):"",
+        hasNa:iid===undefined&&sku!=="",isShip:false,isTax:false});
+    }
+
+    if(shipAmt>0){
+      const sid=shipMap[shipMeth];
+      if(shipMeth&&sid===undefined)missingShip.add(shipMeth);
+      rows.push({...base,extIdFml,externalId,
+        sku:shipMeth,iid:sid!==undefined?sid:"#N/A",qty:1,amount:shipAmt.toFixed(2),
+        hasNa:sid===undefined&&shipMeth!=="",isShip:true,isTax:false});
+    }
+
+    if(taxAmt>0){
+      const tid=taxState?activeTaxItems[taxState]:undefined;
+      if(taxState&&tid===undefined)missingTax.add(taxState||"(blank)");
+      rows.push({...base,extIdFml:"",externalId,
+        sku:taxState?`Tax ${taxState}`:"Tax",iid:tid!==undefined?tid:"#N/A",
+        qty:1,amount:taxAmt.toFixed(2),
+        hasNa:tid===undefined,isShip:false,isTax:true});
+    }
+  }
+
+  rows.sort((a,b)=>a.memo.localeCompare(b.memo));
+  allRows=rows; naRows=rows.filter(r=>r.hasNa); noIdRows=rows.filter(r=>r.noCustId);
+  renderStep3(missingItems,missingShip,missingTax);
+  goStep(3);
+}
+
+// ── Step 3: Render ────────────────────────────────────────────────────────────
+function renderStep3(missingItems,missingShip,missingTax=new Set()){
+  const clean=allRows.filter(r=>!r.hasNa);
+  document.getElementById('s3Stats').innerHTML=[
+    ["Total Rows",  allRows.length,      "var(--green)"],
+    ["Ready",       clean.length,        "var(--blue)"],
+    ["#N/A Items",  naRows.length,       naRows.length>0?"var(--red)":"var(--green)"],
+    ["No Cust ID",  noIdRows.length,     noIdRows.length>0?"var(--orange)":"var(--green)"],
+    ["Missing SKUs",missingItems.size,   missingItems.size>0?"var(--orange)":"var(--green)"],
+    ["Missing Ship",missingShip.size,    missingShip.size>0?"var(--orange)":"var(--green)"],
+    ["Missing Tax", missingTax.size,     missingTax.size>0?"var(--orange)":"var(--green)"],
+  ].map(([l,v,c])=>`<div class="stat"><div class="stat-num" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join("");
+
+  // Customer alert — shown if there are no-cust-id rows
+  const cBox=document.getElementById('s3CustAlert');
+  if(noIdRows.length>0){
+    cBox.style.display="block";
+    cBox.className="alert alert-warn";
+    cBox.innerHTML=`
+      <div class="alert-title">⚠ ${noIdRows.length} rows have no Customer Internal ID</div>
+      <div class="alert-row">These customers weren't matched and weren't uploaded to NetSuite yet.</div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-primary" onclick="downloadCustomerTemplate()">↓ Download Customer Import Template</button>
+        <button class="btn btn-orange"  onclick="confirmUploaded()">✓ I've uploaded — Rebuild Import</button>
+      </div>`;
+  }else{
+    cBox.style.display="none";
+  }
+
+  // Item/shipping alert
+  const iBox=document.getElementById('s3ItemAlert');
+  if(missingItems.size>0||missingShip.size>0){
+    iBox.style.display="block";
+    iBox.className="alert alert-warn";
+    iBox.innerHTML=`
+      <div class="alert-title">⚠ Missing Item/Shipping IDs — add to NetSuite, update Step 2, then reprocess</div>
+      ${missingItems.size>0?`<div class="alert-row"><span>SKUs: </span>${[...missingItems].join(", ")}</div>`:""}
+      ${missingShip.size>0?`<div class="alert-row"><span>Shipping: </span>${[...missingShip].join(", ")}</div>`:""}`;
+  }else iBox.style.display="none";
+
+  document.getElementById('s3Btns').innerHTML=`
+    <button class="btn btn-primary" onclick="doDownload('all')">↓ Download Cash Sale CSV</button>
+    ${clean.length>0&&naRows.length>0?`<button class="btn btn-blue" onclick="doDownload('clean')">↓ Clean Rows Only</button>`:""}
+    <button class="btn btn-secondary" onclick="goStep(2)">← Fix Lookups</button>
+  `;
+
+  document.getElementById('tabAll').textContent  = `All Rows (${Math.min(allRows.length,100)} preview)`;
+  document.getElementById('tabNa').textContent   = `#N/A Items (${naRows.length})`;
+  document.getElementById('tabNoId').textContent = `No Cust ID (${noIdRows.length})`;
+  renderTable('all');
+}
+
+function switchTab(tab){
+  ['all','na','noid'].forEach(t=>{
+    const btn=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(btn)btn.classList.toggle('active',t===tab);
+  });
+  renderTable(tab);
+}
+
+function renderTable(tab){
+  const rows=tab==='na'?naRows:tab==='noid'?noIdRows:allRows.slice(0,100);
+  document.getElementById('previewBody').innerHTML=rows.map(r=>`
+    <tr class="${r.hasNa?'na-row':r.noCustId?'new-row':''}">
+      <td class="c-muted">${r.externalId}</td>
+      <td class="trunc">${r.email||'<em style="color:var(--muted)">no email</em>'}</td>
+      <td class="${r.custId?'c-green':'c-orange'}">${r.custId||'—'}</td>
+      <td class="c-muted" style="white-space:nowrap">${r.date}</td>
+      <td class="${r.isShip?'c-blue':''}">${r.sku}</td>
+      <td class="${r.hasNa?'c-red':'c-green'}">${r.iid}</td>
+      <td class="c-muted" style="text-align:right">${r.qty}</td>
+      <td style="text-align:right">${r.amount}</td>
+      <td class="c-muted">${r.memo}</td>
+    </tr>`).join("");
+}
+
+// ── CSV output & download ─────────────────────────────────────────────────────
+function rowsToCSV(rows){
+  const h=["External ID - Formula","External ID","Customer Email","Customer Internal ID",
+    "Date","Undeposited Funds","Account","Price Level",
+    "Item SKU","Item InternalID","Item Qty","Item Amount","Discount Item","Discount Amount","Memo",
+    "Payout ID","Payment Method"];
+  const lines=[h.join(",")];
+  for(const r of rows)
+    lines.push([r.extIdFml,r.externalId,r.email,r.custId,r.date,r.undeposited,
+      r.account,r.priceLevel,r.sku,r.iid,r.qty,r.amount,r.discItem,r.discAmt,r.memo,
+      r.payoutId||"",r.paymentMethod||""].map(escCSV).join(","));
+  return lines.join("\r\n");
+}
+function doDownload(which){
+  const rows=which==='clean'?allRows.filter(r=>!r.hasNa):allRows;
+  dlCSV(rowsToCSV(rows), which==='clean'?"netsuite_cash_sale_CLEAN.csv":"netsuite_cash_sale_ALL.csv");
+}
+function dlCSV(content,filename){
+  const blob=new Blob([content],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},300);
+}
+
+
+// ══ TOOL NAVIGATION ══════════════════════════════════════════════════════════
+function switchTool(tool) {
+  const panels = ['cashsale','payouts','mappings'];
+  const ID = { cashsale: 'CashSale', payouts: 'Payouts', mappings: 'Mappings' };
+  const nav  = { cashsale: 'navCashSale', payouts: 'navPayouts', mappings: 'navMappings' };
+  panels.forEach(t => {
+    document.getElementById('panel' + ID[t]).classList.toggle('visible', t===tool);
+    document.getElementById(nav[t]).classList.toggle('active', t===tool);
+  });
+  if (tool === 'mappings') renderMappings();
+}
+
+// ══ PAYOUTS ══════════════════════════════════════════════════════════════════
+
+// NetSuite account mappings
+const P_ACCT_SHOPIFY  = '10123 Cash : Shopify - Heather Rae Essentials';
+const P_ACCT_BOFA     = '10128 Cash : HRE Bank of America 8513';
+const P_ACCT_RETURNS  = '40858 Sales Returns';
+const P_ACCT_TAX      = '24200 Taxes Payable : Sales Tax Payable';
+const P_ACCT_FEES     = '57000 Merchant Fees';
+const P_DEPT          = 'General Corporate';
+const P_ACCT_REVENUE  = '40850 Sales Revenue';
+
+// State name -> abbreviation (from Shopify "California State Tax X%" format)
+const STATE_NAME_MAP = CVSettings.use("state-names", {"Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA", "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA", "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA", "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD", "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS", "Missouri": "MO", "Montana": "MT", "Nebraska": "NE", "Nevada": "NV", "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH", "Oklahoma": "OK", "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC", "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT", "Vermont": "VT", "Virginia": "VA", "Washington": "WA", "West Virginia": "WV", "Wisconsin": "WI", "Wyoming": "WY", "Puerto Rico": "PR", "District of Columbia": "DC", "Guam": "GU"}, {"kind": "map", "label": "State name to abbreviation", "columns": ["State name", "Abbreviation"], "hint": "Used to read the shipping state from the Shopify export."});
+
+// State abbreviation -> NetSuite tax payable account
+const TAX_ACCT_MAP = CVSettings.use("tax-accounts", {"AR":"24201 Taxes Payable : Sales Tax Payable : Sales Tax Payable AR","CA":"24202 Taxes Payable : Sales Tax Payable : Sales Tax Payable CA","GA":"24203 Taxes Payable : Sales Tax Payable : Sales Tax Payable GA","IL":"24204 Taxes Payable : Sales Tax Payable : Sales Tax Payable IL","IN":"24205 Taxes Payable : Sales Tax Payable : Sales Tax Payable IN","KY":"24206 Taxes Payable : Sales Tax Payable : Sales Tax Payable KY","LA":"24207 Taxes Payable : Sales Tax Payable : Sales Tax Payable LA","MD":"24208 Taxes Payable : Sales Tax Payable : Sales Tax Payable MD","MN":"24209 Taxes Payable : Sales Tax Payable : Sales Tax Payable MN","NC":"24210 Taxes Payable : Sales Tax Payable : Sales Tax Payable NC","NE":"24211 Taxes Payable : Sales Tax Payable : Sales Tax Payable NE","NJ":"24212 Taxes Payable : Sales Tax Payable : Sales Tax Payable NJ","NV":"24213 Taxes Payable : Sales Tax Payable : Sales Tax Payable NV","OH":"24214 Taxes Payable : Sales Tax Payable : Sales Tax Payable OH","UT":"24215 Taxes Payable : Sales Tax Payable : Sales Tax Payable UT","VA":"24216 Taxes Payable : Sales Tax Payable : Sales Tax Payable VA","AL":"24217 Taxes Payable : Sales Tax Payable : Sales Tax Payable AL","FL":"24218 Taxes Payable : Sales Tax Payable : Sales Tax Payable FL","MI":"24257 Taxes Payable : Sales Tax Payable : Sales Tax Payable MI","NY":"24220 Taxes Payable : Sales Tax Payable : Sales Tax Payable NY","CO":"24226 Taxes Payable : Sales Tax Payable : Sales Tax Payable CO","CT":"24227 Taxes Payable : Sales Tax Payable : Sales Tax Payable CT","DE":"24228 Taxes Payable : Sales Tax Payable : Sales Tax Payable DE","DC":"24229 Taxes Payable : Sales Tax Payable : Sales Tax Payable DC","HI":"24230 Taxes Payable : Sales Tax Payable : Sales Tax Payable HI","ID":"24231 Taxes Payable : Sales Tax Payable : Sales Tax Payable ID","IA":"24232 Taxes Payable : Sales Tax Payable : Sales Tax Payable IA","KS":"24233 Taxes Payable : Sales Tax Payable : Sales Tax Payable KS","ME":"24234 Taxes Payable : Sales Tax Payable : Sales Tax Payable ME","MA":"24235 Taxes Payable : Sales Tax Payable : Sales Tax Payable MA","MS":"24236 Taxes Payable : Sales Tax Payable : Sales Tax Payable MS","MO":"24237 Taxes Payable : Sales Tax Payable : Sales Tax Payable MO","MT":"24238 Taxes Payable : Sales Tax Payable : Sales Tax Payable MT","NH":"24239 Taxes Payable : Sales Tax Payable : Sales Tax Payable NH","NM":"24240 Taxes Payable : Sales Tax Payable : Sales Tax Payable NM","ND":"24241 Taxes Payable : Sales Tax Payable : Sales Tax Payable ND","OK":"24242 Taxes Payable : Sales Tax Payable : Sales Tax Payable OK","OR":"24243 Taxes Payable : Sales Tax Payable : Sales Tax Payable OR","PA":"24244 Taxes Payable : Sales Tax Payable : Sales Tax Payable PA","PR":"24245 Taxes Payable : Sales Tax Payable : Sales Tax Payable PR","RI":"24246 Taxes Payable : Sales Tax Payable : Sales Tax Payable RI","SC":"24247 Taxes Payable : Sales Tax Payable : Sales Tax Payable SC","SD":"24248 Taxes Payable : Sales Tax Payable : Sales Tax Payable SD","TN":"24249 Taxes Payable : Sales Tax Payable : Sales Tax Payable TN","TX":"24250 Taxes Payable : Sales Tax Payable : Sales Tax Payable TX","VT":"24251 Taxes Payable : Sales Tax Payable : Sales Tax Payable VT","WA":"24252 Taxes Payable : Sales Tax Payable : Sales Tax Payable WA","WV":"24253 Taxes Payable : Sales Tax Payable : Sales Tax Payable WV","WI":"24254 Taxes Payable : Sales Tax Payable : Sales Tax Payable WI","WY":"24255 Taxes Payable : Sales Tax Payable : Sales Tax Payable WY","AZ":"24256 Taxes Payable : Sales Tax Payable : Sales Tax Payable AZ","AK":"24200 Taxes Payable : Sales Tax Payable"}, {"kind": "map", "label": "State to sales tax payable account", "columns": ["State", "NetSuite tax account"], "hint": "The GL account each state's sales tax posts to on the payout journal entry."});
+
+let payoutRows    = []; // final import rows
+let payoutTxnCSV  = '';   // transactions CSV text
+let payoutOrdCSV  = '';   // orders CSV text (for taxes)
+let payoutBothReady = () => payoutTxnCSV && payoutOrdCSV;
+
+window.addEventListener('DOMContentLoaded', () => {
+  // existing DOMContentLoaded already runs — attach payout drop here
+  setupDrop('dzPayout','fiPayout','dzPayoutIcon','dzPayoutLbl', txt => {
+    payoutTxnCSV = txt;
+    document.getElementById('dzPayoutLbl').textContent = '✓ Transactions loaded';
+    if (payoutBothReady()) { const b=document.getElementById('btnProcessPayouts'); b.disabled=false; b.style.opacity='1'; }
+  });
+  setupDrop('dzPayoutOrders','fiPayoutOrders','dzPayoutOrdersIcon','dzPayoutOrdersLbl', txt => {
+    payoutOrdCSV = txt;
+    document.getElementById('dzPayoutOrdersLbl').textContent = '✓ Orders loaded';
+    if (payoutBothReady()) { const b=document.getElementById('btnProcessPayouts'); b.disabled=false; b.style.opacity='1'; }
+  });
+}, { once: false });
+
+// Re-attach after the first DOMContentLoaded fires (in case it already ran)
+if (document.readyState !== 'loading') {
+  setupDrop('dzPayout','fiPayout','dzPayoutIcon','dzPayoutLbl', txt => {
+    payoutTxnCSV = txt;
+    document.getElementById('dzPayoutLbl').textContent = '✓ Transactions loaded';
+    if (payoutBothReady()) { const b=document.getElementById('btnProcessPayouts'); b.disabled=false; b.style.opacity='1'; }
+  });
+  setupDrop('dzPayoutOrders','fiPayoutOrders','dzPayoutOrdersIcon','dzPayoutOrdersLbl', txt => {
+    payoutOrdCSV = txt;
+    document.getElementById('dzPayoutOrdersLbl').textContent = '✓ Orders loaded';
+    if (payoutBothReady()) { const b=document.getElementById('btnProcessPayouts'); b.disabled=false; b.style.opacity='1'; }
+  });
+}
+
+function processPayouts() {
+  const csvTxt = payoutTxnCSV;
+  const ordTxt = payoutOrdCSV;
+
+  // ── Parse transactions ───────────────────────────────────────────────────
+  const parsed = parseCSV(csvTxt);
+  if (parsed.length < 2) { alert('Could not parse transactions CSV.'); return; }
+
+  const headers = parsed[0];
+  const idx = {}; headers.forEach((h,i) => { idx[h.trim()] = i; });
+
+  const payouts = new Map();
+  const orderToPayout = {}; // order# -> payout ID (for tax matching)
+
+  for (let i = 1; i < parsed.length; i++) {
+    const row = parsed[i];
+    const pid  = row[idx['Payout ID']]?.trim();
+    const typ  = row[idx['Type']]?.trim().toLowerCase();
+    const amt  = parseFloat(row[idx['Amount']] || '0') || 0;
+    const fee  = parseFloat(row[idx['Fee']]    || '0') || 0;
+    const net  = parseFloat(row[idx['Net']]    || '0') || 0;
+    const date = row[idx['Payout Date']]?.trim() || '';
+    const order = row[idx['Order']]?.trim() || '';
+    if (!pid) continue;
+
+    if (!payouts.has(pid)) {
+      payouts.set(pid, { date, charge:0, tax:0, refund:0, adj:0, fee:0, net:0 });
+    }
+    const p = payouts.get(pid);
+    if (!p.date && date) p.date = date;
+
+    if (['charge','shop_cash_credit','chargeback won'].includes(typ)) {
+      p.charge += amt;
+      if (order) orderToPayout[order] = pid;
+    } else if (typ === 'marketplace sales tax') {
+      p.tax += amt;
+    } else if (['refund','shop_cash_refund_debit','chargeback'].includes(typ)) {
+      p.refund += amt;
+    } else if (typ === 'adjustment') {
+      p.adj += amt;
+    }
+    p.fee += fee;
+    p.net += net;
+  }
+
+  // ── Parse orders for state tax breakdown ─────────────────────────────────
+  // payoutStateTax: pid -> { state -> totalTax }
+  const payoutStateTax = {};
+
+  if (ordTxt) {
+    const ordParsed = parseCSV(ordTxt);
+    if (ordParsed.length > 1) {
+      const oh = ordParsed[0];
+      const oi = {}; oh.forEach((h,i) => { oi[h.trim()] = i; });
+
+      // Deduplicate: one entry per order name
+      const seenOrders = new Set();
+
+      for (let i = 1; i < ordParsed.length; i++) {
+        const row = ordParsed[i];
+        const orderName = row[oi['Name']]?.trim() || '';
+        if (!orderName.startsWith('#') || seenOrders.has(orderName)) continue;
+        seenOrders.add(orderName);
+
+        const totalTax = parseFloat(row[oi['Taxes']] || '0') || 0;
+        if (totalTax === 0) continue;
+
+        // Determine state from "X State Tax" pattern in tax name columns
+        let state = null;
+        for (let t = 1; t <= 5; t++) {
+          const tName = row[oi[`Tax ${t} Name`]]?.trim() || '';
+          if (!tName) continue;
+          for (const [fullName, abbrev] of Object.entries(STATE_NAME_MAP)) {
+            if (tName.startsWith(fullName + ' State') || tName.startsWith(fullName + ' state')) {
+              state = abbrev; break;
+            }
+          }
+          if (state) break;
+        }
+        // Fallback: Shipping Province
+        if (!state) {
+          const prov = (row[oi['Shipping Province']] || '').trim().toUpperCase();
+          if (prov.length === 2) state = prov;
+        }
+        if (!state) continue;
+
+        const pid = orderToPayout[orderName];
+        if (!pid) continue;
+
+        if (!payoutStateTax[pid]) payoutStateTax[pid] = {};
+        payoutStateTax[pid][state] = round2((payoutStateTax[pid][state] || 0) + totalTax);
+      }
+    }
+  }
+
+  // ── Build import rows ─────────────────────────────────────────────────────
+  payoutRows = [];
+  let taxRowCount = 0;
+
+  for (const [pid, p] of payouts) {
+    const date    = fmtDate(p.date);
+    const memo    = 'Shopify Payout ' + pid;
+    const charge  = round2(p.charge);
+    const tax     = round2(p.tax);
+    const refund  = round2(p.refund);
+    const adj     = round2(p.adj);
+    const fee     = round2(p.fee);
+    const net     = round2(p.net);
+
+    if (charge !== 0) payoutRows.push({
+      account: P_ACCT_SHOPIFY, debit: '', credit: fmt(charge),
+      desc: 'Charge', dept: P_DEPT, pid, date, memo
+    });
+    if (adj !== 0) payoutRows.push({
+      account: P_ACCT_SHOPIFY,
+      debit:  adj < 0 ? fmt(Math.abs(adj)) : '',
+      credit: adj > 0 ? fmt(adj) : '',
+      desc: 'Adjustment', dept: P_DEPT, pid, date, memo
+    });
+    if (refund !== 0) payoutRows.push({
+      account: P_ACCT_RETURNS, debit: fmt(Math.abs(refund)), credit: '',
+      desc: 'Refund', dept: P_DEPT, pid, date, memo
+    });
+    if (tax !== 0) payoutRows.push({
+      account: P_ACCT_TAX, debit: fmt(Math.abs(tax)), credit: '',
+      desc: 'Marketplace Sales Tax', dept: P_DEPT, pid, date, memo
+    });
+    if (fee !== 0) payoutRows.push({
+      account: P_ACCT_FEES, debit: fmt(fee), credit: '',
+      desc: 'Fee', dept: P_DEPT, pid, date, memo
+    });
+    if (net !== 0) payoutRows.push({
+      account: P_ACCT_BOFA, debit: fmt(net), credit: '',
+      desc: 'BofA Payout', dept: P_DEPT, pid, date, memo
+    });
+
+    // ── Tax reclassification rows (one per state per payout) ──────────────
+    // Debit: 40850 Sales Revenue  (reduce revenue by tax amount)
+    // Credit: 2420X State Tax Payable  (record liability by state)
+    const stateTaxes = payoutStateTax[pid] || {};
+    const statesSorted = Object.keys(stateTaxes).sort();
+    let totalStateTax = 0;
+    for (const state of statesSorted) {
+      const taxAmt = round2(stateTaxes[state]);
+      if (taxAmt === 0) continue;
+      const taxAcct = TAX_ACCT_MAP[state] || '24200 Sales Tax Payable';
+      payoutRows.push({
+        account: taxAcct, debit: '', credit: fmt(taxAmt),
+        desc: `Sales Tax - ${state}`, dept: P_DEPT, pid, date, memo
+      });
+      totalStateTax = round2(totalStateTax + taxAmt);
+      taxRowCount++;
+    }
+    // Single offsetting debit to Sales Revenue for the total state tax
+    if (totalStateTax > 0) {
+      payoutRows.push({
+        account: P_ACCT_REVENUE, debit: fmt(totalStateTax), credit: '',
+        desc: 'Sales Tax Reclassification', dept: P_DEPT, pid, date, memo
+      });
+    }
+  }
+
+  renderPayoutResults(payouts.size, payoutRows.length, taxRowCount);
+}
+
+function round2(n) { return Math.round(n * 100) / 100; }
+function fmt(n)    { return n === 0 ? '' : Math.abs(n).toFixed(2); }
+
+function renderPayoutResults(numPayouts, numRows, taxRows) {
+  document.getElementById('payoutResults').style.display = 'block';
+  document.getElementById('payoutStats').innerHTML = `
+    <div class="stat"><div class="stat-num c-green">${numPayouts}</div><div class="stat-lbl">Payouts</div></div>
+    <div class="stat"><div class="stat-num c-blue">${numRows}</div><div class="stat-lbl">Import Rows</div></div>
+    <div class="stat"><div class="stat-num c-orange">${taxRows}</div><div class="stat-lbl">Tax Rows</div></div>
+  `;
+
+  // Preview first 60 rows
+  const preview = payoutRows.slice(0, 60);
+  let lastPid = null;
+  document.getElementById('payoutPreviewBody').innerHTML = preview.map(r => {
+    const isNewPayout = r.pid !== lastPid;
+    lastPid = r.pid;
+    return `<tr style="${isNewPayout && preview.indexOf(r) > 0 ? 'border-top:1px solid var(--border)' : ''}">
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.account}</td>
+      <td style="text-align:right;color:var(--orange)">${r.debit}</td>
+      <td style="text-align:right;color:var(--green)">${r.credit}</td>
+      <td style="color:var(--muted)">${r.desc}</td>
+      <td style="color:var(--muted)">${r.dept}</td>
+      <td style="color:var(--muted);white-space:nowrap">${r.date}</td>
+      <td style="color:var(--blue)">${r.pid}</td>
+      <td style="color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.memo}</td>
+    </tr>`;
+  }).join('');
+}
+
+function downloadPayouts() {
+  const headers = ['Account','Debit','Credit','Line Description','Department','Date','Payout ID','Memo'];
+  const lines   = [headers.join(',')];
+  for (const r of payoutRows) {
+    lines.push([r.account, r.debit, r.credit, r.desc, r.dept, r.date, r.pid, r.memo].map(escCSV).join(','));
+  }
+  dlCSV(lines.join('\r\n'), 'shopify_payouts_netsuite_import.csv');
+}
+
+
+// ── Step 1 readiness check ────────────────────────────────────────────────────
+function checkStep1Ready() {
+  const ordersReady = rawCSV.length > 0;
+  const txnReady    = chargeTxnCSV.length > 0;
+  const mapReady    = customerMapSize() > 0;
+  const btn = document.getElementById('btnS1');
+  btn.style.display = (ordersReady && txnReady && mapReady) ? 'inline-block' : 'none';
+}
+
+// ── Build order→payoutId map from charge transactions only ────────────────────
+function buildOrderPayoutMap(txt) {
+  const map = {};
+  const parsed = parseCSV(txt);
+  if (parsed.length < 2) return map;
+  const headers = parsed[0];
+  const idx = {};
+  headers.forEach((h,i) => { idx[h.trim()] = i; });
+  const typeCol    = idx["Type"]     ?? idx["type"];
+  const orderCol   = idx["Order"]    ?? idx["order"];
+  const payoutCol  = idx["Payout ID"]?? idx["payout_id"];
+  if (typeCol===undefined || orderCol===undefined || payoutCol===undefined) return map;
+  for (let i = 1; i < parsed.length; i++) {
+    const row = parsed[i];
+    if ((row[typeCol]||"").trim().toLowerCase() !== "charge") continue;
+    const orderRaw = (row[orderCol]||"").trim().replace("#","");
+    const payoutId = (row[payoutCol]||"").trim();
+    if (orderRaw && !map[orderRaw]) map[orderRaw] = payoutId;
+  }
+  return map;
+}
+
+// ── Tax item localStorage ─────────────────────────────────────────────────────
+function loadTaxItems() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_TAX) || 'null');
+    activeTaxItems = saved || Object.assign({}, DEFAULT_TAX_ITEMS);
+  } catch(_) {
+    activeTaxItems = Object.assign({}, DEFAULT_TAX_ITEMS);
+  }
+}
+function saveTaxItems() {
+  // Read current values from tax table inputs
+  document.querySelectorAll('#mapTaxBody tr').forEach(tr => {
+    const state = tr.dataset.state;
+    const input = tr.querySelector('input.map-id');
+    if (state && input) activeTaxItems[state] = input.value.trim();
+  });
+  localStorage.setItem(LS_TAX, JSON.stringify(activeTaxItems));
+  const btn = document.getElementById('btnSaveTax');
+  btn.textContent = '✓ Saved'; btn.classList.add('saved');
+  setTimeout(()=>{ btn.textContent='💾 Save Tax Items'; btn.classList.remove('saved'); }, 1800);
+}
+
+// ── Mappings panel render ─────────────────────────────────────────────────────
+function renderMappings() {
+  renderItemMapTable();
+  renderShipMapTable();
+  renderTaxMapTable();
+}
+
+function renderItemMapTable() {
+  const raw = document.getElementById('itemMap').value;
+  const tbody = document.getElementById('mapItemBody');
+  const entries = raw.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const [k,...rest]=l.split(':'); return {k:k.trim(),v:rest.join(':').trim()};
+  });
+  tbody.innerHTML = entries.map((e,i)=>`
+    <tr data-idx="${i}" data-type="item">
+      <td><input class="map-inp" value="${escHtml(e.k)}" oninput="syncItemMap()" style="width:100%"></td>
+      <td><input class="map-id"  value="${escHtml(e.v)}" oninput="syncItemMap()" style="width:80px"></td>
+      <td><button class="btn btn-secondary" style="padding:2px 7px;font-size:10px" onclick="removeMapRow(this,'item')">×</button></td>
+    </tr>`).join('');
+}
+
+function renderShipMapTable() {
+  const raw = document.getElementById('shippingMap').value;
+  const tbody = document.getElementById('mapShipBody');
+  const entries = raw.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const ci=l.lastIndexOf(':'); return {k:l.substring(0,ci).trim(),v:l.substring(ci+1).trim()};
+  });
+  tbody.innerHTML = entries.map((e,i)=>`
+    <tr data-idx="${i}" data-type="ship">
+      <td><input class="map-inp" value="${escHtml(e.k)}" oninput="syncShipMap()" style="width:100%"></td>
+      <td><input class="map-id"  value="${escHtml(e.v)}" oninput="syncShipMap()" style="width:80px"></td>
+      <td><button class="btn btn-secondary" style="padding:2px 7px;font-size:10px" onclick="removeMapRow(this,'ship')">×</button></td>
+    </tr>`).join('');
+}
+
+function renderTaxMapTable() {
+  const ALL_STATES = ["AL","AR","AZ","CA","CO","CT","DE","FL","GA","HI","IA","ID","IL","IN",
+    "KS","KY","LA","MA","MD","ME","MI","MN","MO","MS","NC","ND","NE","NH","NJ","NM","NV",
+    "NY","OH","OK","OR","PA","PR","RI","SC","SD","TN","TX","UT","VA","VT","WA","WI","WV"];
+  const tbody = document.getElementById('mapTaxBody');
+  tbody.innerHTML = ALL_STATES.map(st=>{
+    const id = activeTaxItems[st] || "";
+    return `<tr data-state="${st}">
+      <td>${st}</td>
+      <td class="c-muted">Tax ${st}</td>
+      <td><input class="map-id" value="${escHtml(id)}" style="width:100px" oninput="activeTaxItems['${st}']=this.value.trim()"></td>
+    </tr>`;
+  }).join('');
+}
+
+function syncItemMap() {
+  const rows = document.querySelectorAll('#mapItemBody tr');
+  const lines = [];
+  rows.forEach(tr=>{
+    const k = tr.querySelector('.map-inp')?.value?.trim();
+    const v = tr.querySelector('.map-id')?.value?.trim();
+    if(k) lines.push(`${k}: ${v||''}`);
+  });
+  document.getElementById('itemMap').value = lines.join('\n');
+}
+
+function syncShipMap() {
+  const rows = document.querySelectorAll('#mapShipBody tr');
+  const lines = [];
+  rows.forEach(tr=>{
+    const k = tr.querySelector('.map-inp')?.value?.trim();
+    const v = tr.querySelector('.map-id')?.value?.trim();
+    if(k) lines.push(`${k}: ${v||''}`);
+  });
+  document.getElementById('shippingMap').value = lines.join('\n');
+}
+
+function addMapRow(type) {
+  if (type === 'item') {
+    const ta = document.getElementById('itemMap');
+    ta.value = ta.value.trimEnd() + '\n: ';
+    renderItemMapTable();
+  } else {
+    const ta = document.getElementById('shippingMap');
+    ta.value = ta.value.trimEnd() + '\n: ';
+    renderShipMapTable();
+  }
+}
+
+function removeMapRow(btn, type) {
+  btn.closest('tr').remove();
+  if (type === 'item') syncItemMap();
+  else syncShipMap();
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── CSS for mapping inputs ────────────────────────────────────────────────────
+(function(){
+  const s = document.createElement('style');
+  s.textContent = `
+    .map-inp, .map-id {
+      background: transparent; border: none; border-bottom: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 11px;
+      outline: none; padding: 2px 3px; min-width: 60px;
+    }
+    .map-inp:focus, .map-id:focus { border-bottom-color: var(--blue); }
+    .btn-row { margin-top: 8px; }
+  `;
+  document.head.appendChild(s);
+})();
+</script>
+
+<script>const TOOL_KEY='shopify-netsuite'; const TOOL_VERSION='1.7';</script>
+<script src="version-check.js"></script>
+</body>
+</html>

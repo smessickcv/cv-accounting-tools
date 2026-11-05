@@ -1,0 +1,29 @@
+# Binary / data files — not needed on GitHub Pages
+*.pdf
+*.xlsx
+*.xls
+*.csv
+*.py
+*.url
+
+# Windows system files
+desktop.ini
+Thumbs.db
+
+# Sensitive local data (employee maps, account pairs — never publish)
+_maps/
+payroll_je_emp_map.json
+
+# Older / superseded tool versions (kept locally, not published)
+CC_Reconciliation_Tool_6.html
+loan-interest-calculator_15.html
+
+# Local-only backup of the original README
+README.original.md
+
+# Register Builder settings bundle — confidential (account numbers, payee names)
+Register Builder settings.json
+*settings.json
+_test_*
+customer-map*.json
+*PRIVATE*.json

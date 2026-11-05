@@ -1,0 +1,2495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payroll JE Generator — 10X HVAC of CA</title>
+
+  <!-- SheetJS (free CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- pdf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --primary: #1e3a5f;
+      --accent: #2563eb;
+      --success: #15803d;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ---- Header ---- */
+    .site-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 20px 32px;
+      border-bottom: 3px solid var(--accent);
+    }
+    .site-header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+    .site-header p  { font-size: 0.85rem; color: #94b8d9; margin-top: 3px; }
+
+    /* ---- Layout ---- */
+    .container { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ---- Drop Zones ---- */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: #eff6ff;
+    }
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-zone .dz-icon { font-size: 1.8rem; margin-bottom: 8px; }
+    .drop-zone .dz-label { font-size: 0.9rem; color: var(--muted); }
+    .drop-zone .dz-label strong { color: var(--accent); }
+    .drop-zone .dz-status { margin-top: 10px; font-size: 0.85rem; }
+    .dz-ok    { color: var(--success); font-weight: 600; }
+    .dz-files { color: var(--text); font-size: 0.82rem; margin-top: 6px; }
+    .dz-files li { list-style: none; padding: 2px 0; }
+    .dz-files li::before { content: "📄 "; }
+
+    /* ---- Inputs row ---- */
+    .inputs-row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .inputs-row .field { flex: 1 1 160px; }
+    .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .field input[type="number"], .field input[type="text"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #dbeafe; }
+    .field .helper { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    /* ---- Generate button ---- */
+    .btn-generate {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 7px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, opacity .15s;
+      margin-top: 8px;
+    }
+    .btn-generate:hover:not(:disabled) { background: #1d4ed8; }
+    .btn-generate:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ---- Balance badge ---- */
+    .balance-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .balance-badge.balanced   { background: #dcfce7; color: var(--success); border: 1.5px solid #86efac; }
+    .balance-badge.imbalanced { background: #fee2e2; color: var(--danger);  border: 1.5px solid #fca5a5; }
+    .balance-icon { font-size: 1.4rem; }
+
+    /* ---- Tables ---- */
+    .table-wrap { overflow-x: auto; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th {
+      text-align: left; font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em;
+      color: var(--muted);
+      border-bottom: 2px solid var(--border);
+      padding: 8px 10px;
+      white-space: nowrap;
+    }
+    td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    tr:nth-child(even) td { background: #f8fafc; }
+    tr.total-row td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: none; background: #f1f5f9; }
+    .num { text-align: right; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .muted-cell { color: var(--muted); font-size: 0.82rem; }
+    .dr-row td:first-child { color: var(--primary); }
+    .cr-row td:first-child { color: #64748b; padding-left: 24px; }
+
+    /* ---- Warnings ---- */
+    .warning-list { display: flex; flex-direction: column; gap: 8px; }
+    .warning-item {
+      background: #fffbeb; border: 1px solid #fcd34d;
+      border-left: 4px solid var(--warning);
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: #92400e;
+    }
+    .warning-item::before { content: "⚠ "; font-weight: 700; }
+
+    /* ---- Download buttons ---- */
+    .btn-dl {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid;
+      transition: background .15s;
+      text-decoration: none;
+    }
+    .btn-dl-csv  { background: #f0fdf4; color: var(--success); border-color: #86efac; }
+    .btn-dl-csv:hover  { background: #dcfce7; }
+    .btn-dl-txt  { background: #eff6ff; color: var(--accent);  border-color: #93c5fd; }
+    .btn-dl-txt:hover  { background: #dbeafe; }
+    .dl-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    /* ---- Collapsible ---- */
+    .collapsible-header {
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none;
+    }
+    .collapsible-header .toggle-icon { font-size: 0.8rem; color: var(--muted); }
+    .collapsible-body { display: none; margin-top: 14px; }
+    .collapsible-body.open { display: block; }
+
+    /* ---- Section title ---- */
+    .section-title {
+      font-size: 0.85rem; font-weight: 700; color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    /* ---- Hidden until ready ---- */
+    #results { display: none; }
+    #loading { display: none; align-items: center; gap: 10px; color: var(--muted); font-size: 0.9rem; padding: 12px 0; }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2.5px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Employee lookup button ---- */
+    .btn-emp {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; color: var(--primary);
+      border: 1.5px solid var(--border);
+      padding: 10px 18px; border-radius: 7px;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .btn-emp:hover { border-color: var(--accent); background: #eff6ff; }
+
+    /* ---- Modal ---- */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,.55);
+      align-items: flex-start; justify-content: center;
+      padding: 40px 16px; z-index: 50; overflow-y: auto;
+    }
+    .modal {
+      background: var(--card); border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.25);
+      width: 100%; max-width: 680px; padding: 24px;
+    }
+    .modal h2 { font-size: 1.1rem; color: var(--primary); margin-bottom: 6px; }
+    .modal .modal-hint { font-size: 0.85rem; color: var(--muted); margin-bottom: 16px; }
+    .modal table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    .modal th { padding: 6px 8px; }
+    .modal td { padding: 5px 8px; border-bottom: none; vertical-align: top; }
+    .modal input[type="text"], .modal select {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.88rem; color: var(--text); outline: none;
+    }
+    .modal input:focus, .modal select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #dbeafe; }
+    .emp-row-del {
+      background: none; border: none; color: var(--danger);
+      font-size: 1rem; cursor: pointer; padding: 6px 8px;
+    }
+    .btn-link {
+      background: none; border: none; color: var(--accent);
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 4px 0;
+    }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+    .btn-primary {
+      background: var(--accent); color: #fff; border: none;
+      padding: 10px 22px; border-radius: 7px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary {
+      background: #fff; color: var(--muted); border: 1.5px solid var(--border);
+      padding: 10px 22px; border-radius: 7px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-secondary:hover { background: #f8fafc; }
+    .emp-saved-section { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .emp-saved-row {
+      display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 10px;
+      padding: 7px 4px; border-bottom: 1px solid var(--border); font-size: 0.85rem;
+    }
+    .emp-del { background: none; border: none; color: var(--danger); font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+
+    /* ---- Reconciliation table ---- */
+    .var-zero { color: var(--muted); }
+    .var-bad  { color: var(--danger); font-weight: 700; }
+    tr.recon-flag td { background: #fef2f2 !important; }
+    tr.recon-info td { color: var(--muted); }
+    tr.recon-warn td { background: #fffbeb !important; }
+    .recon-note {
+      font-size: 0.8rem; color: var(--muted); margin-top: 12px; line-height: 1.6;
+    }
+    .recon-note strong { color: var(--text); }
+    .attribution {
+      background: #fffbeb; border: 1px solid #fcd34d; border-left: 4px solid var(--warning);
+      border-radius: 6px; padding: 12px 16px; margin: -8px 0 20px;
+      font-size: 0.85rem; color: #92400e; line-height: 1.7;
+    }
+    .attribution .att-title { font-weight: 700; margin-bottom: 4px; }
+    .attribution code { font-family: 'Courier New', monospace; font-weight: 700; }
+
+    /* ---- Mapping modal ---- */
+    .modal.modal-wide { max-width: 940px; }
+    .map-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 14px; flex-wrap: wrap; }
+    .map-tab {
+      background: none; border: none; border-bottom: 2px solid transparent;
+      padding: 9px 14px; font-size: 0.85rem; font-weight: 600; color: var(--muted); cursor: pointer;
+    }
+    .map-tab:hover { color: var(--text); }
+    .map-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .map-pane { display: none; }
+    .map-pane.active { display: block; }
+    .pane-hint { font-size: 0.82rem; color: var(--muted); margin-bottom: 12px; line-height: 1.6; }
+    .map-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .map-search {
+      flex: 1 1 220px; padding: 8px 11px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.85rem; outline: none; color: var(--text);
+    }
+    .map-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #dbeafe; }
+    .map-scroll {
+      max-height: 44vh; overflow-y: auto; border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px 12px 10px;
+    }
+    .map-row { display: grid; grid-template-columns: 1.25fr 1.1fr 1fr auto; gap: 8px; align-items: center; padding: 4px 0; }
+    .map-row.cc-row { grid-template-columns: 1.25fr 2.1fr auto; }
+    .map-row.hdr {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--muted); padding: 8px 0 6px; position: sticky; top: 0; background: var(--card); z-index: 2;
+      border-bottom: 1px solid var(--border);
+    }
+    .map-row input[type="text"], .map-row select {
+      width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 5px;
+      font-size: 0.8rem; color: var(--text); outline: none; background: #fff;
+    }
+    .map-row input:focus, .map-row select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px #dbeafe; }
+    .map-row.is-new input, .map-row.is-new select { border-color: #93c5fd; background: #f5faff; }
+    .map-row.is-unmapped { background: #fffbeb; border-radius: 5px; padding-left: 6px; padding-right: 6px; }
+    .map-del { background: none; border: none; color: var(--danger); font-size: 0.95rem; cursor: pointer; padding: 4px 6px; line-height: 1; }
+    .map-flag { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: #fef3c7; color: #92400e; white-space: nowrap; }
+    .map-legend { font-size: 0.78rem; color: var(--muted); line-height: 1.8; }
+    .map-legend code {
+      font-family: 'Courier New', monospace; background: #f1f5f9; padding: 1px 5px;
+      border-radius: 3px; color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>Payroll JE Generator<span style="font-size:0.4em;font-weight:400;opacity:0.55;margin-left:10px;letter-spacing:0.05em;">v1.7</span></h1>
+  <p>10X HVAC of CA, LLC — Gundlach's</p>
+</header>
+
+<main class="container">
+
+  <!-- ======== INPUTS ======== -->
+  <div class="card">
+    <div class="card-title">1. HR Check Journal Report</div>
+    <div class="drop-zone" id="dz-hr" tabindex="0">
+      <input type="file" id="file-hr" accept=".xlsx" />
+      <div class="dz-icon">📊</div>
+      <div class="dz-label">Drag &amp; drop your <strong>.xlsx</strong> file here, or click to browse</div>
+      <div class="dz-status" id="dz-hr-status"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">2. PRISM Invoices (PDF)</div>
+    <div class="drop-zone" id="dz-pdf" tabindex="0">
+      <input type="file" id="file-pdf" accept=".pdf" multiple />
+      <div class="dz-icon">🧾</div>
+      <div class="dz-label">Drag &amp; drop <strong>.pdf</strong> invoice files here (multiple allowed), or click to browse</div>
+      <div class="dz-status" id="dz-pdf-status"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">3. Health Insurance &amp; PRISM Override</div>
+    <div class="inputs-row">
+      <div class="field">
+        <label for="cigna-dr">Cigna DR ($)</label>
+        <input type="number" id="cigna-dr" placeholder="from CV invoice" min="0" step="0.01" />
+        <div class="helper">Employer Cigna premium from CV invoice</div>
+      </div>
+      <div class="field">
+        <label for="guardian-dr">Guardian DR ($)</label>
+        <input type="number" id="guardian-dr" value="0" min="0" step="0.01" />
+        <div class="helper">Employer Guardian premium (usually 0)</div>
+      </div>
+      <div class="field">
+        <label for="prism-override">PRISM Total Override ($)</label>
+        <input type="number" id="prism-override" placeholder="Leave blank to use PDFs" min="0" step="0.01" />
+        <div class="helper">Leave blank to use invoice PDFs</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">4. Employee Cost-Center Lookup</div>
+    <button class="btn-emp" id="btn-manage-emp" type="button">
+      <span>👥</span> Manage employees
+    </button>
+    <div class="helper" style="margin-top:8px;">
+      Add new employees and assign their cost center. Saved entries persist on this
+      computer and are applied automatically. A box also pops up whenever the report
+      contains an employee that isn't in the lookup yet.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">5. Contribution &amp; Account Mappings</div>
+    <button class="btn-emp" id="btn-manage-maps" type="button">
+      <span>&#128506;</span> View / edit mappings
+    </button>
+    <div class="helper" style="margin-top:8px;">
+      Every Vensure contribution line the tool knows about, the GL account it posts to,
+      and which Vensure invoice category it reconciles against &mdash; plus the cost-center
+      to GL account table. Edit anything, add new lines, and it's saved on this computer and
+      applied to every future run. Anything the last run couldn't map is pinned to the top.
+    </div>
+  </div>
+
+  <div class="card" style="padding-bottom: 20px;">
+    <button class="btn-generate" id="btn-generate" disabled>
+      <span>⚡</span> Generate Journal Entry
+    </button>
+    <div id="loading">
+      <div class="spinner"></div>
+      <span id="loading-msg">Processing…</span>
+    </div>
+  </div>
+
+  <!-- ======== RESULTS ======== -->
+  <div id="results">
+
+    <!-- Balance badge -->
+    <div id="balance-badge-wrap"></div>
+
+    <!-- JE Table -->
+    <div class="card">
+      <div class="section-title">Journal Entry Lines</div>
+      <div class="table-wrap">
+        <table id="je-table">
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th class="num">Debit</th>
+              <th class="num">Credit</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="je-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Invoice Detail -->
+    <div class="card" id="invoice-card">
+      <div class="section-title">Vensure / PRISM Invoices</div>
+      <div class="table-wrap">
+        <table id="invoice-table">
+          <thead>
+            <tr>
+              <th>Invoice #</th>
+              <th>Date</th>
+              <th class="num">Amount</th>
+              <th>Filename</th>
+            </tr>
+          </thead>
+          <tbody id="invoice-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Invoice vs Payroll Register Reconciliation -->
+    <div class="card" id="recon-card">
+      <div class="section-title">Invoice &harr; Payroll Register Reconciliation</div>
+      <div class="table-wrap">
+        <table id="recon-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th class="num">Vensure invoice</th>
+              <th class="num">Payroll register</th>
+              <th class="num">Booked in JE</th>
+              <th class="num">Variance</th>
+              <th>What's driving it</th>
+            </tr>
+          </thead>
+          <tbody id="recon-tbody"></tbody>
+        </table>
+      </div>
+      <div class="recon-note" id="recon-note"></div>
+    </div>
+
+    <!-- Employee Wages (collapsible) -->
+    <div class="card">
+      <div class="collapsible-header" onclick="toggleWages()">
+        <div class="section-title" style="margin-bottom:0">Employee Wages</div>
+        <span class="toggle-icon" id="wages-toggle-icon">▶ Show</span>
+      </div>
+      <div class="collapsible-body" id="wages-body">
+        <div class="table-wrap" style="margin-top:14px">
+          <table id="wages-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th class="num">Wages</th>
+              </tr>
+            </thead>
+            <tbody id="wages-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Warnings -->
+    <div class="card" id="warnings-card" style="display:none">
+      <div class="section-title">Warnings</div>
+      <div class="warning-list" id="warnings-list"></div>
+    </div>
+
+    <!-- Downloads -->
+    <div class="card">
+      <div class="section-title">Download</div>
+      <div class="dl-row">
+        <button class="btn-dl btn-dl-csv" id="btn-csv">⬇ Download CSV (QBO Import)</button>
+        <button class="btn-dl btn-dl-txt" id="btn-txt">⬇ Download Summary TXT</button>
+      </div>
+    </div>
+
+  </div><!-- /results -->
+
+</main>
+
+<!-- ======== EMPLOYEE LOOKUP MODAL ======== -->
+<div class="modal-overlay" id="emp-modal-overlay">
+  <div class="modal">
+    <h2>Employee Cost-Center Lookup</h2>
+    <div class="modal-hint" id="emp-modal-hint"></div>
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left;font-size:0.72rem;color:var(--muted);">Employee (as in Vensure)</th>
+          <th style="text-align:left;font-size:0.72rem;color:var(--muted);">Cost center</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="emp-add-rows"></tbody>
+    </table>
+    <button class="btn-link" id="emp-add-another" type="button">＋ Add another employee</button>
+
+    <div class="emp-saved-section">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
+        <div class="card-title" style="margin-bottom:0;">Saved custom employees</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-link" id="emp-export" type="button">⬇ Export JSON</button>
+          <button class="btn-link" id="emp-import" type="button">⬆ Import JSON</button>
+          <input type="file" id="emp-import-file" accept=".json,application/json" style="display:none" />
+        </div>
+      </div>
+      <div id="emp-saved-list"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="emp-cancel" type="button">Cancel</button>
+      <button class="btn-primary" id="emp-save" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======== MAPPINGS MODAL ======== -->
+<div class="modal-overlay" id="map-modal-overlay">
+  <div class="modal modal-wide">
+    <h2>Contribution &amp; Account Mappings</h2>
+    <div class="modal-hint">
+      These are every mapping the generator uses. Changes are saved in this browser and applied
+      to every run from here on. Nothing is sent anywhere.
+    </div>
+
+    <div class="map-tabs">
+      <button class="map-tab active" type="button" data-pane="pane-contrib">Vensure contributions</button>
+      <button class="map-tab" type="button" data-pane="pane-cc">Cost centers</button>
+      <button class="map-tab" type="button" data-pane="pane-ref">Account reference</button>
+    </div>
+
+    <!-- Contributions -->
+    <div class="map-pane active" id="pane-contrib">
+      <div class="pane-hint">
+        <strong>GL account</strong> decides where the amount posts in the journal entry.
+        <strong>Invoice category</strong> decides which Vensure invoice line it reconciles against &mdash;
+        that's what powers the reconciliation table and explains any imbalance. Leave the GL account
+        blank to skip a line entirely (it'll be reported as unmapped); set it to
+        <code>_IGNORE</code> to skip it silently.
+      </div>
+      <div class="map-toolbar">
+        <input type="text" class="map-search" id="map-search" placeholder="Filter by description, account or category…" />
+        <button class="btn-link" id="map-add-contrib" type="button">&#65291; Add mapping</button>
+      </div>
+      <div class="map-scroll" id="map-contrib-scroll">
+        <div class="map-row hdr">
+          <div>Contribution description (as in Vensure)</div>
+          <div>GL account</div>
+          <div>Invoice category</div>
+          <div></div>
+        </div>
+        <div id="map-contrib-rows"></div>
+      </div>
+    </div>
+
+    <!-- Cost centers -->
+    <div class="map-pane" id="pane-cc">
+      <div class="pane-hint">
+        Cost centers assigned to employees in the &ldquo;Manage employees&rdquo; box roll up to these
+        GL accounts. Renaming a cost center here does <em>not</em> rename it on saved employees &mdash;
+        add the new one, reassign, then remove the old.
+      </div>
+      <div class="map-toolbar">
+        <button class="btn-link" id="map-add-cc" type="button">&#65291; Add cost center</button>
+      </div>
+      <div class="map-scroll">
+        <div class="map-row cc-row hdr">
+          <div>Cost center</div>
+          <div>GL account</div>
+          <div></div>
+        </div>
+        <div id="map-cc-rows"></div>
+      </div>
+    </div>
+
+    <!-- Reference -->
+    <div class="map-pane" id="pane-ref">
+      <div class="pane-hint">How each GL account behaves in the journal entry.</div>
+      <div class="map-legend" id="map-ref-body"></div>
+    </div>
+
+    <div class="modal-actions" style="justify-content:space-between">
+      <div style="display:flex; gap:12px; align-items:center;">
+        <button class="btn-link" id="map-export" type="button">&#11015; Export JSON</button>
+        <button class="btn-link" id="map-import" type="button">&#11014; Import JSON</button>
+        <button class="btn-link" id="map-reset" type="button" style="color:var(--danger)">Reset to defaults</button>
+        <input type="file" id="map-import-file" accept=".json,application/json" style="display:none" />
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn-secondary" id="map-cancel" type="button">Cancel</button>
+        <button class="btn-primary" id="map-save" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="cv-settings.js" data-tool="payroll-je-hvac-vensure" data-title="Payroll JE Tool (HVAC, Vensure)"></script>
+<script>
+// ============================================================
+// pdf.js worker
+// ============================================================
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ============================================================
+// CONFIGURATION CONSTANTS
+// ============================================================
+// NOTE: This built-in roster is intentionally EMPTY in the public/deployed
+// build so no employee names ship in the page source. Employees are added at
+// runtime via the "Manage employees" box and stored privately in this browser
+// (localStorage). To seed in bulk on your own machine, use Import in that box
+// with your private employees_seed.json (do NOT commit that file).
+const EMPLOYEE_COST_CENTER = {};
+
+const COST_CENTER_ACCOUNT = {
+  "HVAC Direct-C":   "51200 HVAC-C Direct Labor",
+  "HVAC Direct-R":   "52200 HVAC-R Direct Labor",
+  "Plumbing Direct": "52200 Plumbing Direct Labor",
+  "Admin/Managers":  "61020 Administrative Staff & Managers",
+  "HVAC Sales":      "52400 HVAC Commissions Residential",
+};
+
+const WAGE_ACCOUNT_ORDER = CVSettings.use("wage-account-order", [
+  "61020 Administrative Staff & Managers",
+  "51200 HVAC-C Direct Labor",
+  "52200 HVAC-R Direct Labor",
+  "52200 Plumbing Direct Labor",
+  "52400 HVAC Commissions Residential",
+], {"kind": "list", "label": "Wage account display order", "columns": ["Account"], "hint": "Order of wage accounts on the JE. Accounts added in the cost-center mappings are appended automatically."});
+
+// ---- Special (non-GL) buckets used by the JE builder -------------------
+// _CLIENT_MEDICAL         employee medical withheld, credited back by Vensure
+//                         ("AGENCY CREDITS" on the invoice)
+// _CLIENT_401K            employee 401k deferral, credited back by Vensure
+//                         ("RETIREMENT CREDIT" on the invoice)
+// _CV_MEDICAL_ESTIMATE    medical carried on CV's master policy and billed to us
+//                         by CV, NOT by Vensure. Only used to pre-fill the Cigna
+//                         DR field when it's left blank; 'Due to CV' mirrors that
+//                         DR exactly, so it never affects whether the JE balances.
+// _IGNORE                 deliberately not booked, and not reported as unmapped.
+const SPECIAL_ACCOUNTS = CVSettings.use("special-accounts", {
+  "_CLIENT_MEDICAL":      "Employee medical credit → nets against Health Insurance CR",
+  "_CLIENT_401K":         "Employee 401k credit → rolls into 401K Liability CR",
+  "_CV_MEDICAL_ESTIMATE": "CV-billed medical → only seeds the Cigna DR field; not booked",
+  "_IGNORE":              "Deliberately not booked, and not flagged as unmapped",
+}, {"kind": "map", "label": "Special (non-GL) buckets", "columns": ["Bucket code", "What it does"], "hint": "Internal bucket codes used by the JE builder. Keep codes starting with an underscore."});
+
+// GL accounts a contribution can post to. Anything typed that isn't in this list
+// still works -- it just posts to a new line with that name.
+const JE_ACCOUNTS = CVSettings.use("je-accounts", [
+  "Employer Payroll Taxes",
+  "Worker's Compensation Insurance",
+  "Business Insurance",
+  "Payroll Services",
+  "Health Insurance",
+  "Retirement",
+  "Accrued Payroll",
+], {"kind": "list", "label": "GL accounts a contribution can post to", "columns": ["Account"], "hint": "A name typed in the mapping editor that is not in this list still works; it posts to a new line."});
+
+// Accounts whose DR is cancelled elsewhere in the entry, so they can never
+// create or close an imbalance:
+//   Retirement            DR is matched 1:1 inside the 401K Liability CR
+//   _CV_MEDICAL_ESTIMATE  never posts; the Cigna DR is mirrored by 'Due to CV'
+//   _IGNORE               never posts
+const NON_BOOKED_ACCOUNTS = new Set(CVSettings.use('non-booked-accounts', ["Retirement", "_CV_MEDICAL_ESTIMATE", "_IGNORE"], {"kind": "list", "label": "Accounts that never affect the balance", "columns": ["Account"], "hint": "Accounts whose debit is cancelled elsewhere in the entry, so they can never create or close an imbalance."}));
+CVSettings.link({label:'Contribution and cost-center mappings', hint:'Opens the existing mapping editor', open:function(){ openMapModal(); }});
+CVSettings.link({label:'Employee cost centers', hint:'Opens the existing employee editor', open:function(){ openEmpModal(); }});
+
+const CONTRIBUTION_ACCOUNT = {
+  // ---- Employer payroll taxes ----
+  "MEDICARE - EMPLOYER": "Employer Payroll Taxes",
+  "OASDI - EMPLOYER": "Employer Payroll Taxes",
+  "FEDERAL UNEMPLOYMENT": "Employer Payroll Taxes",
+  "CA SUTA": "Employer Payroll Taxes",
+  "CA EMPLOYMENT TRAINING TAX": "Employer Payroll Taxes",
+
+  // ---- Medical billed by CV, not by Vensure (see _CV_MEDICAL_ESTIMATE) ----
+  "CIGNA OAP HSA 3300 80/50": "_CV_MEDICAL_ESTIMATE",
+  "CIGNA OAP HSA 3200 80/50": "_CV_MEDICAL_ESTIMATE",
+  "CIGNA OAP HSA 2850 80/50": "_CV_MEDICAL_ESTIMATE",
+  "200537 CIGNA OAP HSA 3300 80/50": "_CV_MEDICAL_ESTIMATE",
+  "CIGNA OAP 1000 80/50": "_CV_MEDICAL_ESTIMATE",
+  "CIGNA OAP 500 100/50": "_CV_MEDICAL_ESTIMATE",
+  "200537 CIGNA OAP 1000 80/50": "_CV_MEDICAL_ESTIMATE",
+  "200537 CIGNA OAP 500 100/50": "_CV_MEDICAL_ESTIMATE",
+  "United Healthcare Choice Plus HSA 3000 20/80": "_CV_MEDICAL_ESTIMATE",
+  "United Healthcare Choice Plus Buy UP 500 0/100": "_CV_MEDICAL_ESTIMATE",
+  "United Healthcare Choice Plus 1000 20/80": "_CV_MEDICAL_ESTIMATE",
+
+  // ---- Trion/Guardian employer-paid ancillary: billed ON the Vensure invoice ----
+  "TRION GUARDIAN BASIC LIFE 50K": "Health Insurance",
+  "TRION GUARDIAN DENTAL HIGH": "Health Insurance",
+  "TRION GUARDIAN DENTAL MID": "Health Insurance",
+  "TRION GUARDIAN DENTAL LOW": "Health Insurance",
+  "TRION GUARDIAN ER PD LTD 10K": "Health Insurance",
+  "TRION GUARDIAN ER PD STD 1K": "Health Insurance",
+  "TRION GUARDIAN EMPLOYER PAID LONG TERM DISABILITY": "Health Insurance",
+  "TRION GUARDIAN EMPLOYER PAID SHORT TERM DISABILITY 1K": "Health Insurance",
+  "TRION GUARDIAN VISION DAVIS NETWORK": "Health Insurance",
+  "TRION GUARDIAN VISION VSP NETWORK": "Health Insurance",
+  "TRION GUARDIAN VISION AVESIS NETWORK": "Health Insurance",
+  "TRION GUARDIAN ACCIDENT LOW OPTION": "Health Insurance",
+  "TRION GUARDIAN ACCIDENT HIGH OPTION": "Health Insurance",
+  "TRION GUARDIAN HOSPITAL INDEMNITY LOW OPTION": "Health Insurance",
+  "TRION GUARDIAN HOSPITAL INDEMNITY HIGH OPTION": "Health Insurance",
+  "TRION GUARDIAN VOLUNTARY TERM LIFE": "Health Insurance",
+  "TRION GUARDIAN CRITICAL ILLNESS": "Health Insurance",
+  "Critical Illnes": "Health Insurance",
+  "METLIFE BASIC LIFE 50K": "Health Insurance",
+  "METLIFE DENTAL HIGH": "Health Insurance",
+  "METLIFE DENTAL MID": "Health Insurance",
+  "METLIFE LTD ER PAID": "Health Insurance",
+  "METLIFE STD ER PAID": "Health Insurance",
+  "METLIFE VISION": "Health Insurance",
+  "HEALTH SAVINGS ACCOUNT": "Health Insurance",
+
+  // ---- Workers' comp (any "W/C ..." class code also matches by prefix) ----
+  "W/C CA 5183": "Worker's Compensation Insurance",
+  "W/C CA 5538": "Worker's Compensation Insurance",
+  "W/C CA 5542": "Worker's Compensation Insurance",
+  "W/C CA 8742": "Worker's Compensation Insurance",
+  "W/C CA 8810": "Worker's Compensation Insurance",
+
+  // ---- Fees and other ----
+  "EPLI": "Business Insurance",
+  "ADMIN FEE": "Payroll Services",
+  "ADD'L PAYROLL FEE NC": "Payroll Services",
+  "ADDITIONAL PAYROLL RUN": "Payroll Services",
+  "MISCELLANEOUS CREDIT PW": "Payroll Services",
+  "NET PAYROLL": "Payroll Services",
+  "BACKGROUND CHECK": "Payroll Services",
+  "Employee Screening": "Payroll Services",
+  "RETIREMENT": "Retirement",
+  "MISCELLANEOUS CREDIT": "Accrued Payroll",
+  "CLIENT MEDICAL": "_CLIENT_MEDICAL",
+  "CLIENT 401K": "_CLIENT_401K",
+};
+
+// ============================================================
+// VENSURE INVOICE CATEGORIES
+// ============================================================
+// The generator debits from the payroll register but credits cash from the
+// invoice totals. Those two only tie if every invoice line has a register
+// counterpart. Mapping both sides onto this shared category list makes any
+// gap visible -- and the variances add up to the imbalance exactly.
+const NOT_ON_INVOICE = "(not billed by Vensure)";
+const NO_INVOICE_CAT = "(no invoice category set)";
+const UNMAPPED_BUCKET = "(unmapped \u2014 not booked)";
+
+const INVOICE_CATEGORIES = CVSettings.use("invoice-categories", [
+  "GROSS WAGES",
+  "SOCIAL SECURITY & MEDICARE",
+  "FEDERAL UNEMPLOYMENT",
+  "STATE UNEMPLOYMENT",
+  "OTHER STATE TAXES",
+  "WORKERS COMPENSATION",
+  "HEALTH BENEFITS",
+  "LIFE INSURANCE",
+  "LONG TERM DISABILITY",
+  "SHORT TERM DISABILITY",
+  "ADMINISTRATIVE FEE",
+  "EPLI",
+  "EMPLOYEE SCREENING",
+  "MISC CREDIT",
+  "RETIREMENT CREDIT",
+  "AGENCY CREDITS",
+], {"kind": "list", "label": "Invoice categories", "columns": ["Category"], "hint": "Category headings on the Vensure invoice that the tool reconciles against."});
+
+// Invoice wording varies a little between runs; fold the variants together.
+const INVOICE_LABEL_ALIAS = CVSettings.use("invoice-aliases", {
+  "SOCIAL SECURITY AND MEDICARE": "SOCIAL SECURITY & MEDICARE",
+  "FICA": "SOCIAL SECURITY & MEDICARE",
+  "SS & MEDICARE": "SOCIAL SECURITY & MEDICARE",
+  "WORKERS COMP": "WORKERS COMPENSATION",
+  "WORKER'S COMPENSATION": "WORKERS COMPENSATION",
+  "WORKERS' COMPENSATION": "WORKERS COMPENSATION",
+  "ADMIN FEE": "ADMINISTRATIVE FEE",
+  "MISCELLANEOUS CREDIT": "MISC CREDIT",
+  "EMPLOYEE SCREENINGS": "EMPLOYEE SCREENING",
+  "AGENCY CREDIT": "AGENCY CREDITS",
+  "GROSS WAGE": "GROSS WAGES",
+}, {"kind": "map", "label": "Invoice wording aliases", "columns": ["Wording seen on invoice", "Folds into category"], "hint": "Invoice wording varies a little between runs; each alias folds into one category."});
+
+const CONTRIBUTION_INVOICE_CATEGORY = {
+  "MEDICARE - EMPLOYER": "SOCIAL SECURITY & MEDICARE",
+  "OASDI - EMPLOYER": "SOCIAL SECURITY & MEDICARE",
+  "FEDERAL UNEMPLOYMENT": "FEDERAL UNEMPLOYMENT",
+  "CA SUTA": "STATE UNEMPLOYMENT",
+  "CA EMPLOYMENT TRAINING TAX": "OTHER STATE TAXES",
+
+  "W/C CA 5183": "WORKERS COMPENSATION",
+  "W/C CA 5538": "WORKERS COMPENSATION",
+  "W/C CA 5542": "WORKERS COMPENSATION",
+  "W/C CA 8742": "WORKERS COMPENSATION",
+  "W/C CA 8810": "WORKERS COMPENSATION",
+
+  "TRION GUARDIAN BASIC LIFE 50K": "LIFE INSURANCE",
+  "METLIFE BASIC LIFE 50K": "LIFE INSURANCE",
+  "TRION GUARDIAN ER PD LTD 10K": "LONG TERM DISABILITY",
+  "TRION GUARDIAN EMPLOYER PAID LONG TERM DISABILITY": "LONG TERM DISABILITY",
+  "METLIFE LTD ER PAID": "LONG TERM DISABILITY",
+  "TRION GUARDIAN ER PD STD 1K": "SHORT TERM DISABILITY",
+  "TRION GUARDIAN EMPLOYER PAID SHORT TERM DISABILITY 1K": "SHORT TERM DISABILITY",
+  "METLIFE STD ER PAID": "SHORT TERM DISABILITY",
+
+  "TRION GUARDIAN DENTAL HIGH": "HEALTH BENEFITS",
+  "TRION GUARDIAN DENTAL MID": "HEALTH BENEFITS",
+  "TRION GUARDIAN DENTAL LOW": "HEALTH BENEFITS",
+  "TRION GUARDIAN VISION DAVIS NETWORK": "HEALTH BENEFITS",
+  "TRION GUARDIAN VISION VSP NETWORK": "HEALTH BENEFITS",
+  "TRION GUARDIAN VISION AVESIS NETWORK": "HEALTH BENEFITS",
+  "TRION GUARDIAN ACCIDENT LOW OPTION": "HEALTH BENEFITS",
+  "TRION GUARDIAN ACCIDENT HIGH OPTION": "HEALTH BENEFITS",
+  "TRION GUARDIAN HOSPITAL INDEMNITY LOW OPTION": "HEALTH BENEFITS",
+  "TRION GUARDIAN HOSPITAL INDEMNITY HIGH OPTION": "HEALTH BENEFITS",
+  "TRION GUARDIAN VOLUNTARY TERM LIFE": "HEALTH BENEFITS",
+  "TRION GUARDIAN CRITICAL ILLNESS": "HEALTH BENEFITS",
+  "Critical Illnes": "HEALTH BENEFITS",
+  "METLIFE DENTAL HIGH": "HEALTH BENEFITS",
+  "METLIFE DENTAL MID": "HEALTH BENEFITS",
+  "METLIFE VISION": "HEALTH BENEFITS",
+  "HEALTH SAVINGS ACCOUNT": "HEALTH BENEFITS",
+
+  "ADMIN FEE": "ADMINISTRATIVE FEE",
+  "ADD'L PAYROLL FEE NC": "ADMINISTRATIVE FEE",
+  "ADDITIONAL PAYROLL RUN": "ADMINISTRATIVE FEE",
+  "EPLI": "EPLI",
+  "Employee Screening": "EMPLOYEE SCREENING",
+  "BACKGROUND CHECK": "EMPLOYEE SCREENING",
+  "MISCELLANEOUS CREDIT": "MISC CREDIT",
+  "CLIENT 401K": "RETIREMENT CREDIT",
+  "CLIENT MEDICAL": "AGENCY CREDITS",
+
+  // Employer 401k match and CV-billed medical are never on the Vensure invoice.
+  "RETIREMENT": NOT_ON_INVOICE,
+  "CIGNA OAP HSA 3300 80/50": NOT_ON_INVOICE,
+  "CIGNA OAP HSA 3200 80/50": NOT_ON_INVOICE,
+  "CIGNA OAP HSA 2850 80/50": NOT_ON_INVOICE,
+  "200537 CIGNA OAP HSA 3300 80/50": NOT_ON_INVOICE,
+  "CIGNA OAP 1000 80/50": NOT_ON_INVOICE,
+  "CIGNA OAP 500 100/50": NOT_ON_INVOICE,
+  "200537 CIGNA OAP 1000 80/50": NOT_ON_INVOICE,
+  "200537 CIGNA OAP 500 100/50": NOT_ON_INVOICE,
+  "United Healthcare Choice Plus HSA 3000 20/80": NOT_ON_INVOICE,
+  "United Healthcare Choice Plus Buy UP 500 0/100": NOT_ON_INVOICE,
+  "United Healthcare Choice Plus 1000 20/80": NOT_ON_INVOICE,
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let hrFile = null;
+let pdfFiles = [];
+let lastResult = null;   // { jeLines, imbalance, warnings, recon, invoiceDetail, wages, unknownEmps, monthYear, periodDesc }
+let lastContributions = {};  // contribution description -> amount, from the last run
+
+// ---- Custom employee overrides (persist in this browser via localStorage) ----
+// These merge OVER the built-in EMPLOYEE_COST_CENTER so the user can add new
+// hires themselves without editing the file. EFFECTIVE_LOOKUP is what the
+// parser/JE builder actually read.
+const EMP_OVERRIDE_KEY = 'payroll-je-hvac:emp-overrides';
+function loadEmpOverrides() {
+  try { return JSON.parse(localStorage.getItem(EMP_OVERRIDE_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+function saveEmpOverrides() {
+  try { localStorage.setItem(EMP_OVERRIDE_KEY, JSON.stringify(EMP_OVERRIDES)); } catch (e) {}
+}
+let EMP_OVERRIDES = loadEmpOverrides();
+let EFFECTIVE_LOOKUP = Object.assign({}, EMPLOYEE_COST_CENTER, EMP_OVERRIDES);
+function rebuildLookup() {
+  EFFECTIVE_LOOKUP = Object.assign({}, EMPLOYEE_COST_CENTER, EMP_OVERRIDES);
+}
+
+// ---- Custom mapping overrides (persist in this browser via localStorage) ----
+// Shape:
+//   {
+//     contributions: { "<desc>": { account: "<gl>"|null, invoiceCat: "<cat>"|null } | null },
+//     costCenters:   { "<cost center>": "<gl>"|null }
+//   }
+// A null value is a tombstone: it removes a built-in mapping rather than
+// re-adding it on the next load.
+const MAP_OVERRIDE_KEY = 'payroll-je-hvac:mapping-overrides';
+function loadMapOverrides() {
+  try {
+    const o = JSON.parse(localStorage.getItem(MAP_OVERRIDE_KEY)) || {};
+    return { contributions: o.contributions || {}, costCenters: o.costCenters || {} };
+  } catch (e) { return { contributions: {}, costCenters: {} }; }
+}
+function saveMapOverrides() {
+  try { localStorage.setItem(MAP_OVERRIDE_KEY, JSON.stringify(MAP_OVERRIDES)); } catch (e) {}
+}
+let MAP_OVERRIDES = loadMapOverrides();
+
+let EFF_CONTRIB_ACCOUNT = {};
+let EFF_CONTRIB_INVCAT  = {};
+let EFF_COST_CENTER_ACCOUNT = {};
+let EFF_WAGE_ORDER = [];
+
+function rebuildMaps() {
+  EFF_CONTRIB_ACCOUNT     = Object.assign({}, CONTRIBUTION_ACCOUNT);
+  EFF_CONTRIB_INVCAT      = Object.assign({}, CONTRIBUTION_INVOICE_CATEGORY);
+  EFF_COST_CENTER_ACCOUNT = Object.assign({}, COST_CENTER_ACCOUNT);
+
+  for (const [desc, o] of Object.entries(MAP_OVERRIDES.contributions || {})) {
+    if (o === null) {
+      delete EFF_CONTRIB_ACCOUNT[desc];
+      delete EFF_CONTRIB_INVCAT[desc];
+      continue;
+    }
+    if (o && 'account' in o) {
+      if (o.account) EFF_CONTRIB_ACCOUNT[desc] = o.account;
+      else delete EFF_CONTRIB_ACCOUNT[desc];
+    }
+    if (o && 'invoiceCat' in o) {
+      if (o.invoiceCat) EFF_CONTRIB_INVCAT[desc] = o.invoiceCat;
+      else delete EFF_CONTRIB_INVCAT[desc];
+    }
+  }
+  for (const [cc, acct] of Object.entries(MAP_OVERRIDES.costCenters || {})) {
+    if (acct) EFF_COST_CENTER_ACCOUNT[cc] = acct;
+    else delete EFF_COST_CENTER_ACCOUNT[cc];
+  }
+
+  // Keep the built-in presentation order, then append any account the user added.
+  const live = new Set(Object.values(EFF_COST_CENTER_ACCOUNT));
+  EFF_WAGE_ORDER = WAGE_ACCOUNT_ORDER.filter(a => live.has(a));
+  for (const a of live) if (!EFF_WAGE_ORDER.includes(a)) EFF_WAGE_ORDER.push(a);
+}
+rebuildMaps();
+
+// A "W/C <class code>" line that isn't in the table yet is still workers' comp.
+// Resolving by prefix means a new class code doesn't silently fall out of the JE.
+function resolveContribAccount(desc) {
+  if (desc in EFF_CONTRIB_ACCOUNT) return EFF_CONTRIB_ACCOUNT[desc];
+  if (/^W\/C\b/i.test(desc)) return "Worker's Compensation Insurance";
+  return null;
+}
+function resolveContribInvCat(desc) {
+  if (desc in EFF_CONTRIB_INVCAT) return EFF_CONTRIB_INVCAT[desc];
+  if (/^W\/C\b/i.test(desc)) return 'WORKERS COMPENSATION';
+  return null;
+}
+// True when a contribution's amount actually moves the DR/CR balance.
+function isBooked(desc) {
+  const acct = resolveContribAccount(desc);
+  return !!acct && !NON_BOOKED_ACCOUNTS.has(acct);
+}
+
+// Fold an invoice line label onto a canonical category name.
+function normalizeInvoiceLabel(label) {
+  let s = String(label || '')
+    .replace(/^other\s*:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .replace(/[.\s]+$/, '')
+    .trim()
+    .toUpperCase();
+  if (INVOICE_LABEL_ALIAS[s]) s = INVOICE_LABEL_ALIAS[s];
+  return s;
+}
+
+// ============================================================
+// UTILITY
+// ============================================================
+function fmt(n) {
+  if (n === 0 || n === null || n === undefined) return '';
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtBadge(n) {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+// Signed, always shows the sign so a credit reads as a credit.
+function fmtSigned(n) {
+  const s = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (n < 0 ? '-$' : '$') + s;
+}
+function fmtCell(n) {
+  if (n === 0 || n === null || n === undefined) return '';
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ============================================================
+// isMetadata
+// ============================================================
+function isMetadata(val) {
+  if (val === null || val === undefined || val === '') return true;
+  const s = String(val).trim();
+  if (s === '' || s === 'nan') return true;
+  const prefixes = [
+    'Pay Method', 'Chk/Deposit', 'Check Number', 'Check Date',
+    'Period Start', 'Period End', 'WkComp Class', 'Employee ID',
+    'Net Pay', 'GRAND TOTALS', 'Break Total', 'Deduction Total',
+    'Contribution Total', 'MAIN', 'LOCATION', 'Details'
+  ];
+  return prefixes.some(p => s.startsWith(p));
+}
+
+// ============================================================
+// parseHrReport
+// ============================================================
+function parseHrReport(rows) {
+  // rows = array of arrays from SheetJS { header:1, defval:null }
+  const wages = {};
+  const contributions = {};
+  let employee401k = 0;
+  let employeeHealth = 0;
+  const unknownEmps = [];
+  let monthYear = [null, null];
+  let periodDesc = '';
+
+  // Detect period: scan col[2] for "Pay Dates from"
+  for (const row of rows) {
+    const val = row[2] != null ? String(row[2]) : '';
+    if (val.includes('Pay Dates from')) {
+      const m = val.match(/(\d{2}\/\d{2}\/\d{4}) to (\d{2}\/\d{2}\/\d{4})/);
+      if (m) {
+        periodDesc = `${m[1]} to ${m[2]}`;
+        const parts = m[2].split('/');
+        monthYear = [parseInt(parts[0], 10), parseInt(parts[2], 10)];
+      }
+      break;
+    }
+  }
+
+  // Find block starts: rows where col[0] is not null/undefined/empty
+  const blockStarts = [];
+  for (let i = 0; i < rows.length; i++) {
+    const v = rows[i][0];
+    if (v !== null && v !== undefined && String(v).trim() !== '') {
+      blockStarts.push(i);
+    }
+  }
+
+  for (let bi = 0; bi < blockStarts.length; bi++) {
+    const start = blockStarts[bi];
+    const end = bi + 1 < blockStarts.length ? blockStarts[bi + 1] : rows.length;
+    const block = rows.slice(start, end);
+
+    // Skip GRAND TOTALS / Break Total blocks
+    const firstCol3 = block[0][3] != null ? String(block[0][3]).trim() : '';
+    if (firstCol3.includes('GRAND TOTALS') || firstCol3.includes('Break Total')) continue;
+
+    // Find employee name
+    let empName = null;
+    for (const brow of block) {
+      const val = brow[3] != null ? String(brow[3]).trim() : '';
+      if (!isMetadata(val)) { empName = val; break; }
+    }
+    if (!empName) continue;
+
+    // Track unknown employees (against built-in + user-saved overrides)
+    if (!(empName in EFFECTIVE_LOOKUP) && !unknownEmps.includes(empName)) {
+      unknownEmps.push(empName);
+    }
+
+    // Get wages: look for "Pay Total:" in col[4]
+    let payTotalFound = false;
+    for (const brow of block) {
+      const col4 = brow[4] != null ? String(brow[4]).trim() : '';
+      if (col4 === 'Pay Total:') {
+        const amt = brow[7];
+        if (amt != null && amt !== '') {
+          wages[empName] = (wages[empName] || 0) + parseFloat(amt);
+        }
+        payTotalFound = true;
+        break;
+      }
+    }
+    if (!payTotalFound) {
+      // Fallback: sum individual pay rows
+      for (const brow of block) {
+        const col4 = brow[4] != null ? String(brow[4]).trim() : '';
+        if (col4 && col4 !== 'Pay Total:') {
+          const amt = brow[7];
+          if (amt != null && amt !== '') {
+            try { wages[empName] = (wages[empName] || 0) + parseFloat(amt); } catch(e) {}
+          }
+        }
+      }
+    }
+
+    // Contributions: col[10] = desc, col[11] = amount
+    for (const brow of block) {
+      const desc = brow[10] != null ? String(brow[10]).trim() : '';
+      const amt  = brow[11] != null ? brow[11] : 0;
+      if (!desc || desc === 'nan' || desc === 'Contribution Total:' || desc === 'Contribution Description') continue;
+      try {
+        const famt = parseFloat(amt);
+        contributions[desc] = (contributions[desc] || 0) + famt;
+      } catch(e) {}
+    }
+
+    // Employee deductions: col[8] = desc, col[9] = amount
+    for (const brow of block) {
+      const desc = brow[8] != null ? String(brow[8]).trim() : '';
+      const amt  = brow[9] != null ? brow[9] : 0;
+      if (!desc || desc === 'nan' || desc === 'Deduction Total:' || desc === 'Deduction Description') continue;
+      try {
+        const famt = parseFloat(amt);
+        if (desc === '401K' || desc === '401k ROTH' || desc === '401K ROTH') {
+          employee401k += famt;
+        } else if (desc === 'MEDICAL') {
+          employeeHealth += famt;
+        }
+      } catch(e) {}
+    }
+  }
+
+  return { wages, contributions, employee401k, employeeHealth, monthYear, periodDesc, unknownEmps };
+}
+
+// ============================================================
+// parsePrismPdf
+// ============================================================
+async function parsePrismPdf(file) {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+
+    // Reconstruct text in visual reading order across ALL pages (the entire
+    // front page included). pdf.js returns text items in content-stream order,
+    // which is NOT always reading order -- on some invoice layouts the whole
+    // label column is emitted before the number column, so "TOTAL INVOICE"
+    // ends up nowhere near its amount and no pattern matches. We bucket items
+    // into lines by Y position (top-to-bottom) and sort each line by X
+    // (left-to-right), the way pdfplumber does, so every label stays beside
+    // its dollar amount.
+    let text = '';
+    let firstPageLines = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      const lines = {};
+      for (const item of content.items) {
+        if (!item.str || !item.str.trim()) continue;
+        const y = Math.round(item.transform[5]);   // vertical position (baseline)
+        const x = item.transform[4];               // horizontal position
+        (lines[y] = lines[y] || []).push({ x, s: item.str });
+      }
+      const ys = Object.keys(lines).map(Number).sort((a, b) => b - a); // top first
+      const pageLines = ys.map(y => lines[y].sort((a, b) => a.x - b.x).map(o => o.s).join(' '));
+      if (p === 1) firstPageLines = pageLines;
+      text += pageLines.join('\n') + '\n';
+    }
+
+    let invNum = '?', invDate = '?', invTotal = 0, parseNote = '';
+
+    // Invoice number
+    let m = text.match(/Vensure HR Invoice\s+(\d+)/i);
+    if (!m) m = text.match(/Invoice\s*#?\s*:?\s*(\d{5,})/i);
+    if (m) invNum = m[1];
+
+    // Date
+    m = text.match(/(\d{2}\/\d{2}\/\d{4})/);
+    if (m) invDate = m[1];
+
+    // Total — try many patterns in order of specificity
+    const totalPatterns = [
+      /TOTAL\s+INVOICE\s*:?\s*([\d,]+\.\d{2})/i,
+      /Invoice\s+Total\s*:?\s*([\d,]+\.\d{2})/i,
+      /GRAND\s+TOTAL\s*:?\s*([\d,]+\.\d{2})/i,
+      /TOTAL\s+DUE\s*:?\s*([\d,]+\.\d{2})/i,
+      /Amount\s+Due\s*:?\s*([\d,]+\.\d{2})/i,
+      /SUB[-\s]?TOTAL\s*\.*\s*:?\s*([\d,]+\.\d{2})/i,
+      /TOTAL\s*:?\s*([\d,]+\.\d{2})/i,
+    ];
+    for (const pat of totalPatterns) {
+      m = text.match(pat);
+      if (m) { invTotal = parseFloat(m[1].replace(/,/g, '')); break; }
+    }
+
+    // If still 0, attach a snippet of the extracted text to help diagnose.
+    // Note: the FULL document text was searched (all pages, in reading order);
+    // the snippet below is only the first 400 chars, shown for troubleshooting.
+    if (invTotal === 0) {
+      const flat = text.replace(/\s+/g, ' ').trim();
+      parseNote = `Could not find a total on any of this invoice's ${pdf.numPages} page(s). ` +
+                  `Searched ${flat.length} chars; first 400 shown: ` + flat.substring(0, 400);
+    }
+
+    // Line items -- what the reconciliation compares against the payroll
+    // register. If these don't add up to the invoice total, say so rather than
+    // quietly reconciling against a partial invoice.
+    const items = parseInvoiceLineItems(firstPageLines);
+    const itemsTotal = items.reduce((s, i) => s + i.amt, 0);
+    let itemsNote = '';
+    if (items.length === 0) {
+      itemsNote = 'No line items could be read from this invoice -- it is excluded from the reconciliation.';
+    } else if (invTotal && Math.abs(itemsTotal - invTotal) > 0.01) {
+      itemsNote = `Line items read from this invoice total $${itemsTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}, ` +
+                  `but the invoice total is $${invTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}. ` +
+                  `The reconciliation below may be incomplete.`;
+    }
+
+    return { fileName: file.name, invNum, invDate, invTotal, parseNote, items, itemsTotal, itemsNote };
+  } catch(e) {
+    return { fileName: file.name, invNum: '?', invDate: '?', invTotal: 0, items: [], itemsTotal: 0, error: e.message };
+  }
+}
+
+// ============================================================
+// parseInvoiceLineItems
+// ============================================================
+// Reads the charge lines off the front page of a Vensure/PRISM invoice --
+// everything above SUB-TOTAL that ends in a dollar amount. Anything that isn't
+// a charge line (addresses, phone numbers, the per-employee detail rows that
+// hang under a category) either has no trailing amount or starts with a digit.
+const INVOICE_LINE_SKIP = /^(sub\s*-?\s*total|total|paid|invoice|balance|open\/past due|page|control number|pay period|questions|date|amount due|remit|do not remit)\b/i;
+
+function parseInvoiceLineItems(pageLines) {
+  const items = [];
+  for (const raw of (pageLines || [])) {
+    const line = String(raw).replace(/\s+/g, ' ').trim();
+    if (!line) continue;
+    if (/^sub\s*-?\s*total/i.test(line)) break;   // charges end at the subtotal
+    const m = line.match(/^(.*?)\s+(-?[\d,]+\.\d{2})$/);
+    if (!m) continue;
+    const label = m[1].replace(/[.\s]+$/, '').trim();
+    if (!label || /^[\d(]/.test(label)) continue;   // address lines, detail rows
+    if (INVOICE_LINE_SKIP.test(label)) continue;
+    const amt = parseFloat(m[2].replace(/,/g, ''));
+    if (!isFinite(amt)) continue;
+    items.push({ label, cat: normalizeInvoiceLabel(label), amt });
+  }
+  return items;
+}
+
+// ============================================================
+// buildRecon
+// ============================================================
+// Puts the invoice and the payroll register onto one shared category list.
+//
+// The JE debits expenses off the payroll register but credits cash off the
+// invoice totals, so the entry only balances when every invoice line has a
+// register counterpart that actually gets booked. Variance = what the JE books
+// minus what the invoice charges, and the variances sum to the imbalance
+// exactly -- so this table names every dollar of any out-of-balance.
+function buildRecon(totalWages, classifiedWages, contributions, invoiceItems) {
+  const inv = {}, reg = {}, booked = {}, detail = {};
+  const touch = (cat) => {
+    if (!(cat in inv)) { inv[cat] = 0; reg[cat] = 0; booked[cat] = 0; detail[cat] = []; }
+  };
+
+  for (const it of (invoiceItems || [])) { touch(it.cat); inv[it.cat] += it.amt; }
+
+  for (const [desc, amt] of Object.entries(contributions)) {
+    if (!amt) continue;
+    const acct = resolveContribAccount(desc);
+    const counts = !!acct && !NON_BOOKED_ACCOUNTS.has(acct);
+    let cat = resolveContribInvCat(desc);
+    if (!cat) {
+      // No GL account at all is a different problem from "mapped, but we don't
+      // know which invoice line it belongs to" -- give it its own row so an
+      // unrecognised contribution can't hide inside the not-billed bucket.
+      cat = acct ? (counts ? NO_INVOICE_CAT : NOT_ON_INVOICE) : UNMAPPED_BUCKET;
+    }
+    touch(cat);
+    reg[cat] += amt;
+    if (counts) booked[cat] += amt;
+    detail[cat].push({ desc, amt, counts, acct });
+  }
+
+  touch('GROSS WAGES');
+  reg['GROSS WAGES'] += totalWages;
+  booked['GROSS WAGES'] += classifiedWages;
+
+  // Canonical order first, then anything the invoice had that we don't know,
+  // then the two catch-alls.
+  const order = [];
+  for (const c of INVOICE_CATEGORIES) if (c in inv) order.push(c);
+  const CATCH_ALLS = [NO_INVOICE_CAT, UNMAPPED_BUCKET, NOT_ON_INVOICE];
+  for (const c of Object.keys(inv).sort()) {
+    if (order.indexOf(c) === -1 && CATCH_ALLS.indexOf(c) === -1) order.push(c);
+  }
+  if (NO_INVOICE_CAT in inv) order.push(NO_INVOICE_CAT);
+  if (UNMAPPED_BUCKET in inv) order.push(UNMAPPED_BUCKET);
+  if (NOT_ON_INVOICE in inv) order.push(NOT_ON_INVOICE);
+
+  const unmappedDescs = (detail[UNMAPPED_BUCKET] || []).map(d => d.desc);
+
+  const rows = [];
+  let totalVariance = 0;
+  for (const cat of order) {
+    const variance = booked[cat] - inv[cat];
+    totalVariance += variance;
+
+    const causes = [];
+    if (cat === UNMAPPED_BUCKET) {
+      causes.push('no GL account mapped, so none of this posts: ' +
+                  detail[cat].map(d => d.desc + ' (' + fmtSigned(d.amt) + ')').join(', ') +
+                  '. If any of it is billed on the invoice, the entry is out by that much');
+    } else {
+      if (cat !== NOT_ON_INVOICE && Math.abs(reg[cat] - inv[cat]) > 0.005) {
+        if (Math.abs(inv[cat]) < 0.005) {
+          causes.push('on the payroll register but not billed on any invoice');
+        } else if (Math.abs(reg[cat]) < 0.005) {
+          causes.push('billed on the invoice with no payroll-register counterpart');
+        } else {
+          causes.push('invoice ' + fmtSigned(inv[cat]) + ' vs register ' + fmtSigned(reg[cat]) +
+                      ' \u2014 an invoice-only credit or adjustment, or a register line landing elsewhere');
+        }
+        if (unmappedDescs.length && reg[cat] < inv[cat]) {
+          causes.push('some register lines are unmapped \u2014 see the ' + UNMAPPED_BUCKET + ' row');
+        }
+      }
+      const unbooked = detail[cat].filter(d => !d.counts);
+      if (unbooked.length && cat !== NOT_ON_INVOICE) {
+        causes.push('not booked: ' + unbooked.map(d => d.desc + ' (' + fmtSigned(d.amt) + ')').join(', '));
+      }
+      if (cat === 'GROSS WAGES' && Math.abs(classifiedWages - totalWages) > 0.005) {
+        causes.push('wages for employees missing from the cost-center lookup are unclassified');
+      }
+    }
+
+    rows.push({
+      cat,
+      invoice: inv[cat],
+      register: reg[cat],
+      booked: booked[cat],
+      variance,
+      note: causes.join('; '),
+      info: cat === NOT_ON_INVOICE && Math.abs(variance) < 0.005,
+      warn: cat === UNMAPPED_BUCKET,
+      detail: detail[cat]
+    });
+  }
+  return { rows, totalVariance };
+}
+
+// ============================================================
+// buildJe
+// ============================================================
+function buildJe(wages, contributions, employee401k, employeeHealth,
+                 prismTotal, cignaOverride, guardianOverride) {
+  const warnings = [];
+
+  // 1. Wages by account
+  const wagesByAcct = {};
+  let classifiedWages = 0;
+  let totalWages = 0;
+  const sortedEmps = Object.keys(wages).sort();
+  for (const emp of sortedEmps) {
+    const amt = wages[emp];
+    totalWages += amt;
+    const cc = EFFECTIVE_LOOKUP[emp];
+    if (cc) {
+      const acct = EFF_COST_CENTER_ACCOUNT[cc];
+      if (acct) {
+        wagesByAcct[acct] = (wagesByAcct[acct] || 0) + amt;
+        classifiedWages += amt;
+      } else {
+        warnings.push(`Unknown cost center account for: ${cc} (employee: ${emp})`);
+      }
+    } else {
+      warnings.push(`Employee not in lookup -- unclassified wages $${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}: ${emp}`);
+    }
+  }
+
+  // 2. Contribution mapping
+  const acctTotals = {};
+  for (const [desc, amt] of Object.entries(contributions)) {
+    const jeAcct = resolveContribAccount(desc);
+    if (jeAcct === '_IGNORE') {
+      continue;
+    } else if (jeAcct) {
+      acctTotals[jeAcct] = (acctTotals[jeAcct] || 0) + amt;
+    } else if (amt !== 0) {
+      warnings.push(`Unmapped contribution '${desc}' = $${amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} -- add it under "View / edit mappings"`);
+    }
+  }
+
+  // 3. Special items
+  const clientMedicalContra = acctTotals['_CLIENT_MEDICAL'] || 0;
+  delete acctTotals['_CLIENT_MEDICAL'];
+  const client401kContra = acctTotals['_CLIENT_401K'] || 0;
+  delete acctTotals['_CLIENT_401K'];
+
+  // 4. Health insurance netting
+  const trionEmployer = acctTotals['Health Insurance'] || 0;
+  delete acctTotals['Health Insurance'];
+  // Employee medical withheld, less the Trion employer premiums billed on the
+  // same invoice. When the employer premiums exceed the withholding this is a
+  // net debit -- post it that way. Zeroing it out (what this used to do) threw
+  // the entry out of balance by the difference with no line to point at.
+  const healthInsNet = Math.abs(clientMedicalContra) - trionEmployer;
+  if (healthInsNet < 0) {
+    warnings.push('Trion employer premiums exceed employee medical withheld -- Health Insurance posts as a debit.');
+  }
+
+  // 5. HR-derived Cigna (fallback). These premiums are billed by CV, not by
+  // Vensure, so they never post from the register -- they only seed the field.
+  const hrCigna = acctTotals['_CV_MEDICAL_ESTIMATE'] || 0;
+  delete acctTotals['_CV_MEDICAL_ESTIMATE'];
+
+  // 6. Override logic
+  const cignadr = (cignaOverride !== null && cignaOverride !== undefined) ? cignaOverride : hrCigna;
+  const guardianDr = (guardianOverride !== null && guardianOverride !== undefined) ? guardianOverride : 0;
+
+  if (cignaOverride === null || cignaOverride === undefined) {
+    warnings.push(
+      `Cigna amount not provided -- using HR-report estimate $${hrCigna.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}. ` +
+      `Enter the correct CV invoice amount in the Cigna DR field.`
+    );
+  }
+
+  // 7. Retirement
+  const retirementAmt = acctTotals['Retirement'] || 0;
+  delete acctTotals['Retirement'];
+  const retirement401kLiability = Math.abs(client401kContra) + retirementAmt;
+
+  // 8. Assemble JE lines
+  const je = [];
+
+  je.push({ account: 'Employer Payroll Taxes',
+            dr: acctTotals['Employer Payroll Taxes'] || 0, cr: 0,
+            note: 'FICA-ER, FUTA, SUTA, CA ETT' });
+
+  je.push({ account: 'Health Insurance - Cigna',
+            dr: cignadr, cr: 0,
+            note: 'From CV Cigna invoice (manual)' });
+
+  je.push({ account: 'Health Insurance - Guardian',
+            dr: guardianDr, cr: 0,
+            note: 'From CV Guardian invoice (manual)' });
+
+  for (const acct of EFF_WAGE_ORDER) {
+    const amt = wagesByAcct[acct] || 0;
+    if (amt) {
+      je.push({ account: acct, dr: amt, cr: 0, note: '' });
+    }
+  }
+
+  je.push({ account: "Worker's Compensation Insurance",
+            dr: acctTotals["Worker's Compensation Insurance"] || 0, cr: 0,
+            note: '' });
+
+  je.push({ account: 'Business Insurance',
+            dr: acctTotals['Business Insurance'] || 0, cr: 0,
+            note: 'EPLI' });
+
+  je.push({ account: 'Payroll Services',
+            dr: acctTotals['Payroll Services'] || 0, cr: 0,
+            note: 'Admin fee' });
+
+  const accrued = acctTotals['Accrued Payroll'] || 0;
+  je.push({ account: 'Accrued Payroll',
+            dr: accrued > 0 ? accrued : 0,
+            cr: accrued < 0 ? Math.abs(accrued) : 0,
+            note: '' });
+
+  je.push({ account: 'Retirement',
+            dr: retirementAmt, cr: 0,
+            note: 'Employer retirement contribution' });
+
+  je.push({ account: 'Health Insurance',
+            dr: healthInsNet < 0 ? Math.abs(healthInsNet) : 0,
+            cr: healthInsNet > 0 ? healthInsNet : 0,
+            note: 'Employee medical deductions net of Trion employer premiums' });
+
+  je.push({ account: 'Payroll Liabilities (balance sheet)',
+            dr: 0, cr: prismTotal,
+            note: 'Sum of Vensure/PRISM invoices = cash out' });
+
+  je.push({ account: '401K Liability (balance sheet)',
+            dr: 0, cr: retirement401kLiability,
+            note: '|CLIENT 401K| + Retirement employer contribution' });
+
+  const dueToCv = cignadr + guardianDr;
+  je.push({ account: 'Due to CV',
+            dr: 0, cr: dueToCv,
+            note: 'Intercompany -- CV pays Cigna/Guardian' });
+
+  // 9. Filter zero lines (keep Accrued Payroll)
+  const filtered = je.filter(ln => ln.dr !== 0 || ln.cr !== 0 || ln.account === 'Accrued Payroll');
+
+  // 10. Imbalance
+  const totalDr = filtered.reduce((s, ln) => s + ln.dr, 0);
+  const totalCr = filtered.reduce((s, ln) => s + ln.cr, 0);
+  const imbalance = Math.round((totalDr - totalCr) * 100) / 100;
+
+  return { jeLines: filtered, imbalance, warnings, classifiedWages, totalWages,
+           hrHealthHint: { cigna: hrCigna } };
+}
+
+// ============================================================
+// buildCsv
+// ============================================================
+function buildCsv(jeLines, monthYear, periodDesc) {
+  const [month, year] = monthYear;
+  const jeNo = (month && year)
+    ? `PAYROLL-${year}-${String(month).padStart(2,'0')}`
+    : 'PAYROLL';
+  const dateStr = (month && year)
+    ? `${String(month).padStart(2,'0')}/01/${year}`
+    : '??/??/????';
+  const memo = `Payroll JE ${periodDesc}`;
+
+  const rows = [['JournalEntryNo','JournalEntryDate','Memo','AccountName','Debit','Credit','Description']];
+  for (const ln of jeLines) {
+    rows.push([
+      jeNo, dateStr, memo, ln.account,
+      ln.dr ? ln.dr.toFixed(2) : '',
+      ln.cr ? ln.cr.toFixed(2) : '',
+      ln.note
+    ]);
+  }
+  return rows.map(r => r.map(cell => {
+    const s = String(cell);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g,'""')}"`;
+    return s;
+  }).join(',')).join('\r\n');
+}
+
+// ============================================================
+// buildSummaryText
+// ============================================================
+function buildSummaryText(jeLines, imbalance, warnings, invoiceDetail, wages, unknownEmps, periodDesc, recon) {
+  const totalDr = jeLines.reduce((s,ln) => s + ln.dr, 0);
+  const totalCr = jeLines.reduce((s,ln) => s + ln.cr, 0);
+  const sep65 = '='.repeat(65);
+  const dash65 = '-'.repeat(65);
+
+  const lines = [];
+  lines.push(sep65);
+  lines.push('  PAYROLL JOURNAL ENTRY SUMMARY');
+  lines.push(`  Period: ${periodDesc}`);
+  lines.push(sep65);
+  lines.push('');
+  lines.push(`  ${'Account'.padEnd(45)} ${'DR'.padStart(12)}  ${'CR'.padStart(12)}`);
+  lines.push(`  ${'-'.repeat(45)} ${'-'.repeat(12)}  ${'-'.repeat(12)}`);
+  for (const ln of jeLines) {
+    const drStr = ln.dr ? ln.dr.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12) : ' '.repeat(13);
+    const crStr = ln.cr ? ln.cr.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12) : ' '.repeat(13);
+    lines.push(`  ${ln.account.padEnd(45)} ${drStr}  ${crStr}`);
+  }
+  lines.push(`  ${'-'.repeat(45)} ${'-'.repeat(12)}  ${'-'.repeat(12)}`);
+  const totDrStr = totalDr.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12);
+  const totCrStr = totalCr.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12);
+  lines.push(`  ${'TOTAL'.padEnd(45)} ${totDrStr}  ${totCrStr}`);
+  lines.push('');
+  if (Math.abs(imbalance) < 0.02) {
+    lines.push('  [OK] JE BALANCED');
+  } else {
+    const imbStr = imbalance.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    lines.push(`  [!!] IMBALANCE: $${imbStr}  (positive = DR > CR)`);
+    if (recon && recon.rows.length) {
+      const drivers = recon.rows
+        .filter(r => Math.abs(r.variance) > 0.005)
+        .sort((a, b) => Math.abs(b.variance) - Math.abs(a.variance));
+      if (drivers.length) {
+        lines.push('');
+        lines.push('       Driven by:');
+        for (const r of drivers) {
+          lines.push(`         ${r.cat.padEnd(30)} ${fmtSigned(r.variance).padStart(14)}`);
+          if (r.note) lines.push(`           ${r.note}`);
+        }
+      }
+    }
+  }
+  lines.push('');
+
+  lines.push(dash65);
+  lines.push('  VENSURE / PRISM INVOICES');
+  lines.push(dash65);
+  for (const inv of invoiceDetail) {
+    const numStr = String(inv.invNum).padStart(8);
+    const totStr = inv.invTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12);
+    lines.push(`  Invoice ${numStr}  ${inv.invDate}  $${totStr}  ${inv.fileName}`);
+  }
+  const totalInv = invoiceDetail.reduce((s,i) => s + i.invTotal, 0);
+  const totalInvStr = totalInv.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(12);
+  lines.push(`  ${'TOTAL'.padStart(30)}              $${totalInvStr}`);
+  lines.push('');
+
+  if (recon && recon.rows.length) {
+    lines.push(dash65);
+    lines.push('  INVOICE <-> PAYROLL REGISTER RECONCILIATION');
+    lines.push(dash65);
+    lines.push(`  ${'Category'.padEnd(30)} ${'Invoice'.padStart(13)} ${'Register'.padStart(13)} ${'Booked'.padStart(13)} ${'Variance'.padStart(13)}`);
+    lines.push(`  ${'-'.repeat(30)} ${'-'.repeat(13)} ${'-'.repeat(13)} ${'-'.repeat(13)} ${'-'.repeat(13)}`);
+    const money = n => (n === 0 ? '' : n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}));
+    let tI = 0, tR = 0, tB = 0, tV = 0;
+    for (const r of recon.rows) {
+      tI += r.invoice; tR += r.register; tB += r.booked; tV += r.variance;
+      const off = Math.abs(r.variance) > 0.005;
+      lines.push(`  ${r.cat.padEnd(30)} ${money(r.invoice).padStart(13)} ${money(r.register).padStart(13)} ${money(r.booked).padStart(13)} ${(off ? fmtSigned(r.variance) : '-').padStart(13)}`);
+      if (off && r.note) lines.push(`    ^ ${r.note}`);
+    }
+    lines.push(`  ${'-'.repeat(30)} ${'-'.repeat(13)} ${'-'.repeat(13)} ${'-'.repeat(13)} ${'-'.repeat(13)}`);
+    lines.push(`  ${'TOTAL'.padEnd(30)} ${money(tI).padStart(13)} ${money(tR).padStart(13)} ${money(tB).padStart(13)} ${(Math.abs(tV) > 0.005 ? fmtSigned(tV) : '-').padStart(13)}`);
+    lines.push('');
+    lines.push('  Variance = Booked in JE minus Vensure invoice. The variances sum to the');
+    lines.push('  imbalance, so any non-zero row is a dollar the entry is out by.');
+    lines.push('');
+  }
+
+  lines.push(dash65);
+  lines.push('  WAGES BY EMPLOYEE (for reference)');
+  lines.push(dash65);
+  for (const emp of Object.keys(wages).sort()) {
+    const wStr = wages[emp].toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(10);
+    lines.push(`  ${emp.padEnd(40)} $${wStr}`);
+  }
+  const totalWages = Object.values(wages).reduce((s,v) => s+v, 0);
+  const totalWagesStr = totalWages.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).padStart(10);
+  lines.push(`  ${'TOTAL'.padEnd(40)} $${totalWagesStr}`);
+  lines.push('');
+
+  if (unknownEmps && unknownEmps.length > 0) {
+    lines.push(dash65);
+    lines.push('  [!] EMPLOYEES NOT IN LOOKUP -- add them via the "Manage employees" box');
+    lines.push(dash65);
+    for (const emp of unknownEmps) lines.push(`  ${emp}`);
+    lines.push('');
+  }
+
+  if (warnings && warnings.length > 0) {
+    lines.push(dash65);
+    lines.push('  WARNINGS');
+    lines.push(dash65);
+    for (const w of warnings) lines.push(`  [!] ${w}`);
+    lines.push('');
+  }
+
+  lines.push(dash65);
+  lines.push('  NOTES FOR REVIEWER');
+  lines.push(dash65);
+  lines.push("  1. 'Health Insurance - Cigna' and 'Health Insurance - Guardian' DR amounts");
+  lines.push("     come from CV's invoice (manual). Enter via the Cigna/Guardian DR fields.");
+  lines.push("     'Due to CV' CR mirrors these DR lines exactly.");
+  lines.push("  2. 'Payroll Liabilities' CR = sum of PRISM/Vensure invoices.");
+  lines.push("     Verify this matches the Trion payment in QBO.");
+  lines.push("  3. '401K Liability' CR = |CLIENT 401K| + Retirement employer contribution.");
+  lines.push("     Verify this matches the 401K remittance in QBO.");
+  lines.push("  4. Any flagged row in the reconciliation is a real difference between what");
+  lines.push("     Vensure billed and what the payroll register shows -- usually an invoice-");
+  lines.push("     only credit (e.g. a workers' comp audit refund) or a contribution that");
+  lines.push("     isn't mapped yet. Fix mappings under 'View / edit mappings'; book genuine");
+  lines.push("     invoice-only adjustments as their own line.");
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+// ============================================================
+// UI helpers
+// ============================================================
+function setLoading(msg) {
+  const el = document.getElementById('loading');
+  el.style.display = 'flex';
+  el.style.color = '';
+  const spinner = el.querySelector('.spinner');
+  if (spinner) { spinner.style.display = ''; }
+  document.getElementById('loading-msg').textContent = msg || 'Processing…';
+}
+function clearLoading() {
+  document.getElementById('loading').style.display = 'none';
+}
+function showError(msg) {
+  const el = document.getElementById('loading');
+  el.style.display = 'flex';
+  el.style.color = '#dc2626';
+  const spinner = el.querySelector('.spinner');
+  if (spinner) { spinner.style.display = 'none'; }
+  document.getElementById('loading-msg').textContent = '❌ ' + msg;
+}
+
+function renderResults(result) {
+  const { jeLines, imbalance, warnings, invoiceDetail, wages, unknownEmps, monthYear, periodDesc, recon } = result;
+
+  // Balance badge
+  const wrap = document.getElementById('balance-badge-wrap');
+  const totalDr = jeLines.reduce((s,ln) => s + ln.dr, 0);
+  const isBalanced = Math.abs(imbalance) < 0.02;
+  wrap.innerHTML = `
+    <div class="balance-badge ${isBalanced ? 'balanced' : 'imbalanced'}">
+      <span class="balance-icon">${isBalanced ? '✓' : '⚠'}</span>
+      <span>${isBalanced
+        ? `BALANCED &nbsp;$${fmtBadge(totalDr)}`
+        : `IMBALANCE &nbsp;$${fmtBadge(Math.abs(imbalance))}`
+      }</span>
+    </div>`;
+
+  // Imbalance attribution -- the reconciliation variances add up to the
+  // imbalance exactly, so name the categories driving it right under the badge.
+  if (!isBalanced && recon && recon.rows.length) {
+    const drivers = recon.rows
+      .filter(r => Math.abs(r.variance) > 0.005)
+      .sort((a, b) => Math.abs(b.variance) - Math.abs(a.variance));
+    const ties = Math.abs(recon.totalVariance - imbalance) < 0.02;
+    if (drivers.length) {
+      const items = drivers.map(r =>
+        `<div>&bull; <strong>${escHtml(r.cat)}</strong> &nbsp;<code>${fmtSigned(r.variance)}</code>` +
+        (r.note ? ` &mdash; ${escHtml(r.note)}` : '') + `</div>`).join('');
+      wrap.innerHTML += `
+        <div class="attribution">
+          <div class="att-title">Where the ${fmtSigned(imbalance)} comes from</div>
+          ${items}
+          ${ties ? '' : '<div style="margin-top:6px">These do not fully account for the imbalance — check the reconciliation table below.</div>'}
+        </div>`;
+    }
+  }
+
+  // JE Table
+  const jeTbody = document.getElementById('je-tbody');
+  jeTbody.innerHTML = '';
+  let sumDr = 0, sumCr = 0;
+  for (const ln of jeLines) {
+    sumDr += ln.dr; sumCr += ln.cr;
+    const isCr = ln.dr === 0 && ln.cr !== 0;
+    const tr = document.createElement('tr');
+    tr.className = isCr ? 'cr-row' : 'dr-row';
+    tr.innerHTML = `
+      <td>${escHtml(ln.account)}</td>
+      <td class="num">${ln.dr ? fmt(ln.dr) : ''}</td>
+      <td class="num">${ln.cr ? fmt(ln.cr) : ''}</td>
+      <td class="muted-cell">${escHtml(ln.note)}</td>`;
+    jeTbody.appendChild(tr);
+  }
+  const totTr = document.createElement('tr');
+  totTr.className = 'total-row';
+  totTr.innerHTML = `<td>TOTAL</td><td class="num">${fmt(sumDr)}</td><td class="num">${fmt(sumCr)}</td><td></td>`;
+  jeTbody.appendChild(totTr);
+
+  // Invoice Table
+  const invTbody = document.getElementById('invoice-tbody');
+  invTbody.innerHTML = '';
+  let sumInv = 0;
+  if (invoiceDetail && invoiceDetail.length > 0) {
+    for (const inv of invoiceDetail) {
+      sumInv += inv.invTotal;
+      const tr = document.createElement('tr');
+      const noteHtml = inv.error
+        ? `<span style="color:var(--danger)">⚠ Parse error: ${escHtml(inv.error)}</span>`
+        : inv.parseNote
+          ? `<span style="color:var(--warning)">⚠ ${escHtml(inv.parseNote)}</span>`
+          : inv.itemsNote
+            ? `${escHtml(inv.fileName)}<br><span style="color:var(--warning)">⚠ ${escHtml(inv.itemsNote)}</span>`
+            : escHtml(inv.fileName);
+      tr.innerHTML = `
+        <td>${escHtml(inv.invNum)}</td>
+        <td>${escHtml(inv.invDate)}</td>
+        <td class="num">${inv.invTotal ? fmt(inv.invTotal) : '<span style="color:var(--danger)">$0 — not found</span>'}</td>
+        <td class="muted-cell">${noteHtml}</td>`;
+      invTbody.appendChild(tr);
+    }
+    const totTr = document.createElement('tr');
+    totTr.className = 'total-row';
+    totTr.innerHTML = `<td colspan="2">TOTAL</td><td class="num">${fmt(sumInv)}</td><td></td>`;
+    invTbody.appendChild(totTr);
+    document.getElementById('invoice-card').style.display = 'block';
+  } else {
+    document.getElementById('invoice-card').style.display = 'none';
+  }
+
+  // Reconciliation Table
+  renderRecon(recon, imbalance);
+
+  // Wages Table
+  const wagesTbody = document.getElementById('wages-tbody');
+  wagesTbody.innerHTML = '';
+  let sumWages = 0;
+  for (const emp of Object.keys(wages).sort()) {
+    sumWages += wages[emp];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${escHtml(emp)}</td><td class="num">${fmt(wages[emp])}</td>`;
+    wagesTbody.appendChild(tr);
+  }
+  const wTotTr = document.createElement('tr');
+  wTotTr.className = 'total-row';
+  wTotTr.innerHTML = `<td>TOTAL</td><td class="num">${fmt(sumWages)}</td>`;
+  wagesTbody.appendChild(wTotTr);
+
+  // Warnings
+  const warnCard = document.getElementById('warnings-card');
+  const warnList = document.getElementById('warnings-list');
+  warnList.innerHTML = '';
+  const allWarnings = [...(warnings || [])];
+  if (unknownEmps && unknownEmps.length > 0) {
+    allWarnings.push(`Employees not in lookup (wages unclassified): ${unknownEmps.join(', ')}`);
+  }
+  if (allWarnings.length > 0) {
+    warnCard.style.display = '';
+    for (const w of allWarnings) {
+      const div = document.createElement('div');
+      div.className = 'warning-item';
+      div.textContent = w;
+      warnList.appendChild(div);
+    }
+  } else {
+    warnCard.style.display = 'none';
+  }
+
+  document.getElementById('results').style.display = 'block';
+}
+
+function renderRecon(recon, imbalance) {
+  const card  = document.getElementById('recon-card');
+  const tbody = document.getElementById('recon-tbody');
+  const note  = document.getElementById('recon-note');
+
+  if (!recon || !recon.rows.length) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  tbody.innerHTML = '';
+
+  let sInv = 0, sReg = 0, sBook = 0, sVar = 0;
+  for (const r of recon.rows) {
+    sInv += r.invoice; sReg += r.register; sBook += r.booked; sVar += r.variance;
+    const off = Math.abs(r.variance) > 0.005;
+    const tr = document.createElement('tr');
+    tr.className = off ? 'recon-flag' : (r.warn ? 'recon-warn' : (r.info ? 'recon-info' : ''));
+    tr.innerHTML = `
+      <td>${escHtml(r.cat)}</td>
+      <td class="num">${fmtCell(r.invoice)}</td>
+      <td class="num">${fmtCell(r.register)}</td>
+      <td class="num">${fmtCell(r.booked)}</td>
+      <td class="num ${off ? 'var-bad' : 'var-zero'}">${off ? fmtSigned(r.variance) : '—'}</td>
+      <td class="muted-cell">${escHtml(r.note)}</td>`;
+    tbody.appendChild(tr);
+  }
+  const totTr = document.createElement('tr');
+  totTr.className = 'total-row';
+  totTr.innerHTML = `
+    <td>TOTAL</td>
+    <td class="num">${fmtCell(sInv)}</td>
+    <td class="num">${fmtCell(sReg)}</td>
+    <td class="num">${fmtCell(sBook)}</td>
+    <td class="num ${Math.abs(sVar) > 0.005 ? 'var-bad' : 'var-zero'}">${Math.abs(sVar) > 0.005 ? fmtSigned(sVar) : '—'}</td>
+    <td></td>`;
+  tbody.appendChild(totTr);
+
+  const ties = Math.abs(recon.totalVariance - imbalance) < 0.02;
+  note.innerHTML =
+    `<strong>Variance = Booked in JE &minus; Vensure invoice.</strong> The journal entry debits expenses off the ` +
+    `payroll register but credits cash off the invoice totals, so the entry only balances when every invoice line ` +
+    `has a register counterpart that actually posts. The variance column therefore sums to the imbalance` +
+    (ties
+      ? ` &mdash; and it does here (${fmtSigned(recon.totalVariance)}).`
+      : `, but here it sums to ${fmtSigned(recon.totalVariance)} against an imbalance of ${fmtSigned(imbalance)}. ` +
+        `That gap usually means an invoice's line items didn't parse cleanly, or the PRISM total override is in use.`) +
+    `<br>Rows marked <em>${escHtml(NOT_ON_INVOICE)}</em> are register lines Vensure never bills (employer 401k match, ` +
+    `CV-carried medical); they're shown for completeness and don't affect the balance.`;
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleWages() {
+  const body = document.getElementById('wages-body');
+  const icon = document.getElementById('wages-toggle-icon');
+  body.classList.toggle('open');
+  icon.textContent = body.classList.contains('open') ? '▼ Hide' : '▶ Show';
+}
+
+function downloadText(content, filename) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// MAIN GENERATE HANDLER
+// ============================================================
+async function generate() {
+  if (!hrFile) return;
+
+  document.getElementById('results').style.display = 'none';
+  setLoading('Reading HR report…');
+  document.getElementById('btn-generate').disabled = true;
+
+  try {
+    // -- Read HR report --
+    const hrArrayBuffer = await hrFile.arrayBuffer();
+    const wb = XLSX.read(new Uint8Array(hrArrayBuffer), { type: 'array', cellDates: false });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+    const hrData = parseHrReport(rows);
+
+    // -- Read PDFs --
+    let invoiceDetail = [];
+    let prismTotal = 0;
+
+    const prismOverrideVal = document.getElementById('prism-override').value.trim();
+    if (prismOverrideVal !== '') {
+      prismTotal = parseFloat(prismOverrideVal) || 0;
+      // Show a synthetic invoice entry for the override
+      invoiceDetail = [{ fileName: '(manual override)', invNum: 'N/A', invDate: 'N/A', invTotal: prismTotal }];
+    } else if (pdfFiles.length > 0) {
+      setLoading(`Parsing ${pdfFiles.length} PDF(s)…`);
+      for (const f of pdfFiles) {
+        const inv = await parsePrismPdf(f);
+        invoiceDetail.push(inv);
+        if (inv.error) {
+          console.warn('PDF parse error:', inv.fileName, inv.error);
+        } else {
+          prismTotal += inv.invTotal;
+        }
+      }
+    }
+
+    // -- Health insurance overrides --
+    const cignaVal = document.getElementById('cigna-dr').value.trim();
+    const guardianVal = document.getElementById('guardian-dr').value.trim();
+    const cignaOverride = cignaVal !== '' ? parseFloat(cignaVal) : null;
+    const guardianOverride = guardianVal !== '' ? parseFloat(guardianVal) : null;
+
+    setLoading('Building journal entry…');
+
+    const { jeLines, imbalance, warnings, classifiedWages, totalWages, hrHealthHint } = buildJe(
+      hrData.wages, hrData.contributions,
+      hrData.employee401k, hrData.employeeHealth,
+      prismTotal, cignaOverride, guardianOverride
+    );
+
+    // Reconcile the invoice against the payroll register. Only meaningful when
+    // we actually read line items off at least one PDF -- a manual PRISM total
+    // has no detail to compare against.
+    const invoiceItems = invoiceDetail.reduce((acc, inv) => acc.concat(inv.items || []), []);
+    const recon = invoiceItems.length
+      ? buildRecon(totalWages, classifiedWages, hrData.contributions, invoiceItems)
+      : null;
+
+    if (!recon && Math.abs(imbalance) >= 0.02) {
+      warnings.push('No invoice line items were available, so the imbalance could not be attributed. ' +
+                    'Drop in the PRISM invoice PDFs (instead of using the total override) to get the reconciliation.');
+    }
+    for (const inv of invoiceDetail) {
+      if (inv.itemsNote) warnings.push(`Invoice ${inv.invNum}: ${inv.itemsNote}`);
+    }
+
+    // Remember what the register contained so the mappings box can pin
+    // anything unmapped to the top of the list.
+    lastContributions = hrData.contributions;
+
+    lastResult = {
+      jeLines, imbalance, warnings, recon,
+      invoiceDetail,
+      wages: hrData.wages,
+      unknownEmps: hrData.unknownEmps,
+      monthYear: hrData.monthYear,
+      periodDesc: hrData.periodDesc
+    };
+
+    clearLoading();
+    renderResults(lastResult);
+
+    // If the report contains employees we don't recognize, pop the box so the
+    // user can assign cost centers. After saving, the JE recomputes itself.
+    if (hrData.unknownEmps && hrData.unknownEmps.length > 0) {
+      openEmpModal(hrData.unknownEmps);
+    }
+
+  } catch(err) {
+    showError(err.message || String(err));
+    console.error(err);
+  }
+
+  document.getElementById('btn-generate').disabled = false;
+}
+
+// ============================================================
+// FILE INPUT WIRING
+// ============================================================
+function setupDropZone(dzId, inputId, multiple, onFiles) {
+  const dz = document.getElementById(dzId);
+  const input = document.getElementById(inputId);
+
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files);
+    onFiles(files);
+  });
+  input.addEventListener('change', () => {
+    const files = Array.from(input.files);
+    onFiles(files);
+    input.value = ''; // reset so same file can be re-selected
+  });
+}
+
+setupDropZone('dz-hr', 'file-hr', false, files => {
+  const f = files.find(f => f.name.endsWith('.xlsx'));
+  if (!f) { alert('Please select an .xlsx file.'); return; }
+  hrFile = f;
+  const status = document.getElementById('dz-hr-status');
+  status.innerHTML = `<span class="dz-ok">✓ ${escHtml(f.name)}</span>`;
+  document.getElementById('btn-generate').disabled = false;
+});
+
+setupDropZone('dz-pdf', 'file-pdf', true, files => {
+  const pdfs = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+  if (pdfs.length === 0) { alert('Please select .pdf files.'); return; }
+  pdfFiles = pdfs;
+  const status = document.getElementById('dz-pdf-status');
+  const ul = document.createElement('ul');
+  ul.className = 'dz-files';
+  for (const f of pdfs) {
+    const li = document.createElement('li');
+    li.textContent = f.name;
+    ul.appendChild(li);
+  }
+  status.innerHTML = '';
+  status.appendChild(ul);
+});
+
+// Generate button
+document.getElementById('btn-generate').addEventListener('click', generate);
+
+// Download buttons
+document.getElementById('btn-csv').addEventListener('click', () => {
+  if (!lastResult) return;
+  const csv = buildCsv(lastResult.jeLines, lastResult.monthYear, lastResult.periodDesc);
+  const [month, year] = lastResult.monthYear;
+  const fname = (month && year)
+    ? `payroll_je_${year}_${String(month).padStart(2,'0')}.csv`
+    : 'payroll_je.csv';
+  downloadText(csv, fname);
+});
+
+document.getElementById('btn-txt').addEventListener('click', () => {
+  if (!lastResult) return;
+  const txt = buildSummaryText(
+    lastResult.jeLines, lastResult.imbalance, lastResult.warnings,
+    lastResult.invoiceDetail, lastResult.wages, lastResult.unknownEmps,
+    lastResult.periodDesc, lastResult.recon
+  );
+  const [month, year] = lastResult.monthYear;
+  const fname = (month && year)
+    ? `payroll_je_${year}_${String(month).padStart(2,'0')}_summary.txt`
+    : 'payroll_je_summary.txt';
+  downloadText(txt, fname);
+});
+
+// ============================================================
+// EMPLOYEE LOOKUP MODAL
+// ============================================================
+function ccOptions(selected) {
+  return Object.keys(EFF_COST_CENTER_ACCOUNT).map(cc =>
+    `<option value="${escHtml(cc)}"${cc === selected ? ' selected' : ''}>${escHtml(cc)} — ${escHtml(EFF_COST_CENTER_ACCOUNT[cc])}</option>`
+  ).join('');
+}
+
+function addEmpRow(name, cc) {
+  const tbody = document.getElementById('emp-add-rows');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="emp-name-in" value="${escHtml(name || '')}" placeholder="LAST FIRST M" style="text-transform:uppercase"></td>
+    <td><select class="emp-cc-in"><option value="">— select cost center —</option>${ccOptions(cc)}</select></td>
+    <td><button type="button" class="emp-row-del" title="Remove row">✕</button></td>`;
+  tr.querySelector('.emp-row-del').addEventListener('click', () => tr.remove());
+  tbody.appendChild(tr);
+}
+
+function renderSavedEmps() {
+  const wrap = document.getElementById('emp-saved-list');
+  const names = Object.keys(EMP_OVERRIDES).sort();
+  if (!names.length) {
+    wrap.innerHTML = '<div class="muted-cell">None yet. Employees you add here are saved on this computer.</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  for (const n of names) {
+    const row = document.createElement('div');
+    row.className = 'emp-saved-row';
+    row.innerHTML = `<span>${escHtml(n)}</span><span class="muted-cell">${escHtml(EMP_OVERRIDES[n])}</span>`;
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'emp-del';
+    del.textContent = 'Remove';
+    del.addEventListener('click', () => {
+      delete EMP_OVERRIDES[n];
+      saveEmpOverrides();
+      rebuildLookup();
+      renderSavedEmps();
+    });
+    row.appendChild(del);
+    wrap.appendChild(row);
+  }
+}
+
+function openEmpModal(prefillNames) {
+  const tbody = document.getElementById('emp-add-rows');
+  tbody.innerHTML = '';
+  if (prefillNames && prefillNames.length) {
+    prefillNames.forEach(n => addEmpRow(n, ''));
+    document.getElementById('emp-modal-hint').textContent =
+      `${prefillNames.length} employee(s) in the report aren't in the lookup yet. Assign a cost center to each and Save — they'll be remembered for next time.`;
+  } else {
+    addEmpRow('', '');
+    document.getElementById('emp-modal-hint').textContent =
+      'Add an employee and assign their cost center. Saved entries persist on this computer and apply automatically.';
+  }
+  renderSavedEmps();
+  document.getElementById('emp-modal-overlay').style.display = 'flex';
+}
+
+function closeEmpModal() {
+  document.getElementById('emp-modal-overlay').style.display = 'none';
+}
+
+function saveEmpModal() {
+  const rows = document.querySelectorAll('#emp-add-rows tr');
+  let added = 0;
+  const missing = [];
+  for (const tr of rows) {
+    const name = tr.querySelector('.emp-name-in').value.trim().toUpperCase();
+    const cc = tr.querySelector('.emp-cc-in').value;
+    if (name && cc) { EMP_OVERRIDES[name] = cc; added++; }
+    else if (name && !cc) { missing.push(name); }
+  }
+  if (missing.length) {
+    alert('Pick a cost center for: ' + missing.join(', '));
+    return;
+  }
+  saveEmpOverrides();
+  rebuildLookup();
+  closeEmpModal();
+  // Recompute the JE so newly-classified wages flow through immediately.
+  if (added > 0 && hrFile) { generate(); }
+}
+
+function exportEmps() {
+  const json = JSON.stringify(EMP_OVERRIDES, null, 2);
+  downloadText(json, 'employees_seed.json');
+}
+
+function importEmps(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try { data = JSON.parse(reader.result); }
+    catch (e) { alert('That file is not valid JSON.'); return; }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      alert('Expected a JSON object of { "EMPLOYEE NAME": "Cost Center" }.');
+      return;
+    }
+    // Only accept names mapped to a known cost center; keep existing entries.
+    let ok = 0, skipped = 0;
+    for (const [name, cc] of Object.entries(data)) {
+      const N = String(name).trim().toUpperCase();
+      if (N && cc in EFF_COST_CENTER_ACCOUNT) { EMP_OVERRIDES[N] = cc; ok++; }
+      else skipped++;
+    }
+    saveEmpOverrides();
+    rebuildLookup();
+    renderSavedEmps();
+    alert(`Imported ${ok} employee(s).` + (skipped ? ` Skipped ${skipped} with an unrecognized cost center.` : ''));
+    if (ok > 0 && hrFile) generate();
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('btn-manage-emp').addEventListener('click', () => openEmpModal());
+document.getElementById('emp-add-another').addEventListener('click', () => addEmpRow('', ''));
+document.getElementById('emp-save').addEventListener('click', saveEmpModal);
+document.getElementById('emp-cancel').addEventListener('click', closeEmpModal);
+document.getElementById('emp-export').addEventListener('click', exportEmps);
+document.getElementById('emp-import').addEventListener('click', () => document.getElementById('emp-import-file').click());
+document.getElementById('emp-import-file').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) importEmps(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('emp-modal-overlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('emp-modal-overlay')) closeEmpModal();
+});
+
+// ============================================================
+// MAPPINGS MODAL
+// ============================================================
+function acctDatalistId() { return 'je-account-list'; }
+
+function ensureAcctDatalist() {
+  if (document.getElementById(acctDatalistId())) return;
+  const dl = document.createElement('datalist');
+  dl.id = acctDatalistId();
+  const all = JE_ACCOUNTS.concat(Object.keys(SPECIAL_ACCOUNTS));
+  dl.innerHTML = all.map(a => `<option value="${escHtml(a)}"></option>`).join('');
+  document.body.appendChild(dl);
+}
+
+function invCatOptions(selected) {
+  const opts = ['<option value="">— none —</option>'];
+  for (const c of INVOICE_CATEGORIES.filter(c => c !== 'GROSS WAGES')) {
+    opts.push(`<option value="${escHtml(c)}"${c === selected ? ' selected' : ''}>${escHtml(c)}</option>`);
+  }
+  opts.push(`<option value="${escHtml(NOT_ON_INVOICE)}"${selected === NOT_ON_INVOICE ? ' selected' : ''}>${escHtml(NOT_ON_INVOICE)}</option>`);
+  // Preserve a hand-entered category that isn't in the canonical list.
+  if (selected && opts.join('').indexOf(`value="${escHtml(selected)}"`) === -1) {
+    opts.push(`<option value="${escHtml(selected)}" selected>${escHtml(selected)}</option>`);
+  }
+  return opts.join('');
+}
+
+function addMapContribRow(desc, acct, cat, opts) {
+  opts = opts || {};
+  const wrap = document.getElementById('map-contrib-rows');
+  const row = document.createElement('div');
+  row.className = 'map-row' + (opts.isNew ? ' is-new' : '') + (opts.unmapped ? ' is-unmapped' : '');
+  row.innerHTML = `
+    <div>
+      <input type="text" class="mc-desc" value="${escHtml(desc || '')}" placeholder="Contribution description">
+      ${opts.unmapped ? `<div class="map-flag" style="display:inline-block;margin-top:4px">unmapped in last run${opts.amt != null ? ' · ' + fmtSigned(opts.amt) : ''}</div>` : ''}
+    </div>
+    <div><input type="text" class="mc-acct" list="${acctDatalistId()}" value="${escHtml(acct || '')}" placeholder="GL account (blank = unmapped)"></div>
+    <div><select class="mc-cat">${invCatOptions(cat || '')}</select></div>
+    <div><button type="button" class="map-del" title="Remove">✕</button></div>`;
+  row.querySelector('.map-del').addEventListener('click', () => row.remove());
+  if (opts.prepend && wrap.firstChild) wrap.insertBefore(row, wrap.firstChild);
+  else wrap.appendChild(row);
+  return row;
+}
+
+function addMapCcRow(cc, acct, isNew) {
+  const wrap = document.getElementById('map-cc-rows');
+  const row = document.createElement('div');
+  row.className = 'map-row cc-row' + (isNew ? ' is-new' : '');
+  row.innerHTML = `
+    <div><input type="text" class="mcc-name" value="${escHtml(cc || '')}" placeholder="Cost center"></div>
+    <div><input type="text" class="mcc-acct" value="${escHtml(acct || '')}" placeholder="GL account"></div>
+    <div><button type="button" class="map-del" title="Remove">✕</button></div>`;
+  row.querySelector('.map-del').addEventListener('click', () => row.remove());
+  wrap.appendChild(row);
+  return row;
+}
+
+function renderMapModal() {
+  ensureAcctDatalist();
+
+  // Contributions: anything unmapped from the last run first, then everything
+  // the tool knows, alphabetically.
+  const cWrap = document.getElementById('map-contrib-rows');
+  cWrap.innerHTML = '';
+
+  const unmapped = Object.entries(lastContributions)
+    .filter(([d, a]) => a && !resolveContribAccount(d))
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+  for (const [desc, amt] of unmapped) {
+    addMapContribRow(desc, '', resolveContribInvCat(desc) || '', { unmapped: true, amt });
+  }
+
+  const known = new Set(Object.keys(EFF_CONTRIB_ACCOUNT).concat(Object.keys(EFF_CONTRIB_INVCAT)));
+  for (const desc of Array.from(known).sort((a, b) => a.localeCompare(b))) {
+    addMapContribRow(desc, EFF_CONTRIB_ACCOUNT[desc] || '', EFF_CONTRIB_INVCAT[desc] || '', {});
+  }
+
+  // Cost centers
+  const ccWrap = document.getElementById('map-cc-rows');
+  ccWrap.innerHTML = '';
+  for (const cc of Object.keys(EFF_COST_CENTER_ACCOUNT).sort()) {
+    addMapCcRow(cc, EFF_COST_CENTER_ACCOUNT[cc], false);
+  }
+
+  // Reference pane
+  const ref = document.getElementById('map-ref-body');
+  const glRows = JE_ACCOUNTS.map(a => `<div><code>${escHtml(a)}</code> — posts to this GL account in the entry.</div>`).join('');
+  const spRows = Object.entries(SPECIAL_ACCOUNTS)
+    .map(([k, v]) => `<div><code>${escHtml(k)}</code> — ${escHtml(v)}</div>`).join('');
+  ref.innerHTML =
+    `<div style="font-weight:700;color:var(--text);margin-bottom:6px">GL accounts</div>${glRows}` +
+    `<div style="font-weight:700;color:var(--text);margin:14px 0 6px">Special buckets</div>${spRows}` +
+    `<div style="font-weight:700;color:var(--text);margin:14px 0 6px">Notes</div>` +
+    `<div>A <code>W/C …</code> class code that isn't listed still resolves to Worker's Compensation Insurance by prefix.</div>` +
+    `<div><code>Retirement</code>, <code>_CV_MEDICAL_ESTIMATE</code> and <code>_IGNORE</code> never move the DR/CR balance — each is offset elsewhere in the entry or not posted at all.</div>` +
+    `<div>Employee names and their cost centers live in the separate “Manage employees” box.</div>`;
+
+  document.getElementById('map-search').value = '';
+  filterMapRows('');
+}
+
+function filterMapRows(q) {
+  const needle = String(q || '').trim().toLowerCase();
+  for (const row of document.querySelectorAll('#map-contrib-rows .map-row')) {
+    if (!needle) { row.style.display = ''; continue; }
+    const hay = [
+      row.querySelector('.mc-desc').value,
+      row.querySelector('.mc-acct').value,
+      row.querySelector('.mc-cat').value
+    ].join(' ').toLowerCase();
+    row.style.display = hay.includes(needle) ? '' : 'none';
+  }
+}
+
+function openMapModal() {
+  renderMapModal();
+  document.getElementById('map-modal-overlay').style.display = 'flex';
+}
+function closeMapModal() {
+  document.getElementById('map-modal-overlay').style.display = 'none';
+}
+
+function saveMapModal() {
+  // Read the whole table back and store only what differs from the built-ins,
+  // plus a tombstone for anything built-in the user removed.
+  const contribs = {};
+  const seen = new Set();
+  const dupes = [];
+  for (const row of document.querySelectorAll('#map-contrib-rows .map-row')) {
+    const desc = row.querySelector('.mc-desc').value.trim();
+    if (!desc) continue;
+    if (seen.has(desc)) { dupes.push(desc); continue; }
+    seen.add(desc);
+    contribs[desc] = {
+      account: row.querySelector('.mc-acct').value.trim(),
+      invoiceCat: row.querySelector('.mc-cat').value
+    };
+  }
+  if (dupes.length) {
+    alert('These descriptions appear more than once — remove the duplicates first:\n\n' + dupes.join('\n'));
+    return;
+  }
+
+  const overrides = { contributions: {}, costCenters: {} };
+  for (const [desc, v] of Object.entries(contribs)) {
+    const baseA = CONTRIBUTION_ACCOUNT[desc] || '';
+    const baseC = CONTRIBUTION_INVOICE_CATEGORY[desc] || '';
+    if (v.account !== baseA || v.invoiceCat !== baseC) {
+      overrides.contributions[desc] = { account: v.account || null, invoiceCat: v.invoiceCat || null };
+    }
+  }
+  for (const desc of Object.keys(CONTRIBUTION_ACCOUNT)) {
+    if (!seen.has(desc)) overrides.contributions[desc] = null;
+  }
+  for (const desc of Object.keys(CONTRIBUTION_INVOICE_CATEGORY)) {
+    if (!seen.has(desc)) overrides.contributions[desc] = null;
+  }
+
+  const ccSeen = new Set();
+  for (const row of document.querySelectorAll('#map-cc-rows .map-row')) {
+    const cc = row.querySelector('.mcc-name').value.trim();
+    const acct = row.querySelector('.mcc-acct').value.trim();
+    if (!cc || !acct) continue;
+    ccSeen.add(cc);
+    if (COST_CENTER_ACCOUNT[cc] !== acct) overrides.costCenters[cc] = acct;
+  }
+  for (const cc of Object.keys(COST_CENTER_ACCOUNT)) {
+    if (!ccSeen.has(cc)) overrides.costCenters[cc] = null;
+  }
+
+  MAP_OVERRIDES = overrides;
+  saveMapOverrides();
+  rebuildMaps();
+  closeMapModal();
+  if (hrFile) generate();
+}
+
+function resetMappings() {
+  if (!confirm('Discard all mapping changes and go back to the built-in defaults?')) return;
+  MAP_OVERRIDES = { contributions: {}, costCenters: {} };
+  saveMapOverrides();
+  rebuildMaps();
+  renderMapModal();
+}
+
+function exportMappings() {
+  const payload = {
+    contributions: Object.keys(EFF_CONTRIB_ACCOUNT).concat(Object.keys(EFF_CONTRIB_INVCAT))
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .sort()
+      .reduce((o, d) => {
+        o[d] = { account: EFF_CONTRIB_ACCOUNT[d] || null, invoiceCat: EFF_CONTRIB_INVCAT[d] || null };
+        return o;
+      }, {}),
+    costCenters: Object.assign({}, EFF_COST_CENTER_ACCOUNT)
+  };
+  downloadText(JSON.stringify(payload, null, 2), 'payroll_je_mappings.json');
+}
+
+function importMappings(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try { data = JSON.parse(reader.result); }
+    catch (e) { alert('That file is not valid JSON.'); return; }
+    if (!data || typeof data !== 'object') { alert('Expected a mappings JSON object.'); return; }
+
+    const overrides = { contributions: {}, costCenters: {} };
+    let n = 0;
+    for (const [desc, v] of Object.entries(data.contributions || {})) {
+      if (!desc) continue;
+      const account = (v && typeof v === 'object') ? (v.account || null) : (v || null);
+      const invoiceCat = (v && typeof v === 'object') ? (v.invoiceCat || null) : null;
+      overrides.contributions[desc] = { account, invoiceCat };
+      n++;
+    }
+    // Anything the file omits is treated as removed, so an export/import
+    // round-trip reproduces exactly what was exported.
+    for (const desc of Object.keys(CONTRIBUTION_ACCOUNT).concat(Object.keys(CONTRIBUTION_INVOICE_CATEGORY))) {
+      if (!(desc in overrides.contributions)) overrides.contributions[desc] = null;
+    }
+    for (const [cc, acct] of Object.entries(data.costCenters || {})) {
+      if (cc && acct) { overrides.costCenters[cc] = String(acct); n++; }
+    }
+    if (data.costCenters) {
+      for (const cc of Object.keys(COST_CENTER_ACCOUNT)) {
+        if (!(cc in overrides.costCenters)) overrides.costCenters[cc] = null;
+      }
+    }
+
+    MAP_OVERRIDES = overrides;
+    saveMapOverrides();
+    rebuildMaps();
+    renderMapModal();
+    alert(`Imported ${n} mapping(s).`);
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('btn-manage-maps').addEventListener('click', openMapModal);
+document.getElementById('map-cancel').addEventListener('click', closeMapModal);
+document.getElementById('map-save').addEventListener('click', saveMapModal);
+document.getElementById('map-reset').addEventListener('click', resetMappings);
+document.getElementById('map-export').addEventListener('click', exportMappings);
+document.getElementById('map-import').addEventListener('click', () => document.getElementById('map-import-file').click());
+document.getElementById('map-import-file').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) importMappings(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('map-add-contrib').addEventListener('click', () => {
+  const row = addMapContribRow('', '', '', { isNew: true, prepend: true });
+  row.querySelector('.mc-desc').focus();
+});
+document.getElementById('map-add-cc').addEventListener('click', () => {
+  addMapCcRow('', '', true).querySelector('.mcc-name').focus();
+});
+document.getElementById('map-search').addEventListener('input', (e) => filterMapRows(e.target.value));
+document.getElementById('map-modal-overlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('map-modal-overlay')) closeMapModal();
+});
+for (const tab of document.querySelectorAll('.map-tab')) {
+  tab.addEventListener('click', () => {
+    for (const x of document.querySelectorAll('.map-tab')) x.classList.remove('active');
+    for (const p of document.querySelectorAll('.map-pane')) p.classList.remove('active');
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.pane).classList.add('active');
+  });
+}
+</script>
+
+<script>const TOOL_KEY='payroll-je-hvac'; const TOOL_VERSION='1.7';</script>
+<script src="version-check.js"></script>
+</body>
+</html>
