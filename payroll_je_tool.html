@@ -688,7 +688,7 @@ const SPECIAL_ACCOUNTS = CVSettings.use("special-accounts", {
   "_CLIENT_401K":         "Employee 401k credit → rolls into 401K Liability CR",
   "_CV_MEDICAL_ESTIMATE": "CV-billed medical → only seeds the Cigna DR field; not booked",
   "_IGNORE":              "Deliberately not booked, and not flagged as unmapped",
-}, {"kind": "map", "label": "Special (non-GL) buckets", "columns": ["Bucket code", "What it does"], "hint": "Internal bucket codes used by the JE builder. Keep codes starting with an underscore."});
+}, {"kind": "map", "label": "Special (non-GL) buckets", "columns": ["Bucket code", "What it does"], "hint": "Reference list shown in the mapping dropdown. These codes have built-in behavior in the JE builder, so adding a row here only adds a dropdown choice and does not create new behavior."});
 
 // GL accounts a contribution can post to. Anything typed that isn't in this list
 // still works -- it just posts to a new line with that name.
@@ -700,7 +700,7 @@ const JE_ACCOUNTS = CVSettings.use("je-accounts", [
   "Health Insurance",
   "Retirement",
   "Accrued Payroll",
-], {"kind": "list", "label": "GL accounts a contribution can post to", "columns": ["Account"], "hint": "A name typed in the mapping editor that is not in this list still works; it posts to a new line."});
+], {"kind": "list", "label": "GL accounts a contribution can post to", "columns": ["Account"], "hint": "Accounts offered in the contribution mapping dropdown. A contribution mapped to an account that is not one of the standard JE lines posts on its own line."});
 
 // Accounts whose DR is cancelled elsewhere in the entry, so they can never
 // create or close an imbalance:
@@ -809,7 +809,7 @@ const INVOICE_CATEGORIES = CVSettings.use("invoice-categories", [
   "MISC CREDIT",
   "RETIREMENT CREDIT",
   "AGENCY CREDITS",
-], {"kind": "list", "label": "Invoice categories", "columns": ["Category"], "hint": "Category headings on the Vensure invoice that the tool reconciles against."});
+], {"kind": "list", "label": "Invoice categories", "columns": ["Category"], "hint": "Display order of the invoice categories in the reconciliation. The names must match the wording the invoice parser recognizes. A category not listed here still appears, after the listed ones."});
 
 // Invoice wording varies a little between runs; fold the variants together.
 const INVOICE_LABEL_ALIAS = CVSettings.use("invoice-aliases", {
@@ -1486,6 +1486,13 @@ function buildJe(wages, contributions, employee401k, employeeHealth,
   je.push({ account: 'Payroll Services',
             dr: acctTotals['Payroll Services'] || 0, cr: 0,
             note: 'Admin fee' });
+
+  // Any other account a contribution was mapped to (added in the mapping editor) gets its own line, so the entry still balances
+  const POSTED_ACCTS = new Set(['Employer Payroll Taxes', "Worker's Compensation Insurance", 'Business Insurance', 'Payroll Services', 'Accrued Payroll']);
+  for (const [acct, amt] of Object.entries(acctTotals)) {
+    if (POSTED_ACCTS.has(acct) || acct.startsWith('_') || !amt) continue;
+    je.push({ account: acct, dr: amt > 0 ? amt : 0, cr: amt < 0 ? Math.abs(amt) : 0, note: 'Mapped account' });
+  }
 
   const accrued = acctTotals['Accrued Payroll'] || 0;
   je.push({ account: 'Accrued Payroll',

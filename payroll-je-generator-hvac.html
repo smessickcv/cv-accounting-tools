@@ -298,7 +298,8 @@ def build_je(wages, contributions, employee_401k, employee_health,
         {"account":"Health Insurance - Cigna","dr":cigna_dr,"cr":0,"note":"From CV Cigna invoice (manual)"},
         {"account":"Health Insurance - Guardian","dr":guardian_dr,"cr":0,"note":"From CV Guardian invoice (manual)"},
     ]
-    for acct in WAGE_ACCOUNT_ORDER:
+    # Wage accounts added in the cost-center mappings but missing from the order list still post (after the listed ones)
+    for acct in list(WAGE_ACCOUNT_ORDER) + [a for a in wages_by_acct if a not in WAGE_ACCOUNT_ORDER]:
         amt = wages_by_acct.get(acct, 0.0)
         if amt: je.append({"account":acct,"dr":amt,"cr":0,"note":""})
     je += [
@@ -306,6 +307,11 @@ def build_je(wages, contributions, employee_401k, employee_health,
         {"account":"Business Insurance","dr":acct_totals.get("Business Insurance",0),"cr":0,"note":"EPLI"},
         {"account":"Payroll Services","dr":acct_totals.get("Payroll Services",0),"cr":0,"note":"Admin fee"},
     ]
+    # Any other account a contribution was mapped to (added in the mapping editor) gets its own line, so the entry still balances
+    _posted = {"Employer Payroll Taxes","Worker's Compensation Insurance","Business Insurance","Payroll Services","Accrued Payroll"}
+    for _a, _v in acct_totals.items():
+        if _a in _posted or _a.startswith("_") or not _v: continue
+        je.append({"account":_a,"dr":_v if _v>0 else 0,"cr":-_v if _v<0 else 0,"note":"Mapped account"})
     accrued = acct_totals.get("Accrued Payroll", 0.0)
     je.append({"account":"Accrued Payroll","dr":accrued if accrued>0 else 0,"cr":accrued if accrued<0 else 0,"note":""})
     je += [

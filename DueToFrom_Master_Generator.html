@@ -254,6 +254,7 @@ let PAIRS = CVSettings.use("mirror-pairs", [
 
 
 // Editable via the Mappings button
+const MASTER_SHEET_ID = CVSettings.use('master-sheet-id', '1KSKAav0X-dEs1HIh9sxBNC7-JDma0lH_QyZPT_CyePg', {"kind": "scalar", "label": "Master workbook Google Sheet ID", "hint": "The ID inside the master Due To/From workbook URL. It is written into the IMPORTRANGE formulas on the Formulas tab."});
 const SHARED_SUB_ACCTS = CVSettings.use('shared-sub-accounts', ['25001','15152'], {"kind": "list", "label": "Shared subsidiary accounts", "columns": ["Account number"], "hint": "Subsidiary accounts shared by several entities. Balances on these accounts are rebuilt per entity."});
 const SKIP_LABELS = CVSettings.use('skip-labels', ['ASSETS','LIABILITIES','Current Assets','Current Liabilities',
     'Other Current Asset','Other Current Liab','Total','Equity','Retained',
@@ -290,6 +291,7 @@ function renderMappingTable() {
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
+function savePairs() { try { localStorage.setItem('cvset:' + CVSettings.tool + ':mirror-pairs', JSON.stringify(PAIRS)); } catch (e) {} }
 function updatePair(i, field, value) {
   if (field === 'cv' || field === 'sub') {
     PAIRS[i][field] = value.split(',').map(s => s.trim()).filter(Boolean);
@@ -297,16 +299,19 @@ function updatePair(i, field, value) {
     PAIRS[i][field] = value;
   }
   rebuildCvAcctEntity();
+  savePairs();
 }
 
 function deletePair(i) {
   PAIRS.splice(i, 1);
   rebuildCvAcctEntity();
+  savePairs();
   renderMappingTable();
 }
 
 function addPair() {
-  PAIRS.push({ label: '', cv: [], sub: ['25001','15152'], entity: '', kind: 'shared' });
+  PAIRS.push({ label: '', cv: [], sub: SHARED_SUB_ACCTS.slice(), entity: '', kind: 'shared' });
+  savePairs();
   renderMappingTable();
   // Scroll to last row and focus label input
   const rows = document.querySelectorAll('#map-tbody tr');
@@ -643,26 +648,26 @@ function buildGuide() {
     ["5 – Subsidiary sheets auto-update","Any subsidiary sheet using IMPORTRANGE from this master updates immediately.",""],
     [""],
     ["ONE-TIME: AUTHORIZE IMPORTRANGE","",""],
-    ["Paste in any cell of each subsidiary sheet:","=IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/1KSKAav0X-dEs1HIh9sxBNC7-JDma0lH_QyZPT_CyePg\",\"Transactions!A1\")\nClick Allow access when prompted.",""],
+    ["Paste in any cell of each subsidiary sheet:","=IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/"+MASTER_SHEET_ID+"\",\"Transactions!A1\")\nClick Allow access when prompted.",""],
     [""],
     ["FORMULA TEMPLATES (paste into subsidiary sheets)","Formula — replace entity name and B2 (month cell) as needed","Notes"],
     ["CV-side transactions (month filter)",
-     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/1KSKAav0X-dEs1HIh9sxBNC7-JDma0lH_QyZPT_CyePg\",\"Transactions!A:M\"),\"SELECT Col1,Col2,Col3,Col4,Col5,Col6,Col7,Col8,Col9,Col10,Col11,Col12,Col13 WHERE Col3='CV' AND Col4='10X Roofing Management, LLC' AND Col1='\"&B3&\"'\")",
+     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/"+MASTER_SHEET_ID+"\",\"Transactions!A:M\"),\"SELECT Col1,Col2,Col3,Col4,Col5,Col6,Col7,Col8,Col9,Col10,Col11,Col12,Col13 WHERE Col3='CV' AND Col4='10X Roofing Management, LLC' AND Col1='\"&B3&\"'\")",
      "B2 = month cell, e.g. \"Mar 2026\""],
     ["Sub-side transactions (month filter)",
-     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/1KSKAav0X-dEs1HIh9sxBNC7-JDma0lH_QyZPT_CyePg\",\"Transactions!A:M\"),\"SELECT Col1,Col2,Col3,Col4,Col5,Col6,Col7,Col8,Col9,Col10,Col11,Col12,Col13 WHERE Col3='Sub' AND Col4='10X Roofing Management, LLC' AND Col1='\"&B3&\"'\")",
+     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/"+MASTER_SHEET_ID+"\",\"Transactions!A:M\"),\"SELECT Col1,Col2,Col3,Col4,Col5,Col6,Col7,Col8,Col9,Col10,Col11,Col12,Col13 WHERE Col3='Sub' AND Col4='10X Roofing Management, LLC' AND Col1='\"&B3&\"'\")",
      "Pulls 25001 / 15152 rows for this entity"],
     ["CV account ending balance",
-     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/1KSKAav0X-dEs1HIh9sxBNC7-JDma0lH_QyZPT_CyePg\",\"Account Balances!A:F\"),\"SELECT Col6 WHERE Col1='\"&B3&\"' AND Col2='15129'\")",
+     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/"+MASTER_SHEET_ID+"\",\"Account Balances!A:F\"),\"SELECT Col6 WHERE Col1='\"&B3&\"' AND Col2='15129'\")",
      "Replace 15129 with the CV account number"],
     ["Full Recon Summary — one month",
-     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/1KSKAav0X-dEs1HIh9sxBNC7-JDma0lH_QyZPT_CyePg\",\"Recon Summary!A:J\"),\"SELECT * WHERE Col1='\"&B3&\"'\")",
+     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/"+MASTER_SHEET_ID+"\",\"Recon Summary!A:J\"),\"SELECT * WHERE Col1='\"&B3&\"'\")",
      "All 16 pairs for the selected month"],
     ["Variance check — one subsidiary",
-     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/1KSKAav0X-dEs1HIh9sxBNC7-JDma0lH_QyZPT_CyePg\",\"Recon Summary!A:J\"),\"SELECT Col2,Col5,Col9,Col10 WHERE Col1='\"&B3&\"' AND Col3='10X Roofing Management, LLC'\")",
+     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/"+MASTER_SHEET_ID+"\",\"Recon Summary!A:J\"),\"SELECT Col2,Col5,Col9,Col10 WHERE Col1='\"&B3&\"' AND Col3='10X Roofing Management, LLC'\")",
      "Returns label, CV end, Sub end, Variance"],
     ["Recon history — all months for one subsidiary",
-     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/1KSKAav0X-dEs1HIh9sxBNC7-JDma0lH_QyZPT_CyePg\",\"Recon Summary!A:J\"),\"SELECT Col1,Col5,Col9,Col10 WHERE Col3='10X Roofing Management, LLC' ORDER BY Col1\")",
+     "=QUERY(IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/"+MASTER_SHEET_ID+"\",\"Recon Summary!A:J\"),\"SELECT Col1,Col5,Col9,Col10 WHERE Col3='10X Roofing Management, LLC' ORDER BY Col1\")",
      "No month filter — returns full history"],
     [""],
     ["TRANSACTIONS TAB — COLUMN MAP","Description",""],

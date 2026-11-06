@@ -385,7 +385,7 @@ const DEFAULT_PAY_CODES = CVSettings.use("pay-codes", {
   'REG':     { desc: 'Ern - Regular Pay',                        bucket: 'RegPay',   inJE: true  },
   'PDPLV':   { desc: 'Ern - Parental Leave',                     bucket: 'RegPay',   inJE: true  },
   '401P':    { desc: 'Ded - 401K',                               bucket: '401P',     inJE: false },
-}, {"kind": "objmap", "label": "Pay codes", "keyLabel": "Pay code", "hint": "Each Vensure pay code, what it is, which JE bucket it feeds, and whether it posts to the JE (true or false).", "fields": [{"key": "desc", "label": "Description"}, {"key": "bucket", "label": "Bucket"}, {"key": "inJE", "label": "In JE", "type": "bool"}]});
+}, {"kind": "objmap", "label": "Pay codes", "keyLabel": "Pay code", "hint": "Each Vensure pay code, what it is, which JE bucket it feeds, and whether it posts to the JE (true or false). Edits here and in the Pay Codes table on the page are kept in this browser.", "fields": [{"key": "desc", "label": "Description"}, {"key": "bucket", "label": "Bucket"}, {"key": "inJE", "label": "In JE", "type": "bool"}]});
 
 const DEFAULT_DEPT_MAP = CVSettings.use("dept-map", {
   '103': 'SBU',
@@ -435,7 +435,39 @@ const BUCKET_CFG = CVSettings.use("bucket-accounts", {
   'Incentive': { cvAcc: '61022 Personnel : Incentives',                                 subAcc: '61022 Personnel : Incentives',                                  isDeduction: false, cvMemo: 'Incentives',           subMemo: 'Incentives',          ord: 6 },
   'Insurance': { cvAcc: '61062 Personnel : Benefits : Insurance',                       subAcc: '61062 Personnel : Benefits : Insurance',                       isDeduction: true,  cvMemo: 'Insurance',            subMemo: 'Insurance',           ord: 7 },
   'HSA':       { cvAcc: '61062 Personnel : Benefits : Insurance',                       subAcc: '61062 Personnel : Benefits : Insurance',                       isDeduction: true,  cvMemo: 'Insurance',            subMemo: 'Insurance',           ord: 8 },
-}, {"kind": "objmap", "label": "JE buckets to GL accounts and memos", "keyLabel": "Bucket", "hint": "GL account and memo for the CV side and the subsidiary side of each bucket. Deduction is true or false. Order sets the sort order of JE lines. CONFIGURABLE means the account is chosen on the page.", "fields": [{"key": "cvAcc", "label": "CV account"}, {"key": "subAcc", "label": "Subsidiary account"}, {"key": "isDeduction", "label": "Deduction", "type": "bool"}, {"key": "cvMemo", "label": "CV memo", "type": "nstr"}, {"key": "subMemo", "label": "Subsidiary memo", "type": "nstr"}, {"key": "ord", "label": "Order", "type": "num"}]});
+}, {"kind": "objmap", "label": "JE buckets to GL accounts and memos", "keyLabel": "Bucket", "hint": "GL account and memo for the CV side and the subsidiary side of each bucket. Add a row to create a new bucket, such as Severance, and it gets its own JE line on both sides; then assign pay codes to it. Deduction false posts as a separate expense line. Deduction true rolls into the Insurance line. Order sets the sort order of JE lines. CONFIGURABLE means the account is chosen on the page. Codes in a bucket that is not listed here (EETaxes, 401P, Other) are left out of the JE.", "fields": [{"key": "cvAcc", "label": "CV account"}, {"key": "subAcc", "label": "Subsidiary account"}, {"key": "isDeduction", "label": "Deduction", "type": "bool"}, {"key": "cvMemo", "label": "CV memo", "type": "nstr"}, {"key": "subMemo", "label": "Subsidiary memo", "type": "nstr"}, {"key": "ord", "label": "Order", "type": "num"}]});
+
+
+// Buckets that post to the JE come from the JE bucket table (Mappings), so a new bucket such as
+// Severance gets its own JE line without any code change. Deduction buckets roll into the Insurance line.
+function bucketOrder(a, b) { return (BUCKET_CFG[a].ord || 0) - (BUCKET_CFG[b].ord || 0); }
+function expenseBucketList()   { return Object.keys(BUCKET_CFG).filter(b => !BUCKET_CFG[b].isDeduction).sort(bucketOrder); }
+function deductionBucketList() { return Object.keys(BUCKET_CFG).filter(b =>  BUCKET_CFG[b].isDeduction).sort(bucketOrder); }
+function bucketChoices() { return [...new Set([...BUCKETS_LIST, ...Object.keys(BUCKET_CFG)])]; }
+
+// Pay code and department edits made on the page are kept in this browser (same storage the Mappings editor uses)
+function savePayCodes() { try { localStorage.setItem('cvset:' + CVSettings.tool + ':pay-codes', JSON.stringify(payCodes)); } catch (e) {} }
+function saveDeptMap()  { try { localStorage.setItem('cvset:' + CVSettings.tool + ':dept-map', JSON.stringify(deptMap)); } catch (e) {} }
+
+
+// JE settings fields on the page (subsidiary IDs, due to/from and commission accounts): kept in this browser and editable in Mappings
+const CFG_FIELDS = [["cfg_cvSubId", "CV subsidiary ID"], ["cfg_bsSub", "Buy/Sell subsidiary ID"], ["cfg_hsSub", "Home Service subsidiary ID"], ["cfg_dueToCV", "Due to CV account (subsidiary side)"], ["cfg_dueFromBS", "Due from Buy/Sell account (CV side)"], ["cfg_dueFromHS", "Due from Home Service account (CV side)"], ["cfg_bsPrimaryDept", "Buy/Sell primary department"], ["cfg_hsPrimaryDept", "Home Service primary department"], ["cfg_bsName", "Buy/Sell name"], ["cfg_hsName", "Home Service name"], ["cfg_commCV", "Commission account (CV side)"], ["cfg_commSub", "Commission account (subsidiary side)"]];
+const CFG_KEY = () => 'cvset:' + CVSettings.tool + ':je-settings';
+function readCfgFields() { const o = {}; for (const [id, label] of CFG_FIELDS) { const el = document.getElementById(id); if (el) o[label] = el.value; } return o; }
+function saveCfgFields() { try { localStorage.setItem(CFG_KEY(), JSON.stringify(readCfgFields())); } catch (e) {} }
+function applySavedCfgFields() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CFG_KEY()) || 'null'); if (!s) return;
+    for (const [id, label] of CFG_FIELDS) { const el = document.getElementById(id); if (el && label in s) el.value = s[label]; }
+  } catch (e) {}
+}
+CVSettings.store({id:'je-settings', label:'JE settings (subsidiary IDs, due to/from and commission accounts)', schema:{kind:'map', columns:['Setting','Value']},
+  hint:'The fields in the JE settings section of the page. Keep the setting names as they are and change only the values.',
+  read:readCfgFields, write:v => localStorage.setItem(CFG_KEY(), JSON.stringify(v)), reset:() => localStorage.removeItem(CFG_KEY())});
+document.addEventListener('DOMContentLoaded', () => {
+  applySavedCfgFields();
+  for (const [id] of CFG_FIELDS) { const el = document.getElementById(id); if (el) el.addEventListener('input', saveCfgFields); }
+});
 
 // ============================================================
 // STATE
@@ -516,9 +548,9 @@ function renderDeptMap() {
   Object.entries(deptMap).sort((a,b) => parseInt(a[0])-parseInt(b[0])).forEach(([code, name]) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input value="${esc(code)}" onchange="delete deptMap['${esc(code)}'];deptMap[this.value]='${esc(name)}'"></td>
-      <td><input value="${esc(name)}" onchange="deptMap['${esc(code)}']=this.value"></td>
-      <td><button class="del-row-btn" onclick="delete deptMap['${esc(code)}'];renderDeptMap()">&#215;</button></td>`;
+      <td><input value="${esc(code)}" onchange="delete deptMap['${esc(code)}'];deptMap[this.value]='${esc(name)}';saveDeptMap()"></td>
+      <td><input value="${esc(name)}" onchange="deptMap['${esc(code)}']=this.value;saveDeptMap()"></td>
+      <td><button class="del-row-btn" onclick="delete deptMap['${esc(code)}'];saveDeptMap();renderDeptMap()">&#215;</button></td>`;
     tbody.appendChild(tr);
   });
 }
@@ -536,17 +568,17 @@ function renderPayCodeTable() {
   Object.entries(payCodes).forEach(([code, info]) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input value="${esc(code)}" onchange="payCodes[this.value]=payCodes['${esc(code)}']; delete payCodes['${esc(code)}']" style="width:80px"></td>
-      <td><input value="${esc(info.desc)}" onchange="payCodes['${esc(code)}'].desc=this.value" style="width:220px"></td>
+      <td><input value="${esc(code)}" onchange="payCodes[this.value]=payCodes['${esc(code)}']; delete payCodes['${esc(code)}']; savePayCodes()" style="width:80px"></td>
+      <td><input value="${esc(info.desc)}" onchange="payCodes['${esc(code)}'].desc=this.value; savePayCodes()" style="width:220px"></td>
       <td>
-        <select onchange="payCodes['${esc(code)}'].bucket=this.value">
-          ${BUCKETS_LIST.map(b=>`<option value="${b}"${b===info.bucket?' selected':''}>${b}</option>`).join('')}
+        <select onchange="payCodes['${esc(code)}'].bucket=this.value; savePayCodes()">
+          ${bucketChoices().map(b=>`<option value="${b}"${b===info.bucket?' selected':''}>${b}</option>`).join('')}
         </select>
       </td>
       <td style="text-align:center">
-        <input type="checkbox" ${info.inJE?'checked':''} onchange="payCodes['${esc(code)}'].inJE=this.checked">
+        <input type="checkbox" ${info.inJE?'checked':''} onchange="payCodes['${esc(code)}'].inJE=this.checked; savePayCodes()">
       </td>
-      <td><button class="del-row-btn" onclick="delete payCodes['${esc(code)}'];renderPayCodeTable()">&#215;</button></td>`;
+      <td><button class="del-row-btn" onclick="delete payCodes['${esc(code)}'];savePayCodes();renderPayCodeTable()">&#215;</button></td>`;
     tbody.appendChild(tr);
   });
 }
@@ -778,7 +810,7 @@ function processAndRender() {
       //    eliminates those automatically and avoids all double-counting.
       const debit  = parseFloat(String(row['Debit Amount']  || '0').replace(/[^0-9.-]/g,'')) || 0;
       const credit = parseFloat(String(row['Credit Amount'] || '0').replace(/[^0-9.-]/g,'')) || 0;
-      const isDeduction = pcInfo.bucket === 'Insurance' || pcInfo.bucket === 'HSA';
+      const isDeduction = !!(BUCKET_CFG[pcInfo.bucket] && BUCKET_CFG[pcInfo.bucket].isDeduction);
       if (!isDeduction && debit <= 0) { dbgSkipDir++; continue; }
       if (isDeduction && parts[1].trim() !== '376') { dbgSkipDir++; continue; }
 
@@ -843,7 +875,7 @@ function processAndRender() {
         <label style="min-width:110px;font-weight:700">${code}</label>
         <span style="min-width:260px;color:#555;font-size:12px">${desc || '—'}</span>
         Bucket: <select id="mc_bucket_${code}">
-          ${['RegPay','ERTaxes','401k','RCELL','COMM','Incentive','Insurance','HSA','EETaxes','401P','Other'].map(b=>`<option>${b}</option>`).join('')}
+          ${bucketChoices().map(b=>`<option>${b}</option>`).join('')}
         </select>
         &nbsp;In JE: <select id="mc_inje_${code}"><option value="true">Yes</option><option value="false">No</option></select>`;
       missingCodesList.appendChild(div);
@@ -862,6 +894,7 @@ function applyMissingAndRecalc() {
     missingCodeOverrides[code] = { desc: code, bucket: el.value, inJE };
     payCodes[code] = missingCodeOverrides[code];
   });
+  savePayCodes();
   renderPayCodeTable();
   processAndRender();
 }
@@ -882,8 +915,8 @@ function buildConsolidatedJE(periodRows, subCfg, cfg, memo, payDate, jeDate) {
   // Short prefix for Line Memo (e.g. "10X Buy/Sell Payroll")
   const shortMemo = `${subCfg.subName} Payroll`;
 
-  const expenseBuckets   = ['RegPay','ERTaxes','401k','RCELL','COMM','Incentive'];
-  const deductionBuckets = ['Insurance','HSA'];
+  const expenseBuckets   = expenseBucketList();
+  const deductionBuckets = deductionBucketList();
 
   // Aggregate by (cvDept, bucket)
   const cvDeptBuckets = new Map();
@@ -998,8 +1031,8 @@ function buildDetailJE(periodRows, subCfg, cfg, memo, payDate, jeDate) {
   const payDateStr = fmtDate(payDate);
   const jeDateStr  = fmtDate(jeDate);
   const shortMemo  = `${subCfg.subName} Payroll`;
-  const expenseBuckets   = ['RegPay','ERTaxes','401k','RCELL','COMM','Incentive'];
-  const deductionBuckets = ['Insurance','HSA'];
+  const expenseBuckets   = expenseBucketList();
+  const deductionBuckets = deductionBucketList();
 
   // Group by employee
   const empGroups = new Map();
